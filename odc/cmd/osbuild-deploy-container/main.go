@@ -14,6 +14,7 @@ import (
 	"github.com/osbuild/images/pkg/rpmmd"
 )
 
+//go:embed fedora-eln.json
 var reposStr string
 
 func fail(msg string) {

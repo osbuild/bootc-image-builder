@@ -1,0 +1,58 @@
+{
+  "aarch64": [
+    {
+      "baseurl": "https://odcs.fedoraproject.org/composes/production/latest-Fedora-ELN/compose/BaseOS/aarch64/os/",
+      "name": "baseos"
+    },
+    {
+      "baseurl": "https://odcs.fedoraproject.org/composes/production/latest-Fedora-ELN/compose/AppStream/aarch64/os/",
+      "name": "appstream"
+    },
+    {
+      "baseurl": "https://odcs.fedoraproject.org/composes/production/latest-Fedora-ELN/compose/CRB/aarch64/os/",
+      "name": "crb"
+    }
+  ],
+  "ppc64le": [
+    {
+      "baseurl": "https://odcs.fedoraproject.org/composes/production/latest-Fedora-ELN/compose/BaseOS/ppc64le/os/",
+      "name": "baseos"
+    },
+    {
+      "baseurl": "https://odcs.fedoraproject.org/composes/production/latest-Fedora-ELN/compose/AppStream/ppc64le/os/",
+      "name": "appstream"
+    },
+    {
+      "baseurl": "https://odcs.fedoraproject.org/composes/production/latest-Fedora-ELN/compose/CRB/ppc64le/os/",
+      "name": "crb"
+    }
+  ],
+  "s390x": [
+    {
+      "baseurl": "https://odcs.fedoraproject.org/composes/production/latest-Fedora-ELN/compose/BaseOS/s390x/os/",
+      "name": "baseos"
+    },
+    {
+      "baseurl": "https://odcs.fedoraproject.org/composes/production/latest-Fedora-ELN/compose/AppStream/s390x/os/",
+      "name": "appstream"
+    },
+    {
+      "baseurl": "https://odcs.fedoraproject.org/composes/production/latest-Fedora-ELN/compose/CRB/s390x/os/",
+      "name": "crb"
+    }
+  ],
+  "x86_64": [
+    {
+      "baseurl": "https://odcs.fedoraproject.org/composes/production/latest-Fedora-ELN/compose/BaseOS/x86_64/os/",
+      "name": "baseos"
+    },
+    {
+      "baseurl": "https://odcs.fedoraproject.org/composes/production/latest-Fedora-ELN/compose/AppStream/x86_64/os/",
+      "name": "appstream"
+    },
+    {
+      "baseurl": "https://odcs.fedoraproject.org/composes/production/latest-Fedora-ELN/compose/CRB/x86_64/os/",
+      "name": "crb"
+    }
+  ]
+}
