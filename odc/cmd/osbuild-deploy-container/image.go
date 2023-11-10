@@ -15,7 +15,7 @@ import (
 	"github.com/osbuild/images/pkg/runner"
 )
 
-func Manifest(config *BuildConfig, repos []rpmmd.RepoConfig, architecture arch.Arch, seed int64) (*manifest.Manifest, error) {
+func Manifest(imgref string, config *BuildConfig, repos []rpmmd.RepoConfig, architecture arch.Arch, seed int64) (*manifest.Manifest, error) {
 
 	source := rand.NewSource(seed)
 
@@ -23,9 +23,7 @@ func Manifest(config *BuildConfig, repos []rpmmd.RepoConfig, architecture arch.A
 	/* #nosec G404 */
 	rng := rand.New(source)
 
-	baseImage := "quay.io/centos-boot/fedora-tier-1:eln"
-
-	img, err := pipelines(baseImage, config, architecture, rng)
+	img, err := pipelines(imgref, config, architecture, rng)
 	if err != nil {
 		fail(err.Error())
 	}
@@ -37,15 +35,15 @@ func Manifest(config *BuildConfig, repos []rpmmd.RepoConfig, architecture arch.A
 	return &mf, err
 }
 
-func pipelines(baseImage string, config *BuildConfig, architecture arch.Arch, rng *rand.Rand) (image.ImageKind, error) {
-	if baseImage == "" {
+func pipelines(imgref string, config *BuildConfig, architecture arch.Arch, rng *rand.Rand) (image.ImageKind, error) {
+	if imgref == "" {
 		fail("pipeline: no base image defined")
 	}
 	ref := "ostree/1/1/0"
 	tlsVerify := true
 	containerSource := container.SourceSpec{
-		Source:    baseImage,
-		Name:      baseImage,
+		Source:    imgref,
+		Name:      imgref,
 		TLSVerify: &tlsVerify,
 	}
 
