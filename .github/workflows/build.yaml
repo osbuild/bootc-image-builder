@@ -26,12 +26,18 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Install qemu dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static
+
       - name: Build image
         uses: redhat-actions/buildah-build@v2
         with:
           image: ${{ env.IMAGE_NAME }}
           tags: "latest"
           containerfiles: Containerfile
+          archs: amd64, arm64
 
       - name: Log in to the Container registry
         if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && github.ref == 'refs/heads/main' }}
