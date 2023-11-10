@@ -15,3 +15,30 @@ qemu-system-x86_64 -M accel=kvm -cpu host -smp 2 -m 4096 -bios /usr/share/OVMF/O
 - `/output` - used for output files
 - `/store` - used for the osbuild store
 - `/rpmmd` - used for the dnf-json rpm metadata cache
+
+## Adding a user
+`osbuild-deploy-container` accepts a `-config` option. `-config` needs to be a path to a JSON formatted file.
+
+Example of such a config:
+
+```json
+{
+  "blueprint": {
+    "customizations": {
+      "user": [
+        {
+          "name": "foo",
+          "password": "bar",
+          "groups": ["wheel"]
+        }
+      ]
+    }
+  }
+}
+```
+
+Save this config as `output/config.json` and run:
+
+```
+sudo podman run --rm -it --privileged -v $(pwd)/output:/output ghcr.io/osbuild/osbuild-deploy-container -imageref quay.io/centos-boot/fedora-tier-1:eln -config /output/config.json
+```
