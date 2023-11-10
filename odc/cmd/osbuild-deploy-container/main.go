@@ -6,12 +6,14 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/container"
 	"github.com/osbuild/images/pkg/dnfjson"
 	"github.com/osbuild/images/pkg/manifest"
+	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/ostree"
 	"github.com/osbuild/images/pkg/rpmmd"
 )
@@ -109,6 +111,23 @@ func makeManifest(config *BuildConfig, repos []rpmmd.RepoConfig, architecture ar
 	return mf, nil
 }
 
+func saveManifest(ms manifest.OSBuildManifest, fpath string) error {
+	b, err := json.MarshalIndent(ms, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal data for %q: %s\n", fpath, err.Error())
+	}
+	b = append(b, '\n') // add new line at end of file
+	fp, err := os.Create(fpath)
+	if err != nil {
+		return fmt.Errorf("failed to create output file %q: %s\n", fpath, err.Error())
+	}
+	defer fp.Close()
+	if _, err := fp.Write(b); err != nil {
+		return fmt.Errorf("failed to write output file %q: %s\n", fpath, err.Error())
+	}
+	return nil
+}
+
 func main() {
 	hostArch := arch.Current()
 	repos := loadRepos(hostArch.String())
@@ -140,5 +159,18 @@ func main() {
 	if err != nil {
 		check(err)
 	}
-	fmt.Printf("%+v\n", string(mf))
+	fmt.Print("DONE\n")
+
+	manifestPath := filepath.Join(outputDir, "manifest.json")
+	if err := saveManifest(mf, manifestPath); err != nil {
+		check(err)
+	}
+
+	fmt.Printf("Building manifest: %s\n", manifestPath)
+
+	if _, err := osbuild.RunOSBuild(mf, osbuildStore, outputDir, []string{"qcow2"}, nil, nil, false, os.Stderr); err != nil {
+		check(err)
+	}
+
+	fmt.Printf("Jobs done. Results saved in\n%s\n", outputDir)
 }
