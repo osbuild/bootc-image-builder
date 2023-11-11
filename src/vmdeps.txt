@@ -1,0 +1,42 @@
+# These packages will be included in the VM image created by
+# supermin that we use via `runvm`, which currently is mostly
+# rpm-ostree runs (when run unprivileged) and create-disk.sh.
+
+# bare essentials
+bash vim-minimal coreutils util-linux procps-ng kmod kernel-modules
+
+# for composes
+rpm-ostree distribution-gpg-keys jq
+
+# for clean reboot
+systemd
+
+# networking
+dhcp-client iproute
+
+# SELinux
+selinux-policy selinux-policy-targeted policycoreutils
+
+# coreos-assembler
+python3 python3-gobject-base buildah podman skopeo iptables iptables-libs
+util-linux-core
+
+# legacy-oscontainer
+python3-pyyaml python3-botocore python3-flufl-lock python3-tenacity
+
+# luks
+cryptsetup
+# filesystems/storage
+gdisk xfsprogs e2fsprogs dosfstools btrfs-progs
+
+# needed for basic CA support
+ca-certificates
+
+tar
+strace
+
+# needed for extensions container build
+podman
+
+# For running osbuild
+osbuild osbuild-ostree osbuild-selinux osbuild-tools python3-pyrsistent
