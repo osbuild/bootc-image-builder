@@ -1,4 +1,3 @@
-// This is the primary entrypoint for /usr/bin/coreos-assembler.
 package main
 
 import (
@@ -16,15 +15,15 @@ import (
 )
 
 var (
-	rootCmd = &cobra.Command{Use: "app"}
+	rootCmd = &cobra.Command{Use: "osbuildbootc"}
 
 	sourceTransport string
 	targetImage     string
 	targetInsecure  bool
 	skipFetchCheck  bool
 	sizeMiB         uint64
-	cmdQcow2        = &cobra.Command{
-		Use:   "qcow2 [source container] [disk]",
+	cmdBuildQcow2   = &cobra.Command{
+		Use:   "build-qcow2 [source container] [disk]",
 		Short: "Generate a qcow2 from a bootc image",
 		Args:  cobra.MatchAll(cobra.ExactArgs(2), cobra.OnlyValidArgs),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -97,12 +96,12 @@ var (
 )
 
 func init() {
-	rootCmd.AddCommand(cmdQcow2)
-	cmdQcow2.Flags().StringVar(&sourceTransport, "transport", "docker://", "Source image stransport")
-	cmdQcow2.Flags().Uint64VarP(&sizeMiB, "size", "", 10*1024, "Disk size in MiB")
-	cmdQcow2.Flags().StringVarP(&targetImage, "target", "t", "", "Target image (e.g. quay.io/exampleuser/someimg:latest)")
-	cmdQcow2.Flags().BoolVarP(&targetInsecure, "target-no-signature-verification", "I", false, "Disable signature verification for target")
-	cmdQcow2.Flags().BoolVarP(&skipFetchCheck, "skip-fetch-check", "S", false, "Skip verification of target image")
+	rootCmd.AddCommand(cmdBuildQcow2)
+	cmdBuildQcow2.Flags().StringVar(&sourceTransport, "transport", "docker://", "Source image stransport")
+	cmdBuildQcow2.Flags().Uint64VarP(&sizeMiB, "size", "", 10*1024, "Disk size in MiB")
+	cmdBuildQcow2.Flags().StringVarP(&targetImage, "target", "t", "", "Target image (e.g. quay.io/exampleuser/someimg:latest)")
+	cmdBuildQcow2.Flags().BoolVarP(&targetInsecure, "target-no-signature-verification", "I", false, "Disable signature verification for target")
+	cmdBuildQcow2.Flags().BoolVarP(&skipFetchCheck, "skip-fetch-check", "S", false, "Skip verification of target image")
 	rootCmd.AddCommand(cmdVMSHell)
 	rootCmd.AddCommand(qemuexec.CmdQemuExec)
 	rootCmd.AddCommand(builddiskimpl.CmdBuildDiskImpl)
