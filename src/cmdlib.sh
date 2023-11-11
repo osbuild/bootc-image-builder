@@ -121,7 +121,8 @@ runvm() {
     # know that it exists.
     # shellcheck disable=SC2086
     if [ -z "${tmp_builddir:-}" ]; then
-        tmp_builddir="$(mktemp -p ${workdir}/tmp -d supermin.XXXX)"
+        tmp_builddir=tmp/build
+        rm "${tmp_builddir}" -rf
         export tmp_builddir
         local cleanup_tmpdir=1
     fi
@@ -165,14 +166,11 @@ rc=0
 # tee to the virtio port so its output is also part of the supermin output in
 # case e.g. a key msg happens in dmesg when the command does a specific operation
 if [ -z "${RUNVM_SHELL:-}" ]; then
-  bash ${tmp_builddir}/cmd.sh |& tee /dev/virtio-ports/cosa-cmdout || rc=\$?
+  bash ${tmp_builddir}/cmd.sh >${tmp_builddir}/cmdout.txt || rc=\$?
 else
   bash; poweroff -f -f; sleep infinity
 fi
 echo \$rc > ${rc_file}
-if [ -n "\${cachedev}" ]; then
-    /sbin/fstrim -v ${workdir}/cache
-fi
 /sbin/reboot -f
 EOF
     chmod a+x "${vmpreparedir}"/init
@@ -206,7 +204,7 @@ EOF
     "ppc64le") memory_default=4096 ;;
     esac
 
-    qemuexec_args=(osbuildbootc qemuexec -m ${memory_default} --auto-cpus -U --workdir none \
+    qemuexec_args=(osbuildbootc qemuexec -m ${memory_default} --auto-cpus -U \
                --console-to-file "${runvm_console}" --bind-rw "${workdir},workdir")
 
     base_qemu_args=(-drive 'if=none,id=root,format=raw,snapshot=on,file='"${vmbuilddir}"'/root,index=1' \
@@ -219,23 +217,17 @@ EOF
 
     if [ -z "${RUNVM_SHELL:-}" ]; then
         if ! "${qemuexec_args[@]}" -- "${base_qemu_args[@]}" \
-            -device virtserialport,chardev=virtioserial0,name=cosa-cmdout \
-            -chardev stdio,id=virtioserial0 \
             "${qemu_args[@]}" <&-; then # the <&- here closes stdin otherwise qemu waits forever
-                cat "${runvm_console}"
                 fatal "Failed to run 'kola qemuexec'"
         fi
     else
-        exec "${qemuexec_args[@]}" -- "${base_qemu_args[@]}" -serial stdio "${qemu_args[@]}"
+        exec "${qemuexec_args[@]}" -- "${base_qemu_args[@]}" "${qemu_args[@]}"
     fi
 
     rm -rf "${tmp_builddir}/supermin.out" "${vmpreparedir}" "${vmbuilddir}"
 
     if [ ! -f "${rc_file}" ]; then
-        cat "${runvm_console}"
-        if test -n "${ARTIFACT_DIR:-}"; then
-            cp "${runvm_console}" "${ARTIFACT_DIR}"
-        fi
+        cat "${tmp_builddir}/cmdout.txt"
         fatal "Couldn't find rc file; failure inside supermin init?"
     fi
     rc="$(cat "${rc_file}")"

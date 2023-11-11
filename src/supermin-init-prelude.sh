@@ -40,15 +40,6 @@ umask 002
 mkdir -p "${workdir:?}"
 mount -t virtiofs -o rw workdir "${workdir}"
 
-# This loop pairs with virtfs setups for qemu in cmdlib.sh.  Keep them in sync.
-for maybe_symlink in "${workdir}"/{src/config,src/yumrepos}; do
-    if [ -L "${maybe_symlink}" ]; then
-        bn=$(basename "${maybe_symlink}")
-        mkdir -p "$(readlink "${maybe_symlink}")"
-        mount -t virtiofs -o ro "/cosa/src/${bn}" "${maybe_symlink}"
-    fi
-done
-
 if [ -f "${workdir}/tmp/supermin/supermin.env" ]; then
     source "${workdir}/tmp/supermin/supermin.env";
 fi

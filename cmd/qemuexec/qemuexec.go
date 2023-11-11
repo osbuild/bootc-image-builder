@@ -183,8 +183,11 @@ func run(cmd *cobra.Command, args []string) error {
 		}
 		builder.AddAdditionalNics(additionalNics)
 	}
-	builder.InheritConsole = true
-	builder.ConsoleFile = consoleFile
+	if consoleFile == "" {
+		builder.InheritConsole = true
+	} else {
+		builder.ConsoleFile = consoleFile
+	}
 	builder.Append(args...)
 
 	inst, err := builder.Exec()
