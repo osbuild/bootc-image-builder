@@ -206,7 +206,7 @@ EOF
     "ppc64le") memory_default=4096 ;;
     esac
 
-    kola_args=(kola qemuexec -m "${COSA_SUPERMIN_MEMORY:-${memory_default}}" --auto-cpus -U --workdir none \
+    qemuexec_args=(osbuildbootc qemuexec -m ${memory_default} --auto-cpus -U --workdir none \
                --console-to-file "${runvm_console}" --bind-rw "${workdir},workdir")
 
     base_qemu_args=(-drive 'if=none,id=root,format=raw,snapshot=on,file='"${vmbuilddir}"'/root,index=1' \
@@ -218,7 +218,7 @@ EOF
                    )
 
     if [ -z "${RUNVM_SHELL:-}" ]; then
-        if ! "${kola_args[@]}" -- "${base_qemu_args[@]}" \
+        if ! "${qemuexec_args[@]}" -- "${base_qemu_args[@]}" \
             -device virtserialport,chardev=virtioserial0,name=cosa-cmdout \
             -chardev stdio,id=virtioserial0 \
             "${qemu_args[@]}" <&-; then # the <&- here closes stdin otherwise qemu waits forever
@@ -226,7 +226,7 @@ EOF
                 fatal "Failed to run 'kola qemuexec'"
         fi
     else
-        exec "${kola_args[@]}" -- "${base_qemu_args[@]}" -serial stdio "${qemu_args[@]}"
+        exec "${qemuexec_args[@]}" -- "${base_qemu_args[@]}" -serial stdio "${qemu_args[@]}"
     fi
 
     rm -rf "${tmp_builddir}/supermin.out" "${vmpreparedir}" "${vmbuilddir}"

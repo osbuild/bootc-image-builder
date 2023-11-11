@@ -1,7 +1,8 @@
+GONAMESPACE := github.com/cgwalters/osbuildbootc
 PREFIX ?= /usr
 DESTDIR ?=
 
-.PHONY: all
+.PHONY: all bin/osbuildbootc install clean vendor
 all: bin/osbuildbootc
 
 src:=$(shell find src -maxdepth 1 -type f -executable -print)
@@ -12,27 +13,21 @@ else ifeq ($(GOARCH),aarch64)
         GOARCH="arm64"
 endif
 
-.PHONY: bin/
 bin/osbuildbootc:
 	cd cmd && go build -mod vendor -o ../$@
 
-.PHONY: check
 check:
 	(cd cmd && go test -mod=vendor)
-	go test -mod=vendor github.com/coreos/coreos-assembler/internal/pkg/bashexec
-	go test -mod=vendor github.com/coreos/coreos-assembler/internal/pkg/cosash
+	go test -mod=vendor $(GONAMESPACE)/internal/pkg/bashexec
 
-.PHONY: clean
 clean:
 	rm -rfv bin
 
-.PHONY: insatll
 install:
 	install -d $(DESTDIR)$(PREFIX)/lib/osbuildbootc
 	install -D -t $(DESTDIR)$(PREFIX)/lib/osbuildbootc $$(find src/ -maxdepth 1 -type f)
 	install -D -t $(DESTDIR)$(PREFIX)/bin bin/osbuildbootc
 
-.PHONY: vendor
 vendor:
 	@go mod vendor
 	@go mod tidy

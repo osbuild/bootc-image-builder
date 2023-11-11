@@ -7,6 +7,8 @@ import (
 	"os/exec"
 
 	"github.com/spf13/cobra"
+
+	"github.com/cgwalters/osbuildbootc/cmd/qemuexec"
 )
 
 var (
@@ -52,6 +54,7 @@ var (
 func init() {
 	rootCmd.AddCommand(cmdQcow2)
 	rootCmd.AddCommand(cmdVMSHell)
+	rootCmd.AddCommand(qemuexec.CmdQemuExec)
 }
 
 func main() {
