@@ -1,0 +1,22 @@
+name: lints
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: build
+        run: make
+      - name: unit tests
+        run: make check
+
