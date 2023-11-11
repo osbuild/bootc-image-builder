@@ -30,7 +30,7 @@ qemu-img create -f qcow2 "$tmpdir/${diskname}" "${image_size}"
 qemu_args+=("-drive" "if=none,id=target,format=qcow2,file=$tmpdir/${diskname},cache=unsafe" \
               "-device" "virtio-blk,serial=target,drive=target")
 
-runvm "${qemu_args[@]}" -- /usr/lib/bootc2disk/create_disk.sh ${src_imgref} "${target_imgref}" "${disk_args[@]}"
+runvm "${qemu_args[@]}" -- /usr/lib/osbuildbootc/create_disk.sh ${src_imgref} "${target_imgref}" "${disk_args[@]}"
 
 mv -Tf "$tmpdir/${diskname}" "${disk}"
 echo "Successfully generated: ${disk}"

@@ -2,7 +2,7 @@ PREFIX ?= /usr
 DESTDIR ?=
 
 .PHONY: all
-all: bin/bootc2disk
+all: bin/osbuildbootc
 
 src:=$(shell find src -maxdepth 1 -type f -executable -print)
 GOARCH:=$(shell uname -m)
@@ -12,8 +12,8 @@ else ifeq ($(GOARCH),aarch64)
         GOARCH="arm64"
 endif
 
-.PHONY: bin/bootc2disk
-bin/bootc2disk:
+.PHONY: bin/
+bin/osbuildbootc:
 	cd cmd && go build -mod vendor -o ../$@
 
 .PHONY: check
@@ -28,9 +28,9 @@ clean:
 
 .PHONY: insatll
 install:
-	install -d $(DESTDIR)$(PREFIX)/lib/bootc2disk
-	install -D -t $(DESTDIR)$(PREFIX)/lib/bootc2disk $$(find src/ -maxdepth 1 -type f)
-	install -D -t $(DESTDIR)$(PREFIX)/bin bin/bootc2disk
+	install -d $(DESTDIR)$(PREFIX)/lib/osbuildbootc
+	install -D -t $(DESTDIR)$(PREFIX)/lib/osbuildbootc $$(find src/ -maxdepth 1 -type f)
+	install -D -t $(DESTDIR)$(PREFIX)/bin bin/osbuildbootc
 
 .PHONY: vendor
 vendor:

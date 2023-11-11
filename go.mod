@@ -1,4 +1,4 @@
-module github.com/cgwalters/bootc2disk
+module github.com/cgwalters/osbuildbootc
 
 go 1.19
 

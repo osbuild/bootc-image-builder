@@ -10,8 +10,10 @@ import (
 )
 
 var (
-	rootCmd = &cobra.Command{
-		Use:   "bootc2disk",
+	rootCmd = &cobra.Command{Use: "app"}
+
+	cmdQcow2 = &cobra.Command{
+		Use:   "qcow2 [local container] [target imgref] [disk]",
 		Short: "Generate a qcow2 from a bootc image",
 		Args:  cobra.MatchAll(cobra.ExactArgs(3), cobra.OnlyValidArgs),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -19,7 +21,23 @@ var (
 			target := args[1]
 			dest := args[2]
 
-			c := exec.Command("/usr/lib/bootc2disk/qcow2.sh", src, target, dest)
+			c := exec.Command("/usr/lib/osbuildbootc/qcow2.sh", src, target, dest)
+			c.Stdin = os.Stdin
+			c.Stdout = os.Stdout
+			c.Stderr = os.Stderr
+			if err := c.Run(); err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+
+	cmdVMSHell = &cobra.Command{
+		Use:   "vmshell",
+		Short: "Run a shell in the build VM",
+		Args:  cobra.MatchAll(cobra.ExactArgs(0), cobra.OnlyValidArgs),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			c := exec.Command("/usr/lib/osbuildbootc/vmshell.sh")
 			c.Stdin = os.Stdin
 			c.Stdout = os.Stdout
 			c.Stderr = os.Stderr
@@ -30,6 +48,11 @@ var (
 		},
 	}
 )
+
+func init() {
+	rootCmd.AddCommand(cmdQcow2)
+	rootCmd.AddCommand(cmdVMSHell)
+}
 
 func main() {
 	err := rootCmd.Execute()

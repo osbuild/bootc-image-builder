@@ -143,7 +143,7 @@ runvm() {
     supermin --prepare --use-installed -o "${vmpreparedir}" $rpms
 
     # include COSA in the image
-    find /usr/lib/bootc2disk/ -type f > "${vmpreparedir}/hostfiles"
+    find /usr/lib/osbuildbootc/ -type f > "${vmpreparedir}/hostfiles"
 
     # and include all GPG keys
     find /etc/pki/rpm-gpg/ -type f >> "${vmpreparedir}/hostfiles"
