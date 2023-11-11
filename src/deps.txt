@@ -1,4 +1,11 @@
-make
+# We need these tools
 sudo
-supermin
+ncurses
+
+# container tools
 skopeo
+
+# Full virt stack
+supermin virtiofsd /usr/bin/qemu-img qemu-kvm swtpm
+# And the main arch emulators for cross-arch testing
+qemu-system-aarch64-core qemu-system-ppc-core qemu-system-s390x-core qemu-system-x86-core
