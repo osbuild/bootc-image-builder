@@ -143,17 +143,14 @@ runvm() {
     # shellcheck disable=SC2086
     supermin --prepare --use-installed -o "${vmpreparedir}" $rpms
 
-    # include COSA in the image
-    find /usr/lib/osbuildbootc/ -type f > "${vmpreparedir}/hostfiles"
-
-    # and include all GPG keys
-    find /etc/pki/rpm-gpg/ -type f >> "${vmpreparedir}/hostfiles"
+    # include our own binary in the image
+    echo /usr/bin/osbuildbootc > "${vmpreparedir}/hostfiles"
 
     # the reason we do a heredoc here is so that the var substition takes
     # place immediately instead of having to proxy them through to the VM
     cat > "${vmpreparedir}/init" <<EOF
 #!/bin/bash
-set -xeuo pipefail
+set -euo pipefail
 export PATH=/usr/sbin:$PATH
 workdir=${workdir}
 
@@ -166,7 +163,7 @@ rc=0
 # tee to the virtio port so its output is also part of the supermin output in
 # case e.g. a key msg happens in dmesg when the command does a specific operation
 if [ -z "${RUNVM_SHELL:-}" ]; then
-  bash ${tmp_builddir}/cmd.sh >${tmp_builddir}/cmdout.txt || rc=\$?
+  bash ${tmp_builddir}/cmd.sh &>${tmp_builddir}/cmdout.txt || rc=\$?
 else
   bash; poweroff -f -f; sleep infinity
 fi
@@ -227,12 +224,13 @@ EOF
     rm -rf "${tmp_builddir}/supermin.out" "${vmpreparedir}" "${vmbuilddir}"
 
     if [ ! -f "${rc_file}" ]; then
-        cat "${tmp_builddir}/cmdout.txt"
         fatal "Couldn't find rc file; failure inside supermin init?"
     fi
     rc="$(cat "${rc_file}")"
+    ls -al "${tmp_builddir}/cmdout.txt"
+    cat "${tmp_builddir}/cmdout.txt"
 
-    if [ -n "${cleanup_tmpdir:-}" ]; then
+    if [ -n "${cleanup_tmpdir:-}" ] && [ -z "${SKIP_CLEANUP:-}" ]; then
         rm -rf "${tmp_builddir}"
         unset tmp_builddir
     fi

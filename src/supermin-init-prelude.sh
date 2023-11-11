@@ -3,8 +3,6 @@
 # Linux boot environment that we generate via `supermin`.  At some
 # point we will likely switch to using systemd.
 
-set -x
-
 mount -t proc /proc /proc
 mount -t sysfs /sys /sys
 mount -t cgroup2 cgroup2 -o rw,nosuid,nodev,noexec,relatime,seclabel,nsdelegate,memory_recursiveprot /sys/fs/cgroup
