@@ -353,6 +353,8 @@ type QemuBuilder struct {
 	Swtpm      bool
 	Pdeathsig  bool
 	Argv       []string
+	// Whether or not KVM is enabled
+	KVM bool
 
 	// AppendKernelArgs are appended to the bootloader config
 	AppendKernelArgs string
@@ -407,6 +409,7 @@ func NewQemuBuilder() *QemuBuilder {
 		Firmware:     defaultFirmware,
 		Swtpm:        true,
 		Pdeathsig:    true,
+		KVM:          true,
 		Argv:         []string{},
 		architecture: coreosarch.CurrentRpmArch(),
 	}
@@ -860,7 +863,7 @@ func baseQemuArgs(arch string, memoryMiB int) ([]string, error) {
 	// The machine argument needs to reference our memory device; see below
 	machineArg := "memory-backend=" + memoryDevice
 	accel := "accel=kvm"
-	if _, ok := os.LookupEnv("COSA_NO_KVM"); ok || hostArch != arch {
+	if _, ok := os.LookupEnv("OSBUILD_NO_KVM"); ok || hostArch != arch {
 		accel = "accel=tcg"
 		kvm = false
 	}
@@ -964,7 +967,6 @@ func (builder *QemuBuilder) setupUefi(secureBoot bool) error {
 
 	return nil
 }
-
 
 // VirtioChannelRead allocates a virtio-serial channel that will appear in
 // the guest as /dev/virtio-ports/<name>.  The guest can write to it, and

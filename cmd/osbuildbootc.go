@@ -30,6 +30,10 @@ var (
 			source := args[0]
 			dest := args[1]
 
+			if err := KVMPreflightCheck(); err != nil {
+				return err
+			}
+
 			if err := os.MkdirAll("tmp", 0755); err != nil {
 				return err
 			}
@@ -78,7 +82,7 @@ var (
 		},
 	}
 
-	cmdVMSHell = &cobra.Command{
+	cmdVMShell = &cobra.Command{
 		Use:   "vmshell",
 		Short: "Run a shell in the build VM",
 		Args:  cobra.MatchAll(cobra.ExactArgs(0), cobra.OnlyValidArgs),
@@ -95,6 +99,14 @@ var (
 	}
 )
 
+func KVMPreflightCheck() error {
+	_, err := os.Stat("/dev/kvm")
+	if err != nil {
+		return fmt.Errorf("failed to access /dev/kvm; you can set OSBUILD_NO_KVM to bypass this at the cost of performance: %w", err)
+	}
+	return nil
+}
+
 func init() {
 	rootCmd.AddCommand(cmdBuildQcow2)
 	cmdBuildQcow2.Flags().StringVar(&sourceTransport, "transport", "docker://", "Source image stransport")
@@ -102,7 +114,7 @@ func init() {
 	cmdBuildQcow2.Flags().StringVarP(&targetImage, "target", "t", "", "Target image (e.g. quay.io/exampleuser/someimg:latest)")
 	cmdBuildQcow2.Flags().BoolVarP(&targetInsecure, "target-no-signature-verification", "I", false, "Disable signature verification for target")
 	cmdBuildQcow2.Flags().BoolVarP(&skipFetchCheck, "skip-fetch-check", "S", false, "Skip verification of target image")
-	rootCmd.AddCommand(cmdVMSHell)
+	rootCmd.AddCommand(cmdVMShell)
 	rootCmd.AddCommand(qemuexec.CmdQemuExec)
 	rootCmd.AddCommand(builddiskimpl.CmdBuildDiskImpl)
 }

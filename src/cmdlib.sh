@@ -47,55 +47,6 @@ case $arch in
 esac
 export DEFAULT_TERMINAL
 
-COSA_PRIVILEGED=
-has_privileges() {
-    if [ -z "${COSA_PRIVILEGED:-}" ]; then
-        if [ -n "${FORCE_UNPRIVILEGED:-}" ]; then
-            info "Detected FORCE_UNPRIVILEGED; using virt"
-            COSA_PRIVILEGED=0
-        elif ! capsh --print | grep -q 'Bounding.*cap_sys_admin'; then
-            info "Missing CAP_SYS_ADMIN; using virt"
-            COSA_PRIVILEGED=0
-        elif [ "$(id -u)" != "0" ] && ! sudo true; then
-            info "Missing sudo privs; using virt"
-            COSA_PRIVILEGED=0
-        else
-            COSA_PRIVILEGED=1
-        fi
-        export COSA_PRIVILEGED
-    fi
-    [ ${COSA_PRIVILEGED} == 1 ]
-}
-
-preflight() {
-    depcheck
-
-    # See https://pagure.io/centos-infra/issue/48
-    if test "$(umask)" = 0000; then
-        fatal "Your umask is unset, please use umask 0022 or so"
-    fi
-}
-
-preflight_kvm() {
-    # permissions on /dev/kvm vary by (host) distro.  If it's
-    # not writable, recreate it.
-
-    if test -z "${COSA_NO_KVM:-}"; then
-        if ! test -c /dev/kvm; then
-            fatal "Missing /dev/kvm; you can set COSA_NO_KVM=1 to bypass this at the cost of performance."
-        fi
-        if ! [ -w /dev/kvm ]; then
-            if ! has_privileges; then
-                fatal "running unprivileged, and /dev/kvm not writable"
-            else
-                sudo rm -f /dev/kvm
-                sudo mknod /dev/kvm c 10 232
-                sudo setfacl -m u:"$USER":rw /dev/kvm
-            fi
-        fi
-    fi
-}
-
 # runvm generates and runs a minimal VM which we use to "bootstrap" our build
 # process.  It mounts the workdir via virtiofs.  If you need to add new packages into
 # the vm, update `vmdeps.txt`.
@@ -203,6 +154,9 @@ EOF
 
     qemuexec_args=(osbuildbootc qemuexec -m ${memory_default} --auto-cpus -U \
                --console-to-file "${runvm_console}" --bind-rw "${workdir},workdir")
+    if [ -n "${OSBUILD_NO_KVM:-}" ]; then
+        qemuexec_args+=("--disable-kvm")
+    fi
 
     base_qemu_args=(-drive 'if=none,id=root,format=raw,snapshot=on,file='"${vmbuilddir}"'/root,index=1' \
                     -device 'virtio-blk,drive=root' \
@@ -236,15 +190,4 @@ EOF
     fi
 
     return "${rc}"
-}
-
-jq_git() {
-    # jq_git extracts JSON elements generated using prepare_git_artifacts.
-    # ARG1 is the element name, and ARG2 is the location of the
-    # json document.
-    jq -rM ".git.$1" "${2}"
-}
-
-sha256sum_str() {
-    sha256sum | cut -f 1 -d ' '
 }

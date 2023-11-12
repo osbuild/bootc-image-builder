@@ -17,6 +17,7 @@ var (
 	usernet      bool
 	cpuCountHost bool
 	nvme         bool
+	disableKVM   bool
 
 	architecture string
 
@@ -47,6 +48,7 @@ func init() {
 	CmdQemuExec.Flags().StringVar(&firmware, "firmware", "", "Boot firmware: bios,uefi,uefi-secure (default bios)")
 	CmdQemuExec.Flags().StringVar(&diskimage, "image", "", "path to primary disk image")
 	CmdQemuExec.Flags().BoolVarP(&usernet, "usernet", "U", false, "Enable usermode networking")
+	CmdQemuExec.Flags().BoolVar(&disableKVM, "disable-kvm", false, "Do not use KVM hardware acceleration")
 	CmdQemuExec.Flags().StringVarP(&hostname, "hostname", "", "", "Set hostname via DHCP")
 	CmdQemuExec.Flags().IntVarP(&memory, "memory", "m", 0, "Memory in MB")
 	CmdQemuExec.Flags().StringVar(&architecture, "arch", "", "Use full emulation for target architecture (e.g. aarch64, x86_64, s390x, ppc64le)")
