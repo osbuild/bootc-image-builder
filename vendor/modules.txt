@@ -1,0 +1,42 @@
+# github.com/coreos/stream-metadata-go v0.4.3
+## explicit; go 1.18
+github.com/coreos/stream-metadata-go/arch
+# github.com/digitalocean/go-libvirt v0.0.0-20220804181439-8648fbde413e
+## explicit; go 1.15
+github.com/digitalocean/go-libvirt
+github.com/digitalocean/go-libvirt/internal/constants
+github.com/digitalocean/go-libvirt/internal/event
+github.com/digitalocean/go-libvirt/internal/go-xdr/xdr2
+github.com/digitalocean/go-libvirt/socket
+github.com/digitalocean/go-libvirt/socket/dialers
+# github.com/digitalocean/go-qemu v0.0.0-20230711162256-2e3d0186973e
+## explicit; go 1.18
+github.com/digitalocean/go-qemu/qmp
+# github.com/go-logr/logr v1.3.0
+## explicit; go 1.18
+github.com/go-logr/logr
+github.com/go-logr/logr/slogr
+# github.com/inconshreveable/mousetrap v1.0.0
+## explicit
+github.com/inconshreveable/mousetrap
+# github.com/pkg/errors v0.9.1
+## explicit
+github.com/pkg/errors
+# github.com/spf13/cobra v1.5.0
+## explicit; go 1.15
+github.com/spf13/cobra
+# github.com/spf13/pflag v1.0.5
+## explicit; go 1.12
+github.com/spf13/pflag
+# golang.org/x/sys v0.14.0
+## explicit; go 1.18
+golang.org/x/sys/unix
+# k8s.io/klog/v2 v2.110.1
+## explicit; go 1.13
+k8s.io/klog/v2
+k8s.io/klog/v2/internal/buffer
+k8s.io/klog/v2/internal/clock
+k8s.io/klog/v2/internal/dbg
+k8s.io/klog/v2/internal/serialize
+k8s.io/klog/v2/internal/severity
+k8s.io/klog/v2/internal/sloghandler
