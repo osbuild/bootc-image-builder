@@ -2,8 +2,10 @@ GONAMESPACE := github.com/cgwalters/osbuildbootc
 PREFIX ?= /usr
 DESTDIR ?=
 
-.PHONY: all bin/osbuildbootc install clean vendor
-all: bin/osbuildbootc
+BINARIES := osbuildbootc osbuild-deploy-container
+
+.PHONY: all bin install clean vendor
+all: bin
 
 src:=$(shell find src -maxdepth 1 -type f -executable -print)
 GOARCH:=$(shell uname -m)
@@ -13,8 +15,9 @@ else ifeq ($(GOARCH),aarch64)
         GOARCH="arm64"
 endif
 
-bin/osbuildbootc:
-	cd cmd && go build -mod vendor -o ../$@
+bin:
+	(cd cmd && go build -mod vendor -o ../bin/osbuildbootc)
+	(top=$$(pwd); cd cmd/osbuild-deploy-container && go build -mod vendor -o $${top}/bin/osbuild-deploy-container)
 
 check:
 	(cd cmd && go test -mod=vendor)
@@ -26,7 +29,7 @@ clean:
 install:
 	install -d $(DESTDIR)$(PREFIX)/lib/osbuildbootc
 	install -D -t $(DESTDIR)$(PREFIX)/lib/osbuildbootc $$(find src/ -maxdepth 1 -type f)
-	install -D -t $(DESTDIR)$(PREFIX)/bin bin/osbuildbootc
+	install -D -t $(DESTDIR)$(PREFIX)/bin $(addprefix bin/,$(BINARIES))
 
 vendor:
 	@go mod vendor

@@ -1,4 +1,4 @@
-FROM quay.io/fedora/fedora:39 as builder
+FROM registry.fedoraproject.org/fedora:39 AS builder
 RUN dnf -y install golang make
 COPY . /src
 RUN cd /src && make && make install DESTDIR=/instroot
