@@ -6,7 +6,7 @@ RUN ./build.sh
 FROM registry.fedoraproject.org/fedora:39
 RUN dnf install -y osbuild osbuild-ostree && dnf clean all
 COPY --from=builder images/osbuild-deploy-container /usr/bin/osbuild-deploy-container
-COPY entrypoint.sh /
+COPY prepare.sh entrypoint.sh /
 COPY --from=builder images/dnf-json .
 
 ENTRYPOINT ["/entrypoint.sh"]
