@@ -8,6 +8,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '35 4 * * *'
+  # for merge queue
+  merge_group:
 
 env:
   REGISTRY: ghcr.io
