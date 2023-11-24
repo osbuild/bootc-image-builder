@@ -10,7 +10,7 @@ FROM registry.fedoraproject.org/fedora:39
 # - https://github.com/osbuild/osbuild/pull/1468
 COPY ./group_osbuild-osbuild-fedora-39.repo /etc/yum.repos.d/
 RUN dnf install -y osbuild osbuild-ostree && dnf clean all
-COPY --from=builder images/osbuild-deploy-container /usr/bin/osbuild-deploy-container
+COPY --from=builder bin/osbuild-deploy-container /usr/bin/osbuild-deploy-container
 COPY prepare.sh entrypoint.sh /
 COPY --from=builder images/dnf-json .
 
