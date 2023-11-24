@@ -1,0 +1,58 @@
+---
+name: Tests
+
+on:
+  pull_request:
+    branches:
+      - "*"
+  push:
+    branches:
+      - main
+  # for merge queue
+  merge_group:
+
+jobs:
+  lint:
+    name: "⌨ Lint"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go 1.19
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.19
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Apt update
+        run: sudo apt update
+
+      # This is needed for the container upload dependencies
+      - name: Install libgpgme devel package
+        run: sudo apt install -y libgpgme-dev
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.54.2
+          args: --timeout 5m0s
+          working-directory: odc
+
+  shellcheck:
+    name: "🐚 Shellcheck"
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+    - name: Run ShellCheck
+      uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38
+      with:
+        ignore: vendor # We don't want to fix the code in vendored dependencies
+      env:
+        # don't check /etc/os-release sourcing, allow useless cats to live inside our codebase, and
+        # allow seemingly unreachable commands
+        SHELLCHECK_OPTS: -e SC1091 -e SC2002 -e SC2317
