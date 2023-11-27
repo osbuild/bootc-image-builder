@@ -82,7 +82,7 @@ func makeManifest(imgref string, config *BuildConfig, repos []rpmmd.RepoConfig, 
 
 	// depsolve packages
 	solver := dnfjson.NewSolver(modulePlatformID, releaseVersion, architecture.String(), distroName, cacheRoot)
-	solver.SetDNFJSONPath("./dnf-json")
+	solver.SetDNFJSONPath("/usr/libexec/osbuild-depsolve-dnf")
 	depsolvedSets := make(map[string][]rpmmd.PackageSpec)
 	for name, pkgSet := range manifest.GetPackageSetChains() {
 		res, err := solver.Depsolve(pkgSet)
