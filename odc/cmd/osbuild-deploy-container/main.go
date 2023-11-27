@@ -3,7 +3,6 @@ package main
 import (
 	_ "embed"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,6 +15,7 @@ import (
 	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/ostree"
 	"github.com/osbuild/images/pkg/rpmmd"
+	"github.com/spf13/cobra"
 )
 
 //go:embed fedora-eln.json
@@ -128,22 +128,15 @@ func saveManifest(ms manifest.OSBuildManifest, fpath string) error {
 	return nil
 }
 
-func main() {
+func build(cmd *cobra.Command, args []string) {
 	hostArch := arch.Current()
 	repos := loadRepos(hostArch.String())
 
-	var outputDir, osbuildStore, rpmCacheRoot, configFile, imgref string
-	flag.StringVar(&outputDir, "output", ".", "artifact output directory")
-	flag.StringVar(&osbuildStore, "store", ".osbuild", "osbuild store for intermediate pipeline trees")
-	flag.StringVar(&rpmCacheRoot, "rpmmd", "/var/cache/osbuild/rpmmd", "rpm metadata cache directory")
-	flag.StringVar(&configFile, "config", "", "build config file")
-	flag.StringVar(&imgref, "imgref", "", "container image to deploy")
-
-	flag.Parse()
-
-	if imgref == "" {
-		fail("imgref is required")
-	}
+	imgref := args[0]
+	outputDir, _ := cmd.Flags().GetString("output")
+	osbuildStore, _ := cmd.Flags().GetString("store")
+	rpmCacheRoot, _ := cmd.Flags().GetString("rpmmd")
+	configFile, _ := cmd.Flags().GetString("config")
 
 	if err := os.MkdirAll(outputDir, 0777); err != nil {
 		fail(fmt.Sprintf("failed to create target directory: %s", err.Error()))
@@ -176,5 +169,21 @@ func main() {
 		check(err)
 	}
 
-	fmt.Printf("Jobs done. Results saved in\n%s\n", outputDir)
+	fmt.Printf("Build complete. Results saved in\n%s\n", outputDir)
+}
+
+func main() {
+	rootCmd := &cobra.Command{
+		Use:                   "osbuild-deploy-container <imgref>",
+		Long:                  "create a bootable image from an ostree native container",
+		Args:                  cobra.ExactArgs(1),
+		DisableFlagsInUseLine: true,
+		Run:                   build,
+	}
+
+	rootCmd.Flags().String("output", ".", "artifact output directory")
+	rootCmd.Flags().String("store", ".osbuild", "osbuild store for intermediate pipeline trees")
+	rootCmd.Flags().String("rpmmd", "/var/cache/osbuild/rpmmd", "rpm metadata cache directory")
+	rootCmd.Flags().String("config", "", "build config file")
+	rootCmd.Execute()
 }
