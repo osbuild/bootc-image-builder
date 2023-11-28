@@ -153,21 +153,16 @@ func build(cmd *cobra.Command, args []string) {
 
 	fmt.Printf("Generating manifest for %s: ", config.Name)
 	mf, err := makeManifest(imgref, &config, repos, hostArch, seedArg, rpmCacheRoot)
-	if err != nil {
-		check(err)
-	}
+	check(err)
 	fmt.Print("DONE\n")
 
 	manifestPath := filepath.Join(outputDir, "manifest.json")
-	if err := saveManifest(mf, manifestPath); err != nil {
-		check(err)
-	}
+	check(saveManifest(mf, manifestPath))
 
 	fmt.Printf("Building manifest: %s\n", manifestPath)
 
-	if _, err := osbuild.RunOSBuild(mf, osbuildStore, outputDir, []string{"qcow2"}, nil, nil, false, os.Stderr); err != nil {
-		check(err)
-	}
+	_, err = osbuild.RunOSBuild(mf, osbuildStore, outputDir, []string{"qcow2"}, nil, nil, false, os.Stderr)
+	check(err)
 
 	fmt.Printf("Build complete. Results saved in\n%s\n", outputDir)
 }
@@ -185,5 +180,5 @@ func main() {
 	rootCmd.Flags().String("store", ".osbuild", "osbuild store for intermediate pipeline trees")
 	rootCmd.Flags().String("rpmmd", "/var/cache/osbuild/rpmmd", "rpm metadata cache directory")
 	rootCmd.Flags().String("config", "", "build config file")
-	rootCmd.Execute()
+	check(rootCmd.Execute())
 }
