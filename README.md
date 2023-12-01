@@ -16,7 +16,7 @@ qemu-system-x86_64 -M accel=kvm -cpu host -smp 2 -m 4096 -bios /usr/share/OVMF/O
 - `/rpmmd` - used for the dnf-json rpm metadata cache
 
 ## Adding a user
-`bootc-image-builder` accepts a `-config` option. `-config` needs to be a path to a JSON formatted file.
+`bootc-image-builder` accepts a `--config` option. `--config` needs to be a path to a JSON formatted file.
 
 Example of such a config:
 
