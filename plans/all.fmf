@@ -1,0 +1,13 @@
+summary: Run all tests inside a VM environment
+provision:
+  how: virtual
+  image: fedora:39
+prepare:
+  how: install
+  package:
+    - podman
+    - pytest
+    - python3-flake8
+execute:
+  how: tmt
+  script: pytest -s -vv
