@@ -1,4 +1,4 @@
-module github.com/osbuild/osbuild-deploy-container/odc
+module github.com/osbuild/bootc-image-builder/odc
 
 go 1.19
 
