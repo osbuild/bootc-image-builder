@@ -56,3 +56,23 @@ jobs:
         # don't check /etc/os-release sourcing, allow useless cats to live inside our codebase, and
         # allow seemingly unreachable commands
         SHELLCHECK_OPTS: -e SC1091 -e SC2002 -e SC2317
+
+  integration:
+    # TODO: run this also via tmt/testing-farm
+    name: "Integration"
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+    - name: Setup up python
+      uses: actions/setup-python@v4
+    - name: Install test dependencies
+      run: |
+        sudo apt install -y podman python3-pytest flake8
+    - name: Run tests
+      run: |
+        # podman needs (parts of) the environment but will break when
+        # XDG_RUNTIME_DIR is set.
+        # TODO: figure out what exactly podman needs
+        sudo -E XDG_RUNTIME_DIR= pytest-3 -s -vv
