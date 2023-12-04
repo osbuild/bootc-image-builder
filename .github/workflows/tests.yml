@@ -39,7 +39,7 @@ jobs:
         with:
           version: v1.54.2
           args: --timeout 5m0s
-          working-directory: odc
+          working-directory: bib
 
   shellcheck:
     name: "🐚 Shellcheck"

@@ -1,4 +1,4 @@
-module github.com/osbuild/bootc-image-builder/odc
+module github.com/osbuild/bootc-image-builder/bib
 
 go 1.19
 

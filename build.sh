@@ -2,5 +2,5 @@
 
 set -euo pipefail
 
-cd odc
+cd bib
 go build -o ../bin/bootc-image-builder ./cmd/bootc-image-builder

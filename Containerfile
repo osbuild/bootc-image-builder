@@ -2,7 +2,7 @@ FROM registry.fedoraproject.org/fedora:39 AS builder
 RUN dnf install -y git-core golang gpgme-devel libassuan-devel
 RUN mkdir /build
 COPY build.sh /build
-COPY odc /build/odc
+COPY bib /build/bib
 WORKDIR /build
 RUN ./build.sh
 
