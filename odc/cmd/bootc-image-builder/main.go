@@ -169,7 +169,7 @@ func build(cmd *cobra.Command, args []string) {
 
 func main() {
 	rootCmd := &cobra.Command{
-		Use:                   "osbuild-deploy-container <imgref>",
+		Use:                   "bootc-image-builder <imgref>",
 		Long:                  "create a bootable image from an ostree native container",
 		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,

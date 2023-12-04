@@ -3,4 +3,4 @@
 set -euo pipefail
 
 ./prepare.sh
-/usr/bin/osbuild-deploy-container --store /store --rpmmd /rpmmd --output /output  "$@"
+/usr/bin/bootc-image-builder --store /store --rpmmd /rpmmd --output /output  "$@"
