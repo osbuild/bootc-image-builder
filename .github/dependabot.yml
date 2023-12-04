@@ -14,7 +14,7 @@ updates:
 
   # Maintain dependencies for Go
   - package-ecosystem: "gomod"
-    directory: "/odc"
+    directory: "/bib"
     schedule:
       interval: "daily"
       time: "04:00"
