@@ -1,5 +1,7 @@
+import socket
 import shutil
 import subprocess
+import time
 
 
 def journal_cursor():
@@ -15,3 +17,24 @@ def journal_after_cursor(cursor):
 
 def has_executable(name):
     return shutil.which(name) is not None
+
+
+def get_free_port() -> int:
+    # this is racy but there is no race-free way to do better with the qemu CLI
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("localhost", 0))
+        return s.getsockname()[1]
+
+
+def wait_ssh_ready(port, sleep, max_wait_sec):
+    for i in range(int(max_wait_sec / sleep)):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(sleep)
+            try:
+                s.connect(("localhost", port))
+                data = s.recv(256)
+                if b"OpenSSH" in data:
+                    return
+            except (ConnectionRefusedError, TimeoutError):
+                time.sleep(sleep)
+    raise ConnectionRefusedError(f"cannot connect to port {port} after {max_wait_sec}s")
