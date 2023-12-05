@@ -11,6 +11,7 @@ from paramiko.client import AutoAddPolicy, SSHClient
 
 class VM:
     MEM = "2000"
+    # TODO: support qemu-system-aarch64 too :)
     QEMU = "qemu-system-x86_64"
 
     def __init__(self, img, snapshot=True):

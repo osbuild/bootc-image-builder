@@ -1,6 +1,7 @@
 import json
 import os
 import pathlib
+import platform
 import re
 import subprocess
 from typing import NamedTuple
@@ -14,12 +15,12 @@ from vm import VM
 if not testutil.has_executable("podman"):
     pytest.skip("no podman, skipping integration tests that required podman", allow_module_level=True)
 
-if os.getuid() != 0:
-    pytest.skip("tests require root to run", allow_module_level=True)
+if not testutil.can_start_rootful_containers():
+    pytest.skip("tests require to be able to run rootful containers (try: sudo)", allow_module_level=True)
 
 # building an ELN image needs x86_64-v3 to work, we use avx2 as a proxy
 # to detect if we have x86-64-v3 (not perfect but should be good enough)
-if not testutil.has_x86_64_v3_cpu():
+if platform.system() == "Linux" and platform.machine() == "x86_64" and not testutil.has_x86_64_v3_cpu():
     pytest.skip("need x86_64-v3 capable CPU", allow_module_level=True)
 
 
@@ -124,6 +125,7 @@ def test_image_is_generated(image_type):
         f"content: {os.listdir(os.fspath(image_type.img_path))}"
 
 
+@pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
 @pytest.mark.parametrize("image_type", SUPPORTED_IMAGE_TYPES, indirect=["image_type"])
 def test_image_boots(image_type):
     with VM(image_type.img_path) as test_vm:
