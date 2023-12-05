@@ -6,7 +6,7 @@ A simpler container for deploying bootable container images.
 
 ```
 mkdir output
-sudo podman run --rm -it --privileged --pull=newer --security-opt label=type:unconfined_t -v $(pwd)/output:/output ghcr.io/osbuild/bootc-image-builder quay.io/centos-boot/fedora-tier-1:eln
+sudo podman run --rm -it --privileged --pull=newer --security-opt label=type:unconfined_t -v $(pwd)/output:/output ghcr.io/osbuild/bootc-image-builder quay.io/centos-bootc/centos-bootc:stream9
 qemu-system-x86_64 -M accel=kvm -cpu host -smp 2 -m 4096 -bios /usr/share/OVMF/OVMF_CODE.fd -snapshot output/qcow2/disk.qcow2
 ```
 
@@ -39,5 +39,5 @@ Example of such a config:
 Save this config as `output/config.json` and run:
 
 ```
-sudo podman run --rm -it --privileged --security-opt label=type:unconfined_t -v $(pwd)/output:/output ghcr.io/osbuild/bootc-image-builder quay.io/centos-boot/fedora-tier-1:eln --config /output/config.json
+sudo podman run --rm -it --privileged --security-opt label=type:unconfined_t -v $(pwd)/output:/output ghcr.io/osbuild/bootc-image-builder quay.io/centos-bootc/centos-bootc:stream9 --config /output/config.json
 ```
