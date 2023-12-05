@@ -9,7 +9,7 @@ def journal_cursor():
 
 
 def journal_after_cursor(cursor):
-    output = subprocess.check_output(["journalctl", f"--after-cursor={cursor}"])
+    output = subprocess.check_output(["journalctl", f"--after-cursor={cursor}"], encoding="utf8")
     return output
 
 
