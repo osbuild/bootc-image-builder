@@ -2,12 +2,16 @@ summary: Run all tests inside a VM environment
 provision:
   how: virtual
   image: fedora:39
+  hardware:
+    virtualization:
+      is-supported: true
 prepare:
   how: install
   package:
     - podman
     - pytest
     - python3-flake8
+    - qemu-kvm
 execute:
   how: tmt
   script: pytest -s -vv

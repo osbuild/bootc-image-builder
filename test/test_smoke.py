@@ -8,6 +8,7 @@ import pytest
 
 # local test utils
 import testutil
+from vm import VM
 
 
 @pytest.fixture(name="output_path")
@@ -76,7 +77,7 @@ def test_smoke(output_path, config_json):
         "--security-opt", "label=type:unconfined_t",
         "-v", f"{output_path}:/output",
         "bootc-image-builder-test",
-        "quay.io/centos-bootc/centos-bootc:stream9",
+        "quay.io/centos-bootc/fedora-bootc:eln",
         "--config", "/output/config.json",
     ])
     generated_img = pathlib.Path(output_path) / "qcow2/disk.qcow2"
@@ -90,5 +91,7 @@ def test_smoke(output_path, config_json):
     else:
         print("WARNING: selinux not enabled, cannot check for denials")
 
-    # TODO: boot and do basic checks, see
-    # https://github.com/osbuild/bootc-image-builder/compare/main...mvo5:integration-test?expand=1
+    with VM(generated_img) as test_vm:
+        # TODO: replace with 'test_vm.run("true")' once user creation via
+        #       blueprints works
+        test_vm.wait_ssh_ready()
