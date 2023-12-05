@@ -76,3 +76,25 @@ jobs:
         # XDG_RUNTIME_DIR is set.
         # TODO: figure out what exactly podman needs
         sudo -E XDG_RUNTIME_DIR= pytest-3 -s -vv
+
+  integration-macos:
+    name: "Integration macos"
+    # needed to get latest cpu
+    runs-on: macos-13
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+    - name: Setup up python
+      uses: actions/setup-python@v5
+      with:
+        cache: 'pip'
+    - run: pip install -r test/requirements.txt
+    - name: Setup up podman
+      run: |
+        brew install podman netcat
+        podman machine init --rootful
+        podman machine start
+    - name: Run tests
+      run: |
+        pytest -rs -s -vv

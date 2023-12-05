@@ -1,4 +1,5 @@
 import contextlib
+import platform
 import subprocess
 from unittest.mock import call, patch
 
@@ -28,7 +29,7 @@ def test_wait_ssh_ready_sleeps_no_connection(mocked_sleep, free_port):
 def test_wait_ssh_ready_sleeps_wrong_reply(free_port, tmp_path):
     with contextlib.ExitStack() as cm:
         p = subprocess.Popen(
-            f"echo not-ssh | nc -v -l -p {free_port}",
+            f"echo not-ssh | nc -vv -l -p {free_port}",
             shell=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -49,6 +50,7 @@ def test_wait_ssh_ready_sleeps_wrong_reply(free_port, tmp_path):
                 call(0.1), call(0.1), call(0.1), call(0.1), call(0.1)]
 
 
+@pytest.mark.skipif(platform.system() == "Darwin", reason="hangs on macOS")
 @pytest.mark.skipif(not has_executable("nc"), reason="needs nc")
 def test_wait_ssh_ready_integration(free_port, tmp_path):
     with contextlib.ExitStack() as cm:

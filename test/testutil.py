@@ -1,18 +1,28 @@
+import os
 import pathlib
+import platform
 import socket
 import shutil
 import subprocess
 import time
 
 
+def run_journalctl(*args):
+    pre = []
+    if platform.system() == "Darwin":
+        pre = ["podman", "machine", "ssh"]
+    cmd = pre + ["journalctl"] + list(args)
+    return subprocess.check_output(cmd, encoding="utf-8").strip()
+
+
 def journal_cursor():
-    output = subprocess.check_output(["journalctl", "-n0", "--show-cursor"], encoding="utf-8").strip()
+    output = run_journalctl("-n0", "--show-cursor")
     cursor = output.split("\n")[-1]
     return cursor.split("cursor: ")[-1]
 
 
 def journal_after_cursor(cursor):
-    output = subprocess.check_output(["journalctl", f"--after-cursor={cursor}"], encoding="utf8")
+    output = run_journalctl(f"--after-cursor={cursor}")
     return output
 
 
@@ -47,3 +57,21 @@ def has_x86_64_v3_cpu():
     # https://en.wikipedia.org/wiki/X86-64#Microarchitecture_levels
     # but "avx2" is probably a good enough proxy
     return " avx2 " in pathlib.Path("/proc/cpuinfo").read_text()
+
+
+def can_start_rootful_containers():
+    match platform.system():
+        case "Linux":
+            # on linux we need to run "podman" with sudo to get full
+            # root containers
+            return os.getuid() == 0
+        case "Darwin":
+            # on darwin a container is root if the podman machine runs
+            # in "rootful" mode, i.e. no need to run "podman" as root
+            # as it's just proxying to the VM
+            res = subprocess.run([
+                "podman", "machine", "inspect", "--format={{.Rootful}}",
+            ], capture_output=True, encoding="utf8", check=True)
+            return res.stdout.strip() == "true"
+        case unknown:
+            raise ValueError(f"unknown platform {unknown}")
