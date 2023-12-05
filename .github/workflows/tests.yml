@@ -76,3 +76,37 @@ jobs:
         # XDG_RUNTIME_DIR is set.
         # TODO: figure out what exactly podman needs
         sudo -E XDG_RUNTIME_DIR= pytest-3 -s -vv
+
+  integration-macos:
+    name: "Integration macos"
+    # needed to get latest cpu
+    runs-on: macos-13
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+    - name: Setup up python
+      uses: actions/setup-python@v4
+    - name: Setup up podman
+      run: |
+        sysctl -a
+        brew install podman
+        # need to map only a subset of /var/tmp into the bootc tests
+        sudo mkdir -p /var/tmp/bootc-tests
+        # TODO: this is "security_model=mapped" is needed or the build
+        # will not be able to be copied back to the host dir with an
+        # "cp: failed to preserve ownership for '/output/qcow2/./disk.qcow2': Operation not permited
+        # This is strange because
+        # https://wiki.qemu.org/Documentation/9psetup#Starting_the_Guest_directly
+        # says that the default podman security setup "none" should not result
+        # in errors from chown
+        podman machine init --rootful -v /var/tmp/bootc-tests:/var/tmp/bootc-tests:security_model=mapped
+        podman machine start
+        # debug only
+        podman info
+    - name: Install test dependencies
+      run: |
+        sudo pip install pytest flake8
+    - name: Run tests
+      run: |
+        sudo pytest -s -vv
