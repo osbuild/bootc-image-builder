@@ -3,7 +3,7 @@ module github.com/osbuild/bootc-image-builder/bib
 go 1.19
 
 require (
-	github.com/osbuild/images v0.21.0
+	github.com/osbuild/images v0.22.0
 	github.com/spf13/cobra v1.8.0
 )
 
