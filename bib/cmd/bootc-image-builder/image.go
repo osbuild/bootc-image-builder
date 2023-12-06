@@ -7,6 +7,7 @@ import (
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/container"
+	"github.com/osbuild/images/pkg/customizations/users"
 	"github.com/osbuild/images/pkg/disk"
 	"github.com/osbuild/images/pkg/image"
 	"github.com/osbuild/images/pkg/manifest"
@@ -53,6 +54,9 @@ func pipelines(imgref string, config *BuildConfig, architecture arch.Arch, rng *
 	if config != nil && config.Blueprint != nil {
 		customizations = config.Blueprint.Customizations
 	}
+
+	img.Users = users.UsersFromBP(customizations.GetUsers())
+	img.Groups = users.GroupsFromBP(customizations.GetGroups())
 
 	img.KernelOptionsAppend = []string{
 		"rw",
