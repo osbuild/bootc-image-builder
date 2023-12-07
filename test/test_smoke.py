@@ -92,6 +92,8 @@ def test_smoke(output_path, config_json):
         print("WARNING: selinux not enabled, cannot check for denials")
 
     with VM(generated_img) as test_vm:
-        # TODO: replace with 'test_vm.run("true")' once user creation via
-        #       blueprints works
-        test_vm.wait_ssh_ready()
+        exit_status, _ = test_vm.run("true", user="test", password="password")
+        assert exit_status == 0
+        exit_status, output = test_vm.run("echo hello", user="test", password="password")
+        assert exit_status == 0
+        assert "hello" in output

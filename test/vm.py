@@ -1,8 +1,12 @@
 import pathlib
 import subprocess
 import sys
+from io import StringIO
 
 from testutil import get_free_port, wait_ssh_ready
+
+
+from paramiko.client import AutoAddPolicy, SSHClient
 
 
 class VM:
@@ -64,3 +68,25 @@ class VM:
 
     def __exit__(self, type, value, tb):
         self.force_stop()
+
+    def run(self, cmd, user, password):
+        if not self._qemu_p:
+            self.start()
+        client = SSHClient()
+        client.set_missing_host_key_policy(AutoAddPolicy)
+        client.connect(
+            "localhost", self._ssh_port, user, password,
+            allow_agent=False, look_for_keys=False)
+        chan = client.get_transport().open_session()
+        chan.get_pty()
+        chan.exec_command(cmd)
+        stdout_f = chan.makefile()
+        output = StringIO()
+        while True:
+            out = stdout_f.readline()
+            if not out:
+                break
+            self._log(out)
+            output.write(out)
+        exit_status = stdout_f.channel.recv_exit_status()
+        return exit_status, output.getvalue()

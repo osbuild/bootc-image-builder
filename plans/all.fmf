@@ -11,6 +11,7 @@ prepare:
     - podman
     - pytest
     - python3-flake8
+    - python3-paramiko
     - qemu-kvm
 execute:
   how: tmt
