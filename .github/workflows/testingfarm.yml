@@ -43,6 +43,10 @@ jobs:
         echo "Current permission level is ${{ steps.checkAccess.outputs.user-permission }}"
         echo "Job originally triggered by ${{ github.actor }}"
         exit 1
+    - name: Check out code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
     - name: Run the tests
       uses: sclorg/testing-farm-as-github-action@v1
       with:
