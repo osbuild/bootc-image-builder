@@ -49,6 +49,7 @@ func pipelines(imgref string, config *BuildConfig, architecture arch.Arch, rng *
 	}
 
 	img := image.NewOSTreeDiskImageFromContainer(containerSource, ref)
+	img.ContainerBuildable = true
 
 	var customizations *blueprint.Customizations
 	if config != nil && config.Blueprint != nil {
