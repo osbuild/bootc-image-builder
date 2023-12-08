@@ -3,8 +3,6 @@ name: Build containers
 on:
   pull_request:
     branches: [main]
-    paths-ignore:
-      - "README.md"
   workflow_dispatch:
   # for merge queue
   merge_group:
