@@ -1,3 +1,4 @@
+import pathlib
 import socket
 import shutil
 import subprocess
@@ -39,3 +40,10 @@ def wait_ssh_ready(port, sleep, max_wait_sec):
                 pass
             time.sleep(sleep)
     raise ConnectionRefusedError(f"cannot connect to port {port} after {max_wait_sec}s")
+
+
+def has_x86_64_v3_cpu():
+    # x86_64-v3 has multiple features, see
+    # https://en.wikipedia.org/wiki/X86-64#Microarchitecture_levels
+    # but "avx2" is probably a good enough proxy
+    return " avx2 " in pathlib.Path("/proc/cpuinfo").read_text()
