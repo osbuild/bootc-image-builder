@@ -2,21 +2,49 @@
 
 A container for deploying bootable container images.
 
-## Example
+## Installation
+
+Have [podman](https://podman.io/) installed on your system. Either through your systems package manager if you're on Linux or through [Podman Desktop](https://podman.io/) if you are on Mac OS or Windows.
+
+## Examples
+
+The following example builds a [Fedora ELN]() bootable container into a QCOW2 image for the architecture you're running the command on.
 
 ```
 mkdir output
-sudo podman run --rm -it --privileged --pull=newer --security-opt label=type:unconfined_t -v $(pwd)/output:/output quay.io/centos-bootc/bootc-image-builder:latest quay.io/centos-bootc/fedora-bootc:eln
+sudo podman run \
+    --rm \
+    -it
+    --privileged \
+    --pull=newer \
+    --security-opt label=type:unconfined_t \
+    -v $(pwd)/output:/output \
+    quay.io/centos-bootc/bootc-image-builder:latest \
+    quay.io/centos-bootc/fedora-bootc:eln
 ```
 
-amd64:
+# Running the resulting QCOW2 file on Linux
 ```
-qemu-system-x86_64 -M accel=kvm -cpu host -smp 2 -m 4096 -bios /usr/share/OVMF/OVMF_CODE.fd -snapshot output/qcow2/disk.qcow2
+qemu-system-x86_64 \
+    -M accel=kvm \
+    -cpu host \
+    -smp 2 \
+    -m 4096 \
+    -bios /usr/share/OVMF/OVMF_CODE.fd \
+    -snapshot output/qcow2/disk.qcow2
 ```
 
-aarch64:
+### Running the resulting QCOW2 file on macOS
 ```
-qemu-system-aarch64 -M accel=hvf -cpu host -smp 2 -m 4096 -bios /opt/homebrew/Cellar/qemu/8.1.3_2/share/qemu/edk2-aarch64-code.fd -snapshot output/qcow2/disk.qcow2 -serial stdio -machine virt
+qemu-system-aarch64 \
+    -M accel=hvf \
+    -cpu host \
+    -smp 2 \
+    -m 4096 \
+    -bios /opt/homebrew/Cellar/qemu/8.1.3_2/share/qemu/edk2-aarch64-code.fd \
+    -serial stdio \
+    -machine virt \
+    -snapshot output/qcow2/disk.qcow2
 ```
 
 ## Volumes
