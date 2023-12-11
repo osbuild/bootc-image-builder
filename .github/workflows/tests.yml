@@ -66,7 +66,7 @@ jobs:
       with:
         ref: ${{ github.event.pull_request.head.sha }}
     - name: Setup up python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
     - name: Install test dependencies
       run: |
         sudo apt install -y podman python3-pytest python3-paramiko flake8 qemu-system-x86
