@@ -1,6 +1,6 @@
 # bootc-image-builder
 
-A simpler container for deploying bootable container images.
+A container for deploying bootable container images.
 
 ## Example
 
