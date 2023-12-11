@@ -91,9 +91,14 @@ def test_smoke(output_path, config_json):
     else:
         print("WARNING: selinux not enabled, cannot check for denials")
 
-    with VM(generated_img) as test_vm:
-        exit_status, _ = test_vm.run("true", user="test", password="password")
-        assert exit_status == 0
-        exit_status, output = test_vm.run("echo hello", user="test", password="password")
-        assert exit_status == 0
-        assert "hello" in output
+    # building an ELN image needs x86_64-v3 to work, we use avx2 as a proxy
+    # to detect if we have x86-64-v3 (not perfect but should be good enough)
+    if " avx2 " not in pathlib.Path("/proc/cpuinfo").read_text():
+        print("WARNING: no x86_64-v3 cpu detected, skipping VM boot test")
+    else:
+        with VM(generated_img) as test_vm:
+            exit_status, _ = test_vm.run("true", user="test", password="password")
+            assert exit_status == 0
+            exit_status, output = test_vm.run("echo hello", user="test", password="password")
+            assert exit_status == 0
+            assert "hello" in output
