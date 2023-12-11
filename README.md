@@ -31,6 +31,7 @@ qemu-system-x86_64 \
     -smp 2 \
     -m 4096 \
     -bios /usr/share/OVMF/OVMF_CODE.fd \
+    -serial stdio \
     -snapshot output/qcow2/disk.qcow2
 ```
 
