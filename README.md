@@ -50,3 +50,27 @@ Save this config as `output/config.json` and run:
 ```
 sudo podman run --rm -it --privileged --pull=newer --security-opt label=type:unconfined_t -v $(pwd)/output:/output quay.io/centos-bootc/bootc-image-builder:latest quay.io/centos-bootc/fedora-bootc:eln --config /output/config.json
 ```
+
+## Project
+
+ * **Website**: <https://www.osbuild.org>
+ * **Bug Tracker**: <https://github.com/osbuild/bootc-image-builder/issues>
+ * **Matrix**: #image-builder on [fedoraproject.org](https://matrix.to/#/#image-builder:fedoraproject.org)
+ * **Mailing List**: image-builder@redhat.com
+ * **Changelog**: <https://github.com/osbuild/bootc-image-builder/releases>
+
+### Contributing
+
+Please refer to the [developer guide](https://www.osbuild.org/guides/developer-guide/index.html) to learn about our workflow, code style and more.
+
+## Repository
+
+ - **web**:   <https://github.com/osbuild/bootc-image-builder>
+ - **https**: `https://github.com/osbuild/bootc-image-builder.git`
+ - **ssh**:   `git@github.com:osbuild/bootc-image-builder.git`
+
+## License
+
+ - **Apache-2.0**
+ - See LICENSE file for details.
+
