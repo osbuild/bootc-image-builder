@@ -35,6 +35,7 @@ def wait_ssh_ready(port, sleep, max_wait_sec):
                 data = s.recv(256)
                 if b"OpenSSH" in data:
                     return
-            except (ConnectionRefusedError, TimeoutError):
-                time.sleep(sleep)
+            except (ConnectionRefusedError, ConnectionResetError, TimeoutError):
+                pass
+            time.sleep(sleep)
     raise ConnectionRefusedError(f"cannot connect to port {port} after {max_wait_sec}s")
