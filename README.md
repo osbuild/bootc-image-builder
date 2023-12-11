@@ -4,7 +4,7 @@ A container for deploying bootable container images.
 
 ## Installation
 
-Have [podman](https://podman.io/) installed on your system. Either through your systems package manager if you're on Linux or through [Podman Desktop](https://podman.io/) if you are on Mac OS or Windows.
+Have [podman](https://podman.io/) installed on your system. Either through your systems package manager if you're on Linux or through [Podman Desktop](https://podman.io/) if you are on Mac OS or Windows. If you want to run the resulting virtual machine(s) or installer media you can use [qemu](https://www.qemu.org/).
 
 ## Examples
 
@@ -36,6 +36,9 @@ qemu-system-x86_64 \
 ```
 
 ### Running the resulting QCOW2 file on macOS (aarch64)
+
+This assumes qemu was installed through [homebrew](https://brew.sh/).
+
 ```
 qemu-system-aarch64 \
     -M accel=hvf \
