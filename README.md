@@ -23,7 +23,7 @@ sudo podman run \
     quay.io/centos-bootc/fedora-bootc:eln
 ```
 
-# Running the resulting QCOW2 file on Linux
+### Running the resulting QCOW2 file on Linux (x86_64)
 ```
 qemu-system-x86_64 \
     -M accel=kvm \
@@ -35,7 +35,7 @@ qemu-system-x86_64 \
     -snapshot output/qcow2/disk.qcow2
 ```
 
-### Running the resulting QCOW2 file on macOS
+### Running the resulting QCOW2 file on macOS (aarch64)
 ```
 qemu-system-aarch64 \
     -M accel=hvf \
