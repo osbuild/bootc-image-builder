@@ -14,7 +14,7 @@ The following example builds a [Fedora ELN]() bootable container into a QCOW2 im
 mkdir output
 sudo podman run \
     --rm \
-    -it
+    -it \
     --privileged \
     --pull=newer \
     --security-opt label=type:unconfined_t \
