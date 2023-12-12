@@ -24,6 +24,7 @@ def test_wait_ssh_ready_sleeps_no_connection(mocked_sleep, free_port):
     assert mocked_sleep.call_args_list == [call(0.1), call(0.1), call(0.1)]
 
 
+@pytest.mark.skipif(not has_executable("nc"), reason="needs nc")
 def test_wait_ssh_ready_sleeps_wrong_reply(free_port, tmp_path):
     with contextlib.ExitStack() as cm:
         p = subprocess.Popen(
