@@ -258,7 +258,7 @@ spec:
             - name: name
               value: buildah
             - name: bundle
-              value: quay.io/redhat-appstudio-tekton-catalog/task-buildah:0.1@sha256:9e7be6d3f2cde33fabfda9d454757530ce7f73e2414c00da1a3ebabf95fc52c5
+              value: quay.io/redhat-appstudio-tekton-catalog/task-buildah:0.1@sha256:d95e898c518093c24bc7dacd25aa98a39996262a6b34650e403b60b1c8c10fda
             - name: kind
               value: task
           resolver: bundles
@@ -295,7 +295,7 @@ spec:
             - name: name
               value: buildah-remote
             - name: bundle
-              value: quay.io/redhat-appstudio-tekton-catalog/task-buildah-remote:0.1@sha256:a0ed8d0f575244757c598acb228039211ad0051a7b7879630838260022a7b771
+              value: quay.io/redhat-appstudio-tekton-catalog/task-buildah-remote:0.1@sha256:e6818104e9b71c97737886f8ff1fb43df6c472915369cfd2dbea7fc3c1f06c29
             - name: kind
               value: task
           resolver: bundles
@@ -347,7 +347,7 @@ spec:
             - name: name
               value: inspect-image
             - name: bundle
-              value: quay.io/redhat-appstudio-tekton-catalog/task-inspect-image:0.1@sha256:ff8a4844ac36a8cbeecf02874e73952f314089cf497037ed762fa01dde397225
+              value: quay.io/redhat-appstudio-tekton-catalog/task-inspect-image:0.1@sha256:ab050621d5f6addf0b6c07451e91a6b134b4d5f402c780abdbf9842a8ff18504
             - name: kind
               value: task
           resolver: bundles
@@ -368,7 +368,7 @@ spec:
             - name: name
               value: deprecated-image-check
             - name: bundle
-              value: quay.io/redhat-appstudio-tekton-catalog/task-deprecated-image-check:0.3@sha256:61f9b273432c6d087393de6ab972a2f7af1c385a1cc36447b215dabf5d9ba0de
+              value: quay.io/redhat-appstudio-tekton-catalog/task-deprecated-image-check:0.3@sha256:d87f8c50a674f57527a0c4f3df6d9093941a2ae84739b55368b3c11702ce340c
             - name: kind
               value: task
           resolver: bundles
@@ -390,7 +390,7 @@ spec:
             - name: name
               value: clair-scan
             - name: bundle
-              value: quay.io/redhat-appstudio-tekton-catalog/task-clair-scan:0.1@sha256:fe27ccc0603b63b313329b76aa888523dabf7368fc25e976fcccc4d52bb3a5e3
+              value: quay.io/redhat-appstudio-tekton-catalog/task-clair-scan:0.1@sha256:fbe1ab58531d856fba360060d3884a0606310a966e2d01ba9305da9eb01ab916
             - name: kind
               value: task
           resolver: bundles
@@ -407,7 +407,7 @@ spec:
             - name: name
               value: sast-snyk-check
             - name: bundle
-              value: quay.io/redhat-appstudio-tekton-catalog/task-sast-snyk-check:0.1@sha256:339903f4a95b45b3f2dd4e6941b84679eaa70683bde83f46b0d835680c7aae8b
+              value: quay.io/redhat-appstudio-tekton-catalog/task-sast-snyk-check:0.1@sha256:eee508768b14655275fbcc2f42f9da1ab553b872dcbe113b0896aa9bcf7e1adf
             - name: kind
               value: task
           resolver: bundles
@@ -432,7 +432,7 @@ spec:
             - name: name
               value: clamav-scan
             - name: bundle
-              value: quay.io/redhat-appstudio-tekton-catalog/task-clamav-scan:0.1@sha256:de8c855a71d5bb6b838246f5c5a1a420747379b9cca047ce79b89c9b53812267
+              value: quay.io/redhat-appstudio-tekton-catalog/task-clamav-scan:0.1@sha256:d742ad90474ecccd066bbd98657885602e32c9f76d26991726b63a44f11feab2
             - name: kind
               value: task
           resolver: bundles
@@ -454,7 +454,7 @@ spec:
             - name: name
               value: sbom-json-check
             - name: bundle
-              value: quay.io/redhat-appstudio-tekton-catalog/task-sbom-json-check:0.1@sha256:563150a37f3802ab481be73b562f02f5a26ac3a11f116f247096620fe7a1ca48
+              value: quay.io/redhat-appstudio-tekton-catalog/task-sbom-json-check:0.1@sha256:717e6e33f02dbe1a28fb743f32699e002c944680c251a50b644f27becb9208e9
             - name: kind
               value: task
           resolver: bundles
