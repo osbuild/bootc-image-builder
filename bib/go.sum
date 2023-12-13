@@ -14,8 +14,8 @@ github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 h1:DklsrG3d
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
-github.com/containers/common v0.57.0 h1:5O/+6QUBafKK0/zeok9y1rLPukfWgdE0sT4nuzmyAqk=
-github.com/containers/common v0.57.0/go.mod h1:t/Z+/sFrapvFMEJe3YnecN49/Tae2wYEQShbEN6SRaU=
+github.com/containers/common v0.57.1 h1:KWAs4PMPgBFmBV4QNbXhUB8TqvlgR95BJN2sbbXkWHY=
+github.com/containers/common v0.57.1/go.mod h1:t/Z+/sFrapvFMEJe3YnecN49/Tae2wYEQShbEN6SRaU=
 github.com/containers/image/v5 v5.29.0 h1:9+nhS/ZM7c4Kuzu5tJ0NMpxrgoryOJ2HAYTgG8Ny7j4=
 github.com/containers/image/v5 v5.29.0/go.mod h1:kQ7qcDsps424ZAz24thD+x7+dJw1vgur3A9tTDsj97E=
 github.com/containers/libtrust v0.0.0-20230121012942-c1716e8a8d01 h1:Qzk5C6cYglewc+UyGf6lc8Mj2UaPTHy/iF2De0/77CA=
@@ -207,8 +207,8 @@ github.com/opencontainers/runc v1.1.10 h1:EaL5WeO9lv9wmS6SASjszOeQdSctvpbu0DdBQB
 github.com/opencontainers/runc v1.1.10/go.mod h1:+/R6+KmDlh+hOO8NkjmgkG9Qzvypzk0yXxAPYYR65+M=
 github.com/opencontainers/runtime-spec v1.1.0 h1:HHUyrt9mwHUjtasSbXSMvs4cyFxh+Bll4AjJ9odEGpg=
 github.com/opencontainers/runtime-spec v1.1.0/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
-github.com/osbuild/images v0.23.0 h1:RCYIO1UWenTBmfVGu/mFeWCHreyDdRirC8BAGdUrFVU=
-github.com/osbuild/images v0.23.0/go.mod h1:2rmLQTFA3BYXv/uR2K6GlU8daWEVSlUFLRXSrwN2iAQ=
+github.com/osbuild/images v0.24.0 h1:EP1+9Y5IKuTIZ3Q/RmP5/MdUyjlX7zSZCS0NOXK2+Bg=
+github.com/osbuild/images v0.24.0/go.mod h1:jC7HIvrDKqMJjvNOiaz+QbBJG9oz2YBZHrHsF4nQX1k=
 github.com/otiai10/copy v1.14.0 h1:dCI/t1iTdYGtkvCuBG2BgR6KZa83PTclw4U5n2wAllU=
 github.com/pelletier/go-toml v1.7.0/go.mod h1:vwGMzjaWMwyfHwgIBhI2YUM4fB6nL6lVAvS1LBMMhTE=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=

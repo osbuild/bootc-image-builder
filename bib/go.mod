@@ -3,7 +3,7 @@ module github.com/osbuild/bootc-image-builder/bib
 go 1.19
 
 require (
-	github.com/osbuild/images v0.23.0
+	github.com/osbuild/images v0.24.0
 	github.com/spf13/cobra v1.8.0
 )
 
@@ -12,7 +12,7 @@ require (
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
-	github.com/containers/common v0.57.0 // indirect
+	github.com/containers/common v0.57.1 // indirect
 	github.com/containers/image/v5 v5.29.0 // indirect
 	github.com/containers/libtrust v0.0.0-20230121012942-c1716e8a8d01 // indirect
 	github.com/containers/ocicrypt v1.1.9 // indirect
