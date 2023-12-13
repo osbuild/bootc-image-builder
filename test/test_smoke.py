@@ -11,7 +11,6 @@ import pytest
 import testutil
 from vm import VM
 
-
 if not testutil.has_executable("podman"):
     pytest.skip("no podman, skipping integration tests that required podman", allow_module_level=True)
 
@@ -36,8 +35,7 @@ def build_container_fixture():
     return container_tag
 
 
-@pytest.fixture(name="build_image", scope="session")
-def build_image_fixture(tmpdir_factory, build_container):
+def build_image(build_container, output_path, image_type):
     """
     Build an image inside the passed build_container and return a
     named tuple with the resulting image path and user/password
@@ -57,8 +55,6 @@ def build_image_fixture(tmpdir_factory, build_container):
             },
         },
     }
-    output_path = pathlib.Path(tmpdir_factory.mktemp("data")) / "output"
-    output_path.mkdir(exist_ok=True)
 
     config_json_path = output_path / "config.json"
     config_json_path.write_text(json.dumps(CFG), encoding="utf-8")
@@ -73,13 +69,34 @@ def build_image_fixture(tmpdir_factory, build_container):
         build_container,
         "quay.io/centos-bootc/fedora-bootc:eln",
         "--config", "/output/config.json",
+        "--type", image_type,
     ])
     journal_output = testutil.journal_after_cursor(cursor)
-    generated_img = pathlib.Path(output_path) / "qcow2/disk.qcow2"
 
-    ImageFixtureResult = collections.namedtuple(
-        "BuildImage", ["img_path", "username", "password", "journal_output"])
-    return ImageFixtureResult(generated_img, username, password, journal_output)
+    artifact = {
+        "qcow2": pathlib.Path(output_path) / "qcow2/disk.qcow2",
+        "ami": pathlib.Path(output_path) / "image/disk.raw",
+    }
+    generated_img = artifact[image_type]
+    ImageBuildResult = collections.namedtuple(
+        "ImageBuildResult", ["img_path", "username", "password", "journal_output"])
+    return ImageBuildResult(generated_img, username, password, journal_output)
+
+
+@pytest.fixture(name="build_image_qcow2", scope="session")
+def build_qcow2_fixture(tmpdir_factory, build_container):
+    output_path = pathlib.Path(tmpdir_factory.mktemp("data")) / "output"
+    output_path.mkdir(exist_ok=True)
+
+    return build_image(build_container, output_path, "qcow2")
+
+
+@pytest.fixture(name="build_image_ami", scope="session")
+def build_ami_fixture(tmpdir_factory, build_container):
+    output_path = pathlib.Path(tmpdir_factory.mktemp("data")) / "output"
+    output_path.mkdir(exist_ok=True)
+
+    return build_image(build_container, output_path, "ami")
 
 
 def test_container_builds(build_container):
@@ -88,18 +105,20 @@ def test_container_builds(build_container):
     assert build_container in output
 
 
-def test_image_is_generated(build_image):
-    assert build_image.img_path.exists(), "output file missing, dir "\
-        f"content: {os.listdir(os.fspath(build_image.img_path))}"
+def test_image_is_generated(build_image_qcow2, build_image_ami):
+    for image in [build_image_qcow2, build_image_ami]:
+        assert image.img_path.exists(), "output file missing, dir "\
+            f"content: {os.listdir(os.fspath(image.img_path))}"
 
 
-def test_image_boots(build_image):
-    with VM(build_image.img_path) as test_vm:
-        exit_status, _ = test_vm.run("true", user=build_image.username, password=build_image.password)
-        assert exit_status == 0
-        exit_status, output = test_vm.run("echo hello", user="test", password="password")
-        assert exit_status == 0
-        assert "hello" in output
+def test_image_boots(build_image_qcow2, build_image_ami):
+    for image in [build_image_qcow2, build_image_ami]:
+        with VM(image.img_path) as test_vm:
+            exit_status, _ = test_vm.run("true", user=image.username, password=image.password)
+            assert exit_status == 0
+            exit_status, output = test_vm.run("echo hello", user="test", password="password")
+            assert exit_status == 0
+            assert "hello" in output
 
 
 def log_has_osbuild_selinux_denials(log):
