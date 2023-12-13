@@ -66,6 +66,7 @@ def build_image(build_container, output_path, image_type):
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
         "-v", f"{output_path}:/output",
+        "-v", "/store",  # share the cache between builds
         build_container,
         "quay.io/centos-bootc/fedora-bootc:eln",
         "--config", "/output/config.json",
