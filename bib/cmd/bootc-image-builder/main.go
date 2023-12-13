@@ -76,8 +76,8 @@ func loadConfig(path string) BuildConfig {
 	return conf
 }
 
-func makeManifest(imgref string, config *BuildConfig, repos []rpmmd.RepoConfig, architecture arch.Arch, seedArg int64, cacheRoot string) (manifest.OSBuildManifest, error) {
-	manifest, err := Manifest(imgref, config, repos, architecture, seedArg)
+func makeManifest(imgref string, imgType string, config *BuildConfig, repos []rpmmd.RepoConfig, architecture arch.Arch, seedArg int64, cacheRoot string) (manifest.OSBuildManifest, error) {
+	manifest, err := Manifest(imgref, imgType, config, repos, architecture, seedArg)
 	check(err)
 
 	// depsolve packages
@@ -137,6 +137,7 @@ func build(cmd *cobra.Command, args []string) {
 	osbuildStore, _ := cmd.Flags().GetString("store")
 	rpmCacheRoot, _ := cmd.Flags().GetString("rpmmd")
 	configFile, _ := cmd.Flags().GetString("config")
+	imgType, _ := cmd.Flags().GetString("type")
 
 	if err := os.MkdirAll(outputDir, 0777); err != nil {
 		fail(fmt.Sprintf("failed to create target directory: %s", err.Error()))
@@ -149,10 +150,20 @@ func build(cmd *cobra.Command, args []string) {
 		config = loadConfig(configFile)
 	}
 
+	var exports []string
+	switch imgType {
+	case "qcow2":
+		exports = []string{"qcow2"}
+	case "ami":
+		exports = []string{"image"}
+	default:
+		fail(fmt.Sprintf("valid types are 'qcow2', 'ami', not: '%s'", imgType))
+	}
+
 	seedArg := int64(0)
 
 	fmt.Printf("Generating manifest for %s: ", config.Name)
-	mf, err := makeManifest(imgref, &config, repos, hostArch, seedArg, rpmCacheRoot)
+	mf, err := makeManifest(imgref, imgType, &config, repos, hostArch, seedArg, rpmCacheRoot)
 	check(err)
 	fmt.Print("DONE\n")
 
@@ -161,7 +172,7 @@ func build(cmd *cobra.Command, args []string) {
 
 	fmt.Printf("Building manifest: %s\n", manifestPath)
 
-	_, err = osbuild.RunOSBuild(mf, osbuildStore, outputDir, []string{"qcow2"}, nil, nil, false, os.Stderr)
+	_, err = osbuild.RunOSBuild(mf, osbuildStore, outputDir, exports, nil, nil, false, os.Stderr)
 	check(err)
 
 	fmt.Printf("Build complete. Results saved in\n%s\n", outputDir)
@@ -180,5 +191,6 @@ func main() {
 	rootCmd.Flags().String("store", ".osbuild", "osbuild store for intermediate pipeline trees")
 	rootCmd.Flags().String("rpmmd", "/var/cache/osbuild/rpmmd", "rpm metadata cache directory")
 	rootCmd.Flags().String("config", "", "build config file")
+	rootCmd.Flags().String("type", "qcow2", "image type to build [qcow2, ami]")
 	check(rootCmd.Execute())
 }
