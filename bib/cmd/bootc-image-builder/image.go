@@ -16,7 +16,7 @@ import (
 	"github.com/osbuild/images/pkg/runner"
 )
 
-func Manifest(imgref string, config *BuildConfig, repos []rpmmd.RepoConfig, architecture arch.Arch, seed int64) (*manifest.Manifest, error) {
+func Manifest(imgref string, imgType string, config *BuildConfig, repos []rpmmd.RepoConfig, architecture arch.Arch, seed int64) (*manifest.Manifest, error) {
 
 	source := rand.NewSource(seed)
 
@@ -24,10 +24,22 @@ func Manifest(imgref string, config *BuildConfig, repos []rpmmd.RepoConfig, arch
 	/* #nosec G404 */
 	rng := rand.New(source)
 
-	img, err := pipelines(imgref, config, architecture, rng)
+	var img image.ImageKind
+	var err error
+
+	switch imgType {
+	case "qcow2":
+		fallthrough
+	case "ami":
+		img, err = pipelinesForDiskImage(imgref, imgType, config, architecture, rng)
+	default:
+		fail(fmt.Sprintf("Manifest(): unsupported image type %q", imgType))
+	}
+
 	if err != nil {
 		fail(err.Error())
 	}
+
 	mf := manifest.New()
 	mf.Distro = manifest.DISTRO_FEDORA
 	runner := &runner.Fedora{Version: 39}
@@ -36,7 +48,7 @@ func Manifest(imgref string, config *BuildConfig, repos []rpmmd.RepoConfig, arch
 	return &mf, err
 }
 
-func pipelines(imgref string, config *BuildConfig, architecture arch.Arch, rng *rand.Rand) (image.ImageKind, error) {
+func pipelinesForDiskImage(imgref, format string, config *BuildConfig, architecture arch.Arch, rng *rand.Rand) (image.ImageKind, error) {
 	if imgref == "" {
 		fail("pipeline: no base image defined")
 	}
@@ -67,11 +79,22 @@ func pipelines(imgref string, config *BuildConfig, architecture arch.Arch, rng *
 
 	img.SysrootReadOnly = true
 
+	var imageFormat platform.ImageFormat
+	var filename string
+	switch format {
+	case "qcow2":
+		imageFormat = platform.FORMAT_QCOW2
+		filename = "disk.qcow2"
+	case "ami":
+		imageFormat = platform.FORMAT_RAW
+		filename = "disk.raw"
+	}
+
 	switch architecture {
 	case arch.ARCH_X86_64:
 		img.Platform = &platform.X86{
 			BasePlatform: platform.BasePlatform{
-				ImageFormat: platform.FORMAT_QCOW2,
+				ImageFormat: imageFormat,
 			},
 			BIOS:       true,
 			UEFIVendor: "fedora",
@@ -80,7 +103,7 @@ func pipelines(imgref string, config *BuildConfig, architecture arch.Arch, rng *
 		img.Platform = &platform.Aarch64{
 			UEFIVendor: "fedora",
 			BasePlatform: platform.BasePlatform{
-				ImageFormat: platform.FORMAT_QCOW2,
+				ImageFormat: imageFormat,
 				QCOW2Compat: "1.1",
 			},
 		}
@@ -103,7 +126,7 @@ func pipelines(imgref string, config *BuildConfig, architecture arch.Arch, rng *
 	check(err)
 	img.PartitionTable = pt
 
-	img.Filename = "disk.qcow2"
+	img.Filename = filename
 
 	return img, nil
 }
