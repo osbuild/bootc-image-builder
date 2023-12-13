@@ -149,8 +149,9 @@ def has_selinux():
 
 
 @pytest.mark.skipif(not has_selinux(), reason="selinux not enabled")
-def test_image_build_without_se_linux_denials(build_image):
-    # the journal always contains logs from the image building
-    assert build_image.journal_output != ""
-    assert not log_has_osbuild_selinux_denials(build_image.journal_output), \
-        f"denials in log {build_image.journal_output}"
+def test_image_build_without_se_linux_denials(build_image_qcow2, build_image_ami):
+    for build_image in [build_image_qcow2, build_image_ami]:
+        # the journal always contains logs from the image building
+        assert build_image.journal_output != ""
+        assert not log_has_osbuild_selinux_denials(build_image.journal_output), \
+            f"denials in log {build_image.journal_output}"
