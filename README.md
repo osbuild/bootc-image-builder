@@ -6,6 +6,14 @@ A container for deploying bootable container images.
 
 Have [podman](https://podman.io/) installed on your system. Either through your systems package manager if you're on Linux or through [Podman Desktop](https://podman.io/) if you are on Mac OS or Windows. If you want to run the resulting virtual machine(s) or installer media you can use [qemu](https://www.qemu.org/).
 
+## Supported image types
+
+The tool can build the following image types:
+- qcow2 (`.qcow2`) for use with QEMU
+- ami (`.raw`) for AWS EC2
+
+The output format can be selected with the `--type` option (default `"qcow2"`).
+
 ## Examples
 
 The following example builds a [Fedora ELN]() bootable container into a QCOW2 image for the architecture you're running the command on.
@@ -20,6 +28,7 @@ sudo podman run \
     --security-opt label=type:unconfined_t \
     -v $(pwd)/output:/output \
     quay.io/centos-bootc/bootc-image-builder:latest \
+    --type qcow2 \
     quay.io/centos-bootc/fedora-bootc:eln
 ```
 
