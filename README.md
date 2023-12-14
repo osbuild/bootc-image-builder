@@ -6,6 +6,15 @@ A container for deploying bootable container images.
 
 Have [podman](https://podman.io/) installed on your system. Either through your systems package manager if you're on Linux or through [Podman Desktop](https://podman.io/) if you are on Mac OS or Windows. If you want to run the resulting virtual machine(s) or installer media you can use [qemu](https://www.qemu.org/).
 
+On macOS, the podman machine must be running in rootful mode:
+```
+$ podman machine stop   # if already running
+Waiting for VM to exit...
+Machine "podman-machine-default" stopped successfully
+$ podman machine set --rootful
+$ podman machine start
+```
+
 ## Supported image types
 
 The tool can build the following image types:
