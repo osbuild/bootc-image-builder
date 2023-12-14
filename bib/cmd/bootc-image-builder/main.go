@@ -129,7 +129,7 @@ func saveManifest(ms manifest.OSBuildManifest, fpath string) error {
 	return nil
 }
 
-func build(cmd *cobra.Command, args []string) {
+func build(cmd *cobra.Command, args []string) error {
 	hostArch := arch.Current()
 	repos := loadRepos(hostArch.String())
 
@@ -173,11 +173,23 @@ func build(cmd *cobra.Command, args []string) {
 	check(saveManifest(mf, manifestPath))
 
 	fmt.Printf("Building %s\n", manifest_fname)
+	check(runOSBuild(mf, osbuildStore, outputDir, exports))
+	fmt.Printf("Build complete. Results saved in %s\n", outputDir)
+	return nil
+}
+func runOSBuild(mf manifest.OSBuildManifest, osbuildStore, outputDir string, exports []string) error {
+	tempOutput, err := os.MkdirTemp("/", "tmpout")
+	if err != nil {
+		return err
+	}
 
-	_, err = osbuild.RunOSBuild(mf, osbuildStore, outputDir, exports, nil, nil, false, os.Stderr)
-	check(err)
+	defer os.Remove(tempOutput)
 
-	fmt.Printf("Build complete. Results saved in\n%s\n", outputDir)
+	_, err = osbuild.RunOSBuild(mf, osbuildStore, tempOutput, exports, nil, nil, false, os.Stderr)
+	if err != nil {
+		return err
+	}
+	return copyDir(tempOutput, outputDir)
 }
 
 func main() {
@@ -186,7 +198,7 @@ func main() {
 		Long:                  "create a bootable image from an ostree native container",
 		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
-		Run:                   build,
+		RunE:                  build,
 	}
 
 	logrus.SetLevel(logrus.ErrorLevel)
