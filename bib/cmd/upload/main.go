@@ -31,7 +31,15 @@ func newClientFromArgs(flags *pflag.FlagSet) (*awscloud.AWS, error) {
 		return nil, err
 	}
 	keyID := os.Getenv("AWS_ACCESS_KEY_ID")
+	if keyID == "" {
+		fmt.Fprintln(os.Stderr, "AWS_ACCESS_KEY_ID environment variable is required")
+		os.Exit(1)
+	}
 	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+	if secretKey == "" {
+		fmt.Fprintln(os.Stderr, "AWS_SECRET_ACCESS_KEY environment variable is required")
+		os.Exit(1)
+	}
 	return awscloud.New(region, keyID, secretKey, "")
 }
 
