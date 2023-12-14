@@ -15,6 +15,7 @@ import (
 	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/ostree"
 	"github.com/osbuild/images/pkg/rpmmd"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -188,6 +189,7 @@ func main() {
 		Run:                   build,
 	}
 
+	logrus.SetLevel(logrus.ErrorLevel)
 	rootCmd.Flags().String("output", ".", "artifact output directory")
 	rootCmd.Flags().String("store", ".osbuild", "osbuild store for intermediate pipeline trees")
 	rootCmd.Flags().String("rpmmd", "/var/cache/osbuild/rpmmd", "rpm metadata cache directory")
