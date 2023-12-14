@@ -162,15 +162,16 @@ func build(cmd *cobra.Command, args []string) {
 
 	seedArg := int64(0)
 
-	fmt.Printf("Generating manifest for %s: ", config.Name)
+	manifest_fname := fmt.Sprintf("manifest-%s.json", imgType)
+	fmt.Printf("Generating %s ... ", manifest_fname)
 	mf, err := makeManifest(imgref, imgType, &config, repos, hostArch, seedArg, rpmCacheRoot)
 	check(err)
 	fmt.Print("DONE\n")
 
-	manifestPath := filepath.Join(outputDir, "manifest.json")
+	manifestPath := filepath.Join(outputDir, manifest_fname)
 	check(saveManifest(mf, manifestPath))
 
-	fmt.Printf("Building manifest: %s\n", manifestPath)
+	fmt.Printf("Building %s\n", manifest_fname)
 
 	_, err = osbuild.RunOSBuild(mf, osbuildStore, outputDir, exports, nil, nil, false, os.Stderr)
 	check(err)
