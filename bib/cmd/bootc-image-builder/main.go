@@ -130,6 +130,7 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 			return nil, err
 		}
 	}
+
 	mf, err := manifest.Serialize(depsolvedSets, containerSpecs, nil)
 	if err != nil {
 		fail(fmt.Sprintf("[ERROR] manifest serialization failed: %s", err.Error()))
@@ -200,8 +201,10 @@ func build(cmd *cobra.Command, args []string) {
 		exports = []string{"qcow2"}
 	case "ami":
 		exports = []string{"image"}
+	case "iso":
+		exports = []string{"bootiso"}
 	default:
-		fail(fmt.Sprintf("valid types are 'qcow2', 'ami', not: '%s'", imgType))
+		fail(fmt.Sprintf("valid types are 'qcow2', 'ami', 'iso', not: '%s'", imgType))
 	}
 
 	manifest_fname := fmt.Sprintf("manifest-%s.json", imgType)
