@@ -2,11 +2,14 @@
 
 A container for deploying bootable container images.
 
-## Installation
+## 🔨 Installation
 
-Have [podman](https://podman.io/) installed on your system. Either through your systems package manager if you're on Linux or through [Podman Desktop](https://podman.io/) if you are on Mac OS or Windows. If you want to run the resulting virtual machine(s) or installer media you can use [qemu](https://www.qemu.org/).
+Have [podman](https://podman.io/) installed on your system. Either through your systems package manager if you're on
+Linux or through [Podman Desktop](https://podman.io/) if you are on Mac OS or Windows. If you want to run the resulting
+virtual machine(s) or installer media you can use [qemu](https://www.qemu.org/).
 
 On macOS, the podman machine must be running in rootful mode:
+
 ```
 $ podman machine stop   # if already running
 Waiting for VM to exit...
@@ -15,17 +18,10 @@ $ podman machine set --rootful
 $ podman machine start
 ```
 
-## Supported image types
+## 🚀 Examples
 
-The tool can build the following image types:
-- qcow2 (`.qcow2`) for use with QEMU
-- ami (`.raw`) for AWS EC2
-
-The output format can be selected with the `--type` option (default `"qcow2"`).
-
-## Examples
-
-The following example builds a [Fedora ELN]() bootable container into a QCOW2 image for the architecture you're running the command on.
+The following example builds a [Fedora ELN]() bootable container into a QCOW2 image for the architecture you're running
+the command on.
 
 ```
 mkdir output
@@ -42,6 +38,7 @@ sudo podman run \
 ```
 
 ### Running the resulting QCOW2 file on Linux (x86_64)
+
 ```
 qemu-system-x86_64 \
     -M accel=kvm \
@@ -69,15 +66,62 @@ qemu-system-aarch64 \
     -snapshot output/qcow2/disk.qcow2
 ```
 
-## Volumes
-- `/output` - used for output files
-- `/store` - used for the osbuild store
-- `/rpmmd` - used for the dnf-json rpm metadata cache
+## 📝 Arguments
 
-## Adding a user
-`bootc-image-builder` accepts a `--config` option. `--config` needs to be a path to a JSON formatted file.
+```
+Usage:
+  sudo podman run \
+    --rm \
+    -it \
+    --privileged \
+    --pull=newer \
+    --security-opt label=type:unconfined_t \
+    -v $(pwd)/output:/output \
+    quay.io/centos-bootc/bootc-image-builder:latest \
+    <imgref>
 
-Example of such a config:
+Flags:
+      --config string   build config file
+      --tls-verify      require HTTPS and verify certificates when contacting registries (default true)
+      --type string     image type to build [qcow2, ami] (default "qcow2")
+```
+
+### Detailed description of positional flags 
+
+| Argument     | Description                                                      | Default Value |
+|--------------|------------------------------------------------------------------|:-------------:|
+| **--config** | Path to a [build config](#-build-config)                         |       ❌       |
+| --tls-verify | Require HTTPS and verify certificates when contacting registries |    `true`     |
+| **--type**   | [Image type](#-image-types) to build                             |    `qcow2`    |
+
+*💡 Tip: Flags in **bold** are the most important ones.* 
+
+## 💾 Image types
+
+The following image types are currently available via the `--type` argument:
+
+| Image type            | Target environment                                                                    |
+|-----------------------|---------------------------------------------------------------------------------------|
+| `ami`                 | [Amazon Machine Image](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) |
+| `qcow2` **(default)** | [QEMU](https://www.qemu.org/)                                                         |
+
+## 💽 Volumes
+
+The following volumes can be mounted inside the container:
+
+| Volume    | Purpose                                                | Required |
+|-----------|--------------------------------------------------------|:--------:|
+| `/output` | Used for storing the resulting artifacts               |    ✅     |
+| `/store`  | Used for the [osbuild store](https://www.osbuild.org/) |    No    |
+| `/rpmmd`  | Used for the DNF cache                                 |    No    |
+
+## 📝 Build config
+
+A build config is a JSON file with customizations for the resulting image. A path to the file is passed via  the `--config` argument. The customizations are specified under a `blueprint.customizations` object.
+
+As an example, let's show how you can add a user to the image:
+
+Firstly create a file `output/config.json` and put the following content into it:
 
 ```json
 {
@@ -87,7 +131,9 @@ Example of such a config:
         {
           "name": "foo",
           "password": "bar",
-          "groups": ["wheel"]
+          "groups": [
+            "wheel"
+          ]
         }
       ]
     }
@@ -95,32 +141,70 @@ Example of such a config:
 }
 ```
 
-Save this config as `output/config.json` and run:
+Then, run `bootc-image-builder` with the following arguments:
 
 ```
-sudo podman run --rm -it --privileged --pull=newer --security-opt label=type:unconfined_t -v $(pwd)/output:/output quay.io/centos-bootc/bootc-image-builder:latest quay.io/centos-bootc/fedora-bootc:eln --config /output/config.json
+sudo podman run \
+    --rm \
+    -it \
+    --privileged \
+    --pull=newer \
+    --security-opt label=type:unconfined_t \
+    -v $(pwd)/output:/output \
+    quay.io/centos-bootc/bootc-image-builder:latest \
+    --type qcow2 \
+    --config /output/config.json \
+    quay.io/centos-bootc/fedora-bootc:eln
 ```
 
-## Project
+### Users (`user`, array)
 
- * **Website**: <https://www.osbuild.org>
- * **Bug Tracker**: <https://github.com/osbuild/bootc-image-builder/issues>
- * **Matrix**: #image-builder on [fedoraproject.org](https://matrix.to/#/#image-builder:fedoraproject.org)
- * **Mailing List**: image-builder@redhat.com
- * **Changelog**: <https://github.com/osbuild/bootc-image-builder/releases>
+Possible fields:
+
+| Field      | Use                                        | Required |
+|------------|--------------------------------------------|:--------:|
+| `name`     | Name of the user                           |    ✅     |
+| `password` | Unencrypted password                       |    No    |
+| `groups`   | An array of secondary to put the user into |    No    |
+
+Example:
+
+```json
+{
+  "user": [
+    {
+      "name": "alice",
+      "password": "bob",
+      "groups": [
+        "wheel",
+        "admins"
+      ]
+    }
+  ]
+}
+```
+
+## 📊 Project
+
+* **Website**: <https://www.osbuild.org>
+* **Bug Tracker**: <https://github.com/osbuild/bootc-image-builder/issues>
+* **Matrix**: #image-builder on [fedoraproject.org](https://matrix.to/#/#image-builder:fedoraproject.org)
+* **Mailing List**: image-builder@redhat.com
+* **Changelog**: <https://github.com/osbuild/bootc-image-builder/releases>
 
 ### Contributing
 
-Please refer to the [developer guide](https://www.osbuild.org/guides/developer-guide/index.html) to learn about our workflow, code style and more.
+Please refer to the [developer guide](https://www.osbuild.org/guides/developer-guide/index.html) to learn about our
+workflow, code style and more.
 
-## Repository
+## 🗄️ Repository
 
- - **web**:   <https://github.com/osbuild/bootc-image-builder>
- - **https**: `https://github.com/osbuild/bootc-image-builder.git`
- - **ssh**:   `git@github.com:osbuild/bootc-image-builder.git`
+- **web**:   <https://github.com/osbuild/bootc-image-builder>
+- **https**: `https://github.com/osbuild/bootc-image-builder.git`
+- **ssh**:   `git@github.com:osbuild/bootc-image-builder.git`
 
-## License
+## 🧾 License
 
- - **Apache-2.0**
- - See LICENSE file for details.
+- **Apache-2.0**
+- See LICENSE file for details.
 
