@@ -13,7 +13,6 @@ import (
 	"github.com/osbuild/images/pkg/dnfjson"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/osbuild"
-	"github.com/osbuild/images/pkg/ostree"
 	"github.com/osbuild/images/pkg/rpmmd"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -40,10 +39,7 @@ func check(err error) {
 }
 
 type BuildConfig struct {
-	Name      string               `json:"name"`
-	OSTree    *ostree.ImageOptions `json:"ostree,omitempty"`
 	Blueprint *blueprint.Blueprint `json:"blueprint,omitempty"`
-	Depends   interface{}          `json:"depends,omitempty"` // ignored
 }
 
 // Parse embedded repositories and return repo configs for the given
@@ -144,9 +140,7 @@ func build(cmd *cobra.Command, args []string) {
 		fail(fmt.Sprintf("failed to create target directory: %s", err.Error()))
 	}
 
-	config := BuildConfig{
-		Name: "empty",
-	}
+	config := BuildConfig{}
 	if configFile != "" {
 		config = loadConfig(configFile)
 	}
