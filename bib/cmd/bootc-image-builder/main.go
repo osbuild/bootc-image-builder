@@ -163,7 +163,6 @@ func build(cmd *cobra.Command, args []string) {
 		Config:       &config,
 		Repos:        repos,
 		Architecture: hostArch,
-		Seed:         int64(0),
 	}
 	mf, err := makeManifest(manifestConfig, rpmCacheRoot)
 	check(err)

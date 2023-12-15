@@ -1,7 +1,10 @@
 package main
 
 import (
+	cryptorand "crypto/rand"
 	"fmt"
+	"math"
+	"math/big"
 	"math/rand"
 
 	"github.com/osbuild/images/pkg/arch"
@@ -33,16 +36,10 @@ type ManifestConfig struct {
 
 	// CPU architecture of the image
 	Architecture arch.Arch
-	Seed         int64
 }
 
 func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
-
-	source := rand.NewSource(c.Seed)
-
-	// math/rand is good enough in this case
-	/* #nosec G404 */
-	rng := rand.New(source)
+	rng := createRand()
 
 	var img image.ImageKind
 	var err error
@@ -149,4 +146,15 @@ func pipelinesForDiskImage(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, 
 	img.Filename = filename
 
 	return img, nil
+}
+
+func createRand() *rand.Rand {
+	seed, err := cryptorand.Int(cryptorand.Reader, big.NewInt(math.MaxInt64))
+	if err != nil {
+		panic("Cannot generate an RNG seed.")
+	}
+
+	// math/rand is good enough in this case
+	/* #nosec G404 */
+	return rand.New(rand.NewSource(seed.Int64()))
 }
