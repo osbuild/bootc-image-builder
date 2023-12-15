@@ -73,12 +73,12 @@ func loadConfig(path string) BuildConfig {
 	return conf
 }
 
-func makeManifest(imgref string, imgType string, config *BuildConfig, repos []rpmmd.RepoConfig, architecture arch.Arch, seedArg int64, cacheRoot string) (manifest.OSBuildManifest, error) {
-	manifest, err := Manifest(imgref, imgType, config, repos, architecture, seedArg)
+func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest, error) {
+	manifest, err := Manifest(c)
 	check(err)
 
 	// depsolve packages
-	solver := dnfjson.NewSolver(modulePlatformID, releaseVersion, architecture.String(), distroName, cacheRoot)
+	solver := dnfjson.NewSolver(modulePlatformID, releaseVersion, c.Architecture.String(), distroName, cacheRoot)
 	solver.SetDNFJSONPath("/usr/libexec/osbuild-depsolve-dnf")
 	depsolvedSets := make(map[string][]rpmmd.PackageSpec)
 	for name, pkgSet := range manifest.GetPackageSetChains() {
@@ -90,7 +90,7 @@ func makeManifest(imgref string, imgType string, config *BuildConfig, repos []rp
 	}
 
 	// resolve container
-	resolver := container.NewResolver(architecture.String())
+	resolver := container.NewResolver(c.Architecture.String())
 	containerSpecs := make(map[string][]container.Spec)
 	for plName, sourceSpecs := range manifest.GetContainerSourceSpecs() {
 		for _, c := range sourceSpecs {
@@ -155,11 +155,17 @@ func build(cmd *cobra.Command, args []string) {
 		fail(fmt.Sprintf("valid types are 'qcow2', 'ami', not: '%s'", imgType))
 	}
 
-	seedArg := int64(0)
-
 	manifest_fname := fmt.Sprintf("manifest-%s.json", imgType)
 	fmt.Printf("Generating %s ... ", manifest_fname)
-	mf, err := makeManifest(imgref, imgType, &config, repos, hostArch, seedArg, rpmCacheRoot)
+	manifestConfig := &ManifestConfig{
+		Imgref:       imgref,
+		ImgType:      imgType,
+		Config:       &config,
+		Repos:        repos,
+		Architecture: hostArch,
+		Seed:         int64(0),
+	}
+	mf, err := makeManifest(manifestConfig, rpmCacheRoot)
 	check(err)
 	fmt.Print("DONE\n")
 
