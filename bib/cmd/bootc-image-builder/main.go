@@ -135,6 +135,7 @@ func build(cmd *cobra.Command, args []string) {
 	rpmCacheRoot, _ := cmd.Flags().GetString("rpmmd")
 	configFile, _ := cmd.Flags().GetString("config")
 	imgType, _ := cmd.Flags().GetString("type")
+	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
 
 	if err := os.MkdirAll(outputDir, 0777); err != nil {
 		fail(fmt.Sprintf("failed to create target directory: %s", err.Error()))
@@ -163,6 +164,7 @@ func build(cmd *cobra.Command, args []string) {
 		Config:       &config,
 		Repos:        repos,
 		Architecture: hostArch,
+		TLSVerify:    tlsVerify,
 	}
 	mf, err := makeManifest(manifestConfig, rpmCacheRoot)
 	check(err)
@@ -194,5 +196,6 @@ func main() {
 	rootCmd.Flags().String("rpmmd", "/var/cache/osbuild/rpmmd", "rpm metadata cache directory")
 	rootCmd.Flags().String("config", "", "build config file")
 	rootCmd.Flags().String("type", "qcow2", "image type to build [qcow2, ami]")
+	rootCmd.Flags().Bool("tls-verify", true, "require HTTPS and verify certificates when contacting registries")
 	check(rootCmd.Execute())
 }

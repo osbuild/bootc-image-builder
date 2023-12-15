@@ -36,6 +36,9 @@ type ManifestConfig struct {
 
 	// CPU architecture of the image
 	Architecture arch.Arch
+
+	// TLSVerify specifies whether HTTPS and a valid TLS certificate are required
+	TLSVerify bool
 }
 
 func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
@@ -70,11 +73,10 @@ func pipelinesForDiskImage(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, 
 		fail("pipeline: no base image defined")
 	}
 	ref := "ostree/1/1/0"
-	tlsVerify := true
 	containerSource := container.SourceSpec{
 		Source:    c.Imgref,
 		Name:      c.Imgref,
-		TLSVerify: &tlsVerify,
+		TLSVerify: &c.TLSVerify,
 	}
 
 	img := image.NewOSTreeDiskImageFromContainer(containerSource, ref)
