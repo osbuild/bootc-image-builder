@@ -17,6 +17,7 @@ import (
 	"github.com/osbuild/images/pkg/rpmmd"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/cobra/doc"
 )
 
 //go:embed fedora-eln.json
@@ -26,6 +27,12 @@ const (
 	distroName       = "fedora-39"
 	modulePlatformID = "platform:f39"
 	releaseVersion   = "39"
+	helpTemplate     = `{{.Short}}{{if .Long}}
+
+Description:
+  {{.Long}}{{end}}
+
+{{if or .Runnable .HasSubCommands}}{{.UsageString}}{{end}}`
 )
 
 func fail(msg string) {
@@ -206,12 +213,13 @@ func build(cmd *cobra.Command, args []string) {
 
 func main() {
 	rootCmd := &cobra.Command{
-		Use:                   "bootc-image-builder <imgref>",
-		Long:                  "create a bootable image from an ostree native container",
-		Args:                  cobra.ExactArgs(1),
-		DisableFlagsInUseLine: true,
-		Run:                   build,
+		Use:   "bootc-image-builder [flags] IMGREF",
+		Short: "create bootable image",
+		Long:  "create a bootable image from an ostree native container",
+		Args:  cobra.ExactArgs(1),
+		Run:   build,
 	}
+	rootCmd.SetHelpTemplate(helpTemplate)
 
 	logrus.SetLevel(logrus.ErrorLevel)
 	rootCmd.Flags().String("output", ".", "artifact output directory")
@@ -230,6 +238,24 @@ func main() {
 	check(rootCmd.MarkFlagDirname("rpmmd"))
 	check(rootCmd.MarkFlagFilename("config"))
 	rootCmd.MarkFlagsRequiredTogether("aws-region", "aws-bucket", "aws-ami-name")
+
+	// Add manpage generation command 'doc'
+	docCmd := &cobra.Command{
+		Use:   "doc DIRECTORY",
+		Short: "Generate manpage files",
+		Long:  "Generate manpage files for all the commands, one per file",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			header := &doc.GenManHeader{
+				Title:   "bootc-image-builder",
+				Section: "1",
+				Source:  "bootc-image-builder",
+			}
+			return doc.GenManTree(rootCmd, header, args[0])
+		},
+		Args: cobra.ExactArgs(1),
+	}
+	docCmd.SetHelpTemplate(helpTemplate)
+	rootCmd.AddCommand(docCmd)
 
 	check(rootCmd.Execute())
 }
