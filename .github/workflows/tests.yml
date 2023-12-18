@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - main
+      - "*"
   # for merge queue
   merge_group:
 
