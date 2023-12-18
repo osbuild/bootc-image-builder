@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/osbuild/bootc-image-builder/bib/internal/uploader"
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/container"
@@ -140,6 +141,17 @@ func build(cmd *cobra.Command, args []string) {
 		fail(fmt.Sprintf("failed to create target directory: %s", err.Error()))
 	}
 
+	upload := false
+	if region, _ := cmd.Flags().GetString("aws-region"); region != "" {
+		if imgType != "ami" {
+			fail("aws flags set for non-ami image type")
+		}
+		// initialise the client to check if the env vars exist before building the image
+		_, err := uploader.NewAWSClient(region)
+		check(err)
+		upload = true
+	}
+
 	config := BuildConfig{}
 	if configFile != "" {
 		config = loadConfig(configFile)
@@ -177,7 +189,19 @@ func build(cmd *cobra.Command, args []string) {
 	_, err = osbuild.RunOSBuild(mf, osbuildStore, outputDir, exports, nil, nil, false, os.Stderr)
 	check(err)
 
-	fmt.Printf("Build complete. Results saved in\n%s\n", outputDir)
+	fmt.Println("Build complete!")
+	if upload {
+		switch imgType {
+		case "ami":
+			diskpath := filepath.Join(outputDir, exports[0], "disk.raw")
+			check(uploadAMI(diskpath, cmd.Flags()))
+		default:
+			panic(fmt.Sprintf("upload set but image type %s doesn't support uploading", imgType))
+		}
+	} else {
+		fmt.Printf("Results saved in\n%s\n", outputDir)
+	}
+
 }
 
 func main() {
@@ -196,5 +220,16 @@ func main() {
 	rootCmd.Flags().String("config", "", "build config file")
 	rootCmd.Flags().String("type", "qcow2", "image type to build [qcow2, ami]")
 	rootCmd.Flags().Bool("tls-verify", true, "require HTTPS and verify certificates when contacting registries")
+	rootCmd.Flags().String("aws-region", "", "target region for AWS uploads (only for type=ami)")
+	rootCmd.Flags().String("aws-bucket", "", "target S3 bucket name for intermediate storage when creating AMI (only for type=ami)")
+	rootCmd.Flags().String("aws-ami-name", "", "name for the AMI in AWS (only for type=ami)")
+
+	// flag rules
+	check(rootCmd.MarkFlagDirname("output"))
+	check(rootCmd.MarkFlagDirname("store"))
+	check(rootCmd.MarkFlagDirname("rpmmd"))
+	check(rootCmd.MarkFlagFilename("config"))
+	rootCmd.MarkFlagsRequiredTogether("aws-region", "aws-bucket", "aws-ami-name")
+
 	check(rootCmd.Execute())
 }
