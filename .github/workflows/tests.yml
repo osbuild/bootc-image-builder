@@ -77,3 +77,27 @@ jobs:
         # XDG_RUNTIME_DIR is set.
         # TODO: figure out what exactly podman needs
         sudo -E XDG_RUNTIME_DIR= pytest-3 -s -vv
+
+  integration-macos:
+    name: "Integration macos"
+    # needed to get latest cpu
+    runs-on: macos-13
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+    - name: Setup up python
+      uses: actions/setup-python@v4
+    - name: Setup up podman
+      run: |
+        brew install podman
+        # need to map only a subset of /var/tmp into the bootc tests
+        sudo mkdir -p /var/tmp/bootc-tests
+        podman machine init --rootful -v /var/tmp/bootc-tests:/var/tmp/
+        podman machine start
+    - name: Install test dependencies
+      run: |
+        sudo pip install pytest flake8
+    - name: Run tests
+      run: |
+        sudo pytest -s -vv
