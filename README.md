@@ -20,7 +20,7 @@ $ podman machine start
 
 ## 🚀 Examples
 
-The following example builds a [Fedora ELN]() bootable container into a QCOW2 image for the architecture you're running
+The following example builds a [Fedora ELN](https://docs.fedoraproject.org/en-US/eln/) bootable container into a QCOW2 image for the architecture you're running
 the command on.
 
 ```
