@@ -86,7 +86,7 @@ Flags:
       --type string     image type to build [qcow2, ami] (default "qcow2")
 ```
 
-### Detailed description of positional flags
+### Detailed description of optional flags
 
 | Argument     | Description                                                      | Default Value |
 |--------------|------------------------------------------------------------------|:-------------:|
