@@ -12,19 +12,51 @@ import (
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 )
 
+func checkAWSCredentialFileExists() (bool, error) {
+	// SMELL make this path configurable?
+	credentialFile := "$HOME/.aws/credentials"
+
+	expandedFilename := os.ExpandEnv(credentialFile)
+	_, err := os.Stat(expandedFilename)
+	if err != nil {
+		return false, fmt.Errorf("AWS credential file not found: %s", expandedFilename)
+	}
+	return true, nil
+}
+
 // NewAWSClient returns an awscloud.AWS configured with a session for a given
 // region. It reads the credentials from environment variables:
 // AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.
-func NewAWSClient(region string) (*awscloud.AWS, error) {
+// or tries to use "$HOME/.aws/credentials" otherwise
+func NewAWSClient(region string, awsProfile string) (*awscloud.AWS, error) {
+	foundCredentialFile := false
+
 	keyID := os.Getenv("AWS_ACCESS_KEY_ID")
 	if keyID == "" {
-		return nil, fmt.Errorf("AWS_ACCESS_KEY_ID environment variable is required")
+		var err error
+		foundCredentialFile, err = checkAWSCredentialFileExists()
+
+		if err != nil {
+			return nil, fmt.Errorf("AWS_ACCESS_KEY_ID environment variable or a valid '$HOME/.aws/credentials' is required")
+		}
 	}
-	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
-	if secretKey == "" {
-		return nil, fmt.Errorf("AWS_SECRET_ACCESS_KEY environment variable is required")
+
+	if foundCredentialFile {
+		// SMELL we might want to implement a separate function
+		//  like awscloud.newFromLocalProfile(awsProfile string, region string)
+		//  then we can remove this Setenv!
+		if  awsProfile != "default" {
+			os.Setenv("AWS_PROFILE", awsProfile)
+		}
+
+		return awscloud.NewDefault(region)
+	} else {
+		secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+		if secretKey == "" {
+			return nil, fmt.Errorf("AWS_SECRET_ACCESS_KEY environment variable is required, when AWS_ACCESS_KEY_ID is specified")
+		}
+		return awscloud.New(region, keyID, secretKey, "")
 	}
-	return awscloud.New(region, keyID, secretKey, "")
 }
 
 func UploadAndRegister(a *awscloud.AWS, filename, bucketName, imageName string) error {

@@ -136,6 +136,7 @@ func build(cmd *cobra.Command, args []string) {
 	configFile, _ := cmd.Flags().GetString("config")
 	imgType, _ := cmd.Flags().GetString("type")
 	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
+	awsProfile, _ := cmd.Flags().GetString("aws-profile")
 
 	if err := os.MkdirAll(outputDir, 0777); err != nil {
 		fail(fmt.Sprintf("failed to create target directory: %s", err.Error()))
@@ -144,10 +145,10 @@ func build(cmd *cobra.Command, args []string) {
 	upload := false
 	if region, _ := cmd.Flags().GetString("aws-region"); region != "" {
 		if imgType != "ami" {
-			fail("aws flags set for non-ami image type")
+			fail(fmt.Sprintf("aws flags set for non-ami image type (type is set to %s)", imgType))
 		}
 		// initialise the client to check if the env vars exist before building the image
-		_, err := uploader.NewAWSClient(region)
+		_, err := uploader.NewAWSClient(region, awsProfile)
 		check(err)
 		upload = true
 	}
@@ -223,6 +224,7 @@ func main() {
 	rootCmd.Flags().String("aws-region", "", "target region for AWS uploads (only for type=ami)")
 	rootCmd.Flags().String("aws-bucket", "", "target S3 bucket name for intermediate storage when creating AMI (only for type=ami)")
 	rootCmd.Flags().String("aws-ami-name", "", "name for the AMI in AWS (only for type=ami)")
+	rootCmd.Flags().String("aws-profile", "default", "credentials profile to use for uploading (only for type=ami)")
 
 	// flag rules
 	check(rootCmd.MarkFlagDirname("output"))

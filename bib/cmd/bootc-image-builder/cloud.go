@@ -18,8 +18,12 @@ func uploadAMI(path string, flags *pflag.FlagSet) error {
 	if err != nil {
 		return err
 	}
+	awsProfile, err := flags.GetString("aws-profile")
+	if err != nil {
+		return err
+	}
 
-	client, err := uploader.NewAWSClient(region)
+	client, err := uploader.NewAWSClient(region, awsProfile)
 	if err != nil {
 		return err
 	}
