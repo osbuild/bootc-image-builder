@@ -105,6 +105,52 @@ The following image types are currently available via the `--type` argument:
 | `ami`                 | [Amazon Machine Image](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) |
 | `qcow2` **(default)** | [QEMU](https://www.qemu.org/)                                                         |
 
+## ☁️ Cloud uploaders
+
+### AMI
+
+AMIs can be automatically uploaded to AWS by specifying the following flags:
+
+| Argument       | Description                                                      |
+|----------------|------------------------------------------------------------------|
+| --aws-ami-name | Name for the AMI in AWS                                          |
+| --aws-bucket   | Target S3 bucket name for intermediate storage when creating AMI |
+| --aws-region   | Target region for AWS uploads                                    |
+
+*Note: These flags must all be specified together. If none are specified, the AMI is exported to the output directory.*
+
+AWS credentials must be specified through two environment variables:
+| Variable name         | Description                                                                                                         |
+|-----------------------|---------------------------------------------------------------------------------------------------------------------|
+| AWS_ACCESS_KEY_ID     | AWS access key associated with an IAM account.                                                                      |
+| AWS_SECRET_ACCESS_KEY | Specifies the secret key associated with the access key. This is essentially the "password" for the access key.     |
+
+You can set these variables while running the container by saving them to a file and passing them using the `--env-file` flag for `podman run`.
+For example:
+```
+$ cat aws.secrets
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+
+$ sudo podman run \
+  --rm \
+  -it \
+  --privileged \
+  --pull=newer \
+  --env-file=aws.secrets \
+  --security-opt label=type:unconfined_t \
+  quay.io/centos-bootc/bootc-image-builder:latest \
+  --aws-ami-name fedora-bootc-ami \
+  --aws-bucket fedora-bootc-bucket \
+  --aws-region us-east-1 \
+  quay.io/centos-bootc/fedora-bootc:eln
+```
+
+*Notes:*
+- *The bucket must already exist in the selected region, bootc-image-builder will not create it if it is missing.*
+- *The output volume is not needed in this case. The image is uploaded to AWS and not exported.*
+
+
 ## 💽 Volumes
 
 The following volumes can be mounted inside the container:
