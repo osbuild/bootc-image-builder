@@ -86,7 +86,7 @@ Flags:
       --type string     image type to build [qcow2, ami] (default "qcow2")
 ```
 
-### Detailed description of positional flags 
+### Detailed description of positional flags
 
 | Argument     | Description                                                      | Default Value |
 |--------------|------------------------------------------------------------------|:-------------:|
@@ -94,7 +94,7 @@ Flags:
 | --tls-verify | Require HTTPS and verify certificates when contacting registries |    `true`     |
 | **--type**   | [Image type](#-image-types) to build                             |    `qcow2`    |
 
-*💡 Tip: Flags in **bold** are the most important ones.* 
+*💡 Tip: Flags in **bold** are the most important ones.*
 
 ## 💾 Image types
 
