@@ -1,0 +1,8 @@
+[allowlist]
+  description = "Test and example keys and passwords that should not be reported as leaks"
+  regexes = [
+      '''AKIAIOSFODNN7EXAMPLE''',  # example AWS access key ID in README
+      '''wJalrXUtnFEMI\/K7MDENG\/bPxRfiCYEXAMPLEKEY''',  # example AWS secret access key in README
+  ]
+  paths = [
+  ]
