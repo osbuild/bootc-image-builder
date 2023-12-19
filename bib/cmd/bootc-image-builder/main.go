@@ -43,6 +43,29 @@ type BuildConfig struct {
 	Blueprint *blueprint.Blueprint `json:"blueprint,omitempty"`
 }
 
+// canChownInPath checks if the ownership of files can be set in a given path.
+func canChownInPath(path string) (bool, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false, err
+	}
+	if !info.IsDir() {
+		return false, fmt.Errorf("%s is not a directory", path)
+	}
+
+	checkFile, err := os.CreateTemp(path, ".writecheck")
+	if err != nil {
+		return false, err
+	}
+	defer func() {
+		if err := os.Remove(checkFile.Name()); err != nil {
+			// print the error message for info but don't error out
+			fmt.Fprintf(os.Stderr, "error deleting %s: %s\n", checkFile.Name(), err.Error())
+		}
+	}()
+	return checkFile.Chown(os.Getuid(), os.Getgid()) == nil, nil
+}
+
 // Parse embedded repositories and return repo configs for the given
 // architecture.
 func loadRepos(archName string) []rpmmd.RepoConfig {
@@ -152,6 +175,9 @@ func build(cmd *cobra.Command, args []string) {
 		upload = true
 	}
 
+	canChown, err := canChownInPath(outputDir)
+	check(err)
+
 	config := BuildConfig{}
 	if configFile != "" {
 		config = loadConfig(configFile)
@@ -186,7 +212,12 @@ func build(cmd *cobra.Command, args []string) {
 
 	fmt.Printf("Building %s\n", manifest_fname)
 
-	_, err = osbuild.RunOSBuild(mf, osbuildStore, outputDir, exports, nil, nil, false, os.Stderr)
+	var osbuildEnv []string
+	if !canChown {
+		// set export options for osbuild
+		osbuildEnv = []string{"OSBUILD_EXPORT_FORCE_NO_PRESERVE_OWNER=1"}
+	}
+	_, err = osbuild.RunOSBuild(mf, osbuildStore, outputDir, exports, nil, osbuildEnv, false, os.Stderr)
 	check(err)
 
 	fmt.Println("Build complete!")
