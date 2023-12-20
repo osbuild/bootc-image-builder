@@ -95,6 +95,8 @@ func pipelinesForDiskImage(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, 
 
 	img.KernelOptionsAppend = []string{
 		"rw",
+		// TODO: Drop this as we expect kargs to come from the container image,
+		// xref https://github.com/CentOS/centos-bootc-layered/blob/main/cloud/usr/lib/bootc/install/05-cloud-kargs.toml
 		"console=tty0",
 		"console=ttyS0",
 	}
