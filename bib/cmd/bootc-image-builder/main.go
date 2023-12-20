@@ -43,6 +43,11 @@ type BuildConfig struct {
 	Blueprint *blueprint.Blueprint `json:"blueprint,omitempty"`
 }
 
+var (
+	osGetuid = os.Getuid
+	osGetgid = os.Getgid
+)
+
 // canChownInPath checks if the ownership of files can be set in a given path.
 func canChownInPath(path string) (bool, error) {
 	info, err := os.Stat(path)
@@ -63,7 +68,7 @@ func canChownInPath(path string) (bool, error) {
 			fmt.Fprintf(os.Stderr, "error deleting %s: %s\n", checkFile.Name(), err.Error())
 		}
 	}()
-	return checkFile.Chown(os.Getuid(), os.Getgid()) == nil, nil
+	return checkFile.Chown(osGetuid(), osGetgid()) == nil, nil
 }
 
 // Parse embedded repositories and return repo configs for the given
