@@ -111,16 +111,16 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 func saveManifest(ms manifest.OSBuildManifest, fpath string) error {
 	b, err := json.MarshalIndent(ms, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal data for %q: %s\n", fpath, err.Error())
+		return fmt.Errorf("failed to marshal data for %q: %s", fpath, err.Error())
 	}
 	b = append(b, '\n') // add new line at end of file
 	fp, err := os.Create(fpath)
 	if err != nil {
-		return fmt.Errorf("failed to create output file %q: %s\n", fpath, err.Error())
+		return fmt.Errorf("failed to create output file %q: %s", fpath, err.Error())
 	}
 	defer fp.Close()
 	if _, err := fp.Write(b); err != nil {
-		return fmt.Errorf("failed to write output file %q: %s\n", fpath, err.Error())
+		return fmt.Errorf("failed to write output file %q: %s", fpath, err.Error())
 	}
 	return nil
 }
