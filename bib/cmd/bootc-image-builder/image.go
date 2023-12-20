@@ -19,6 +19,9 @@ import (
 	"github.com/osbuild/images/pkg/runner"
 )
 
+// TODO: Auto-detect this from container image metadata
+const DEFAULT_SIZE = uint64(10 * GibiByte)
+
 type ManifestConfig struct {
 	// OCI image path (without the transport, that is always docker://)
 	Imgref string
@@ -140,8 +143,7 @@ func pipelinesForDiskImage(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, 
 	if !ok {
 		fail(fmt.Sprintf("pipelines: no partition tables defined for %s", c.Architecture))
 	}
-	size := uint64(10 * GibiByte)
-	pt, err := disk.NewPartitionTable(&basept, nil, size, disk.RawPartitioningMode, nil, rng)
+	pt, err := disk.NewPartitionTable(&basept, nil, DEFAULT_SIZE, disk.RawPartitioningMode, nil, rng)
 	check(err)
 	img.PartitionTable = pt
 
