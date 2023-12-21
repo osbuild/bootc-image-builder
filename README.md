@@ -107,7 +107,7 @@ The following image types are currently available via the `--type` argument:
 
 ## ☁️ Cloud uploaders
 
-### AMI
+### Amazon Machine Images (AMIs)
 
 AMIs can be automatically uploaded to AWS by specifying the following flags:
 
@@ -117,15 +117,48 @@ AMIs can be automatically uploaded to AWS by specifying the following flags:
 | --aws-bucket   | Target S3 bucket name for intermediate storage when creating AMI |
 | --aws-region   | Target region for AWS uploads                                    |
 
-*Note: These flags must all be specified together. If none are specified, the AMI is exported to the output directory.*
+*Notes:*
+- *These flags must all be specified together. If none are specified, the AMI is exported to the output directory.*
+- *The bucket must already exist in the selected region, bootc-image-builder will not create it if it is missing.*
+- *The output volume is not needed in this case. The image is uploaded to AWS and not exported.*
 
-AWS credentials must be specified through two environment variables:
+#### AWS credentials file
+If you already have a credentials file (usually in `$HOME/.aws/credentials`) you need to forward the
+directory to the container
+
+For example:
+ ```
+ $ sudo podman run \
+  --rm \
+  -it \
+  --privileged \
+  --pull=newer \
+  --security-opt label=type:unconfined_t \
+  -v $HOME/.aws:/root/.aws:ro \
+  --env AWS_PROFILE=default \
+  quay.io/centos-bootc/bootc-image-builder:latest \
+  --type ami \
+  --aws-ami-name fedora-bootc-ami \
+  --aws-bucket fedora-bootc-bucket \
+  --aws-region us-east-1 \
+  quay.io/centos-bootc/fedora-bootc:eln
+```
+
+Notes:
+ - *you can also inject **ALL** your AWS configuration parameters with `--env AWS_*`*
+
+see the [AWS CLI documentation](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html) for more information about other environment variables
+
+#### AWS credentials via environment
+AWS credentials can be specified through two environment variables:
 | Variable name         | Description                                                                                                         |
 |-----------------------|---------------------------------------------------------------------------------------------------------------------|
 | AWS_ACCESS_KEY_ID     | AWS access key associated with an IAM account.                                                                      |
 | AWS_SECRET_ACCESS_KEY | Specifies the secret key associated with the access key. This is essentially the "password" for the access key.     |
 
-You can set these variables while running the container by saving them to a file and passing them using the `--env-file` flag for `podman run`.
+Those **should not** be specified with `--env` as plain value, but you can silently hand them over with `--env AWS_*` or
+save these variables in a file and pass them using the `--env-file` flag for `podman run`.
+
 For example:
 ```
 $ cat aws.secrets
@@ -137,19 +170,15 @@ $ sudo podman run \
   -it \
   --privileged \
   --pull=newer \
-  --env-file=aws.secrets \
   --security-opt label=type:unconfined_t \
+  --env-file=aws.secrets \
   quay.io/centos-bootc/bootc-image-builder:latest \
+  --type ami \
   --aws-ami-name fedora-bootc-ami \
   --aws-bucket fedora-bootc-bucket \
   --aws-region us-east-1 \
   quay.io/centos-bootc/fedora-bootc:eln
 ```
-
-*Notes:*
-- *The bucket must already exist in the selected region, bootc-image-builder will not create it if it is missing.*
-- *The output volume is not needed in this case. The image is uploaded to AWS and not exported.*
-
 
 ## 💽 Volumes
 
