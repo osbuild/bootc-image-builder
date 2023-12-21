@@ -23,8 +23,12 @@ $ podman machine start
 The following example builds a [Fedora ELN](https://docs.fedoraproject.org/en-US/eln/) bootable container into a QCOW2 image for the architecture you're running
 the command on.
 
+The `fedora-bootc:eln` base image does not include a default user. This example injects a [user configuration file](#-build-config)
+by adding a volume-mount for the local file as well as the `--config` flag to the bootc-image-builder container.
+
 ```
-mkdir -p output
+# create output/config.json as described above
+
 sudo podman run \
     --rm \
     -it \
@@ -34,10 +38,15 @@ sudo podman run \
     -v $(pwd)/output:/output \
     quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
+    --config /output/config.json \
     quay.io/centos-bootc/fedora-bootc:eln
 ```
 
 ### Running the resulting QCOW2 file on Linux (x86_64)
+
+A virtual machine can be launched using `qemu-system-x86_64` or with `virt-install` as shown below.
+
+#### qemu-system-x86_64
 
 ```
 qemu-system-x86_64 \
@@ -48,6 +57,17 @@ qemu-system-x86_64 \
     -bios /usr/share/OVMF/OVMF_CODE.fd \
     -serial stdio \
     -snapshot output/qcow2/disk.qcow2
+```
+
+#### virt-install
+
+```
+sudo virt-install \
+    --name fedora-bootc \
+    --vcpus 4 \
+    --memory 4096 \
+    --import --disk ./output/qcow2/disk.qcow2,format=qcow2 \
+    --os-variant fedora-eln
 ```
 
 ### Running the resulting QCOW2 file on macOS (aarch64)
@@ -90,7 +110,7 @@ Flags:
 
 | Argument     | Description                                                      | Default Value |
 |--------------|------------------------------------------------------------------|:-------------:|
-| **--config** | Path to a [build config](#-build-config)                         |       ❌       |
+| **--config** | Path to a [build config](#-build-config)                         |       ❌      |
 | --tls-verify | Require HTTPS and verify certificates when contacting registries |    `true`     |
 | **--type**   | [Image type](#-image-types) to build                             |    `qcow2`    |
 
@@ -196,7 +216,7 @@ A build config is a JSON file with customizations for the resulting image. A pat
 
 As an example, let's show how you can add a user to the image:
 
-Firstly create a file `output/config.json` and put the following content into it:
+Firstly create a file `./output/config.json` and put the following content into it:
 
 ```json
 {
@@ -204,8 +224,9 @@ Firstly create a file `output/config.json` and put the following content into it
     "customizations": {
       "user": [
         {
-          "name": "foo",
-          "password": "bar",
+          "name": "alice",
+          "password": "bob",
+          "key": "ssh-rsa AAA ... user@email.com",
           "groups": [
             "wheel"
           ]
@@ -238,8 +259,9 @@ Possible fields:
 
 | Field      | Use                                        | Required |
 |------------|--------------------------------------------|:--------:|
-| `name`     | Name of the user                           |    ✅     |
+| `name`     | Name of the user                           |    ✅    |
 | `password` | Unencrypted password                       |    No    |
+| `key     ` | Public SSH key contents                    |    No    |
 | `groups`   | An array of secondary to put the user into |    No    |
 
 Example:
@@ -250,6 +272,7 @@ Example:
     {
       "name": "alice",
       "password": "bob",
+      "key": "ssh-rsa AAA ... user@email.com",
       "groups": [
         "wheel",
         "admins"
@@ -267,6 +290,29 @@ sudo podman build --tag bootc-image-builder .
 ```
 NOTE: running already the `podman build` as root avoids problems later as we need to run the building
 of the image as root anyway
+
+### Accessing the system
+
+With a virtual machine launched with the above [virt-install](#virt-install) example, access the system with
+
+```
+ssh -i /path/to/private/ssh-key alice@ip-address
+```
+
+Note that if you do not provide a password for the provided user, `sudo` will not work unless passwordless sudo
+is configured. The base image `quay.io/centos-bootc/fedora-bootc:eln` does not configure passwordless sudo.
+This can be configured in a derived bootc container by including the following in a Containerfile.
+
+```
+FROM quay.io/centos-bootc/fedora-bootc:eln
+ADD wheel-passwordless-sudo /etc/sudoers.d/wheel-passwordless-sudo
+```
+
+The contents of the file `$(pwd)/wheel-passwordless-sudo` should be
+
+```
+%wheel ALL=(ALL) NOPASSWD: ALL
+```
 
 ## 📊 Project
 
