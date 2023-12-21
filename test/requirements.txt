@@ -1,0 +1,3 @@
+pytest
+paramiko
+flake8

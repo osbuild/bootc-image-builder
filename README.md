@@ -24,7 +24,7 @@ The following example builds a [Fedora ELN](https://docs.fedoraproject.org/en-US
 the command on.
 
 ```
-mkdir output
+mkdir -p output
 sudo podman run \
     --rm \
     -it \
@@ -258,6 +258,15 @@ Example:
   ]
 }
 ```
+
+## Building
+
+To build the container locally you can run
+```shell
+sudo podman build --tag bootc-image-builder .
+```
+NOTE: running already the `podman build` as root avoids problems later as we need to run the building
+of the image as root anyway
 
 ## 📊 Project
 
