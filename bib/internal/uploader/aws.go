@@ -2,7 +2,6 @@ package uploader
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -11,21 +10,6 @@ import (
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 )
-
-// NewAWSClient returns an awscloud.AWS configured with a session for a given
-// region. It reads the credentials from environment variables:
-// AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.
-func NewAWSClient(region string) (*awscloud.AWS, error) {
-	keyID := os.Getenv("AWS_ACCESS_KEY_ID")
-	if keyID == "" {
-		return nil, fmt.Errorf("AWS_ACCESS_KEY_ID environment variable is required")
-	}
-	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
-	if secretKey == "" {
-		return nil, fmt.Errorf("AWS_SECRET_ACCESS_KEY environment variable is required")
-	}
-	return awscloud.New(region, keyID, secretKey, "")
-}
 
 func UploadAndRegister(a *awscloud.AWS, filename, bucketName, imageName string) error {
 	keyName := fmt.Sprintf("%s-%s", uuid.New().String(), filepath.Base(filename))
