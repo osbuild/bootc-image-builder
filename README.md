@@ -26,19 +26,20 @@ the command on.
 The `fedora-bootc:eln` base image does not include a default user. This example injects a [user configuration file](#-build-config)
 by adding a volume-mount for the local file as well as the `--config` flag to the bootc-image-builder container.
 
-```
-# create output/config.json as described above
+The following command will create a QCOW2 disk image. First, create `./config.json` as described above to configure user access.
 
+```
 sudo podman run \
     --rm \
     -it \
     --privileged \
     --pull=newer \
     --security-opt label=type:unconfined_t \
+    -v $(pwd)/config.json:/config.json \
     -v $(pwd)/output:/output \
     quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
-    --config /output/config.json \
+    --config /config.json \
     quay.io/centos-bootc/fedora-bootc:eln
 ```
 
@@ -216,7 +217,7 @@ A build config is a JSON file with customizations for the resulting image. A pat
 
 As an example, let's show how you can add a user to the image:
 
-Firstly create a file `./output/config.json` and put the following content into it:
+Firstly create a file `./config.json` and put the following content into it:
 
 ```json
 {
@@ -246,10 +247,11 @@ sudo podman run \
     --privileged \
     --pull=newer \
     --security-opt label=type:unconfined_t \
+    -v $(pwd)/config.json:/config.json \
     -v $(pwd)/output:/output \
     quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
-    --config /output/config.json \
+    --config /config.json \
     quay.io/centos-bootc/fedora-bootc:eln
 ```
 
