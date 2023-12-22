@@ -7,9 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/osbuild/bootc-image-builder/bib/internal/uploader"
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/blueprint"
+	"github.com/osbuild/images/pkg/cloud/awscloud"
 	"github.com/osbuild/images/pkg/container"
 	"github.com/osbuild/images/pkg/dnfjson"
 	"github.com/osbuild/images/pkg/manifest"
@@ -175,7 +175,7 @@ func build(cmd *cobra.Command, args []string) {
 			fail("aws flags set for non-ami image type")
 		}
 		// initialise the client to check if the env vars exist before building the image
-		_, err := uploader.NewAWSClient(region)
+		_, err := awscloud.NewDefault(region)
 		check(err)
 		upload = true
 	}

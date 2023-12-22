@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/osbuild/bootc-image-builder/bib/internal/uploader"
+	"github.com/osbuild/images/pkg/cloud/awscloud"
 	"github.com/spf13/pflag"
 )
 
@@ -19,7 +20,7 @@ func uploadAMI(path string, flags *pflag.FlagSet) error {
 		return err
 	}
 
-	client, err := uploader.NewAWSClient(region)
+	client, err := awscloud.NewDefault(region)
 	if err != nil {
 		return err
 	}

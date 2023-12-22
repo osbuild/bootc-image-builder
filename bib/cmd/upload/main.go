@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/uploader"
+	"github.com/osbuild/images/pkg/cloud/awscloud"
 )
 
 // check can be deferred from the top of command functions to exit with an
@@ -25,7 +26,7 @@ func uploadAMI(cmd *cobra.Command, args []string) {
 
 	region, err := flags.GetString("region")
 	check(err)
-	client, err := uploader.NewAWSClient(region)
+	client, err := awscloud.NewDefault(region)
 	check(err)
 	bucketName, err := flags.GetString("bucket")
 	check(err)
