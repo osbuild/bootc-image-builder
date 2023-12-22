@@ -172,7 +172,7 @@ func build(cmd *cobra.Command, args []string) {
 	upload := false
 	if region, _ := cmd.Flags().GetString("aws-region"); region != "" {
 		if imgType != "ami" {
-			fail("aws flags set for non-ami image type")
+			fail(fmt.Sprintf("aws flags set for non-ami image type (type is set to %s)", imgType))
 		}
 		// initialise the client to check if the env vars exist before building the image
 		_, err := awscloud.NewDefault(region)
