@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/aws/aws-sdk-go v1.49.9
 	github.com/google/uuid v1.5.0
-	github.com/osbuild/images v0.26.0
+	github.com/osbuild/images v0.27.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
