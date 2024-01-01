@@ -1,9 +1,9 @@
-import collections
 import json
 import os
 import pathlib
 import re
 import subprocess
+from typing import NamedTuple
 
 import pytest
 
@@ -35,13 +35,47 @@ def build_container_fixture():
     return container_tag
 
 
-def build_image(build_container, output_path, image_type):
+# image types to test
+SUPPORTED_IMAGE_TYPES = ["qcow2", "ami"]
+
+
+class ImageBuildResult(NamedTuple):
+    img_path: str
+    username: str
+    password: str
+    journal_output: str
+
+
+@pytest.fixture(name="image_type", scope="session")
+def image_type_fixture(tmpdir_factory, build_container, request):
     """
-    Build an image inside the passed build_container and return a
-    named tuple with the resulting image path and user/password
+    Build an image inside the passed build_container and return an
+    ImageBuildResult with the resulting image path and user/password
     """
+    # image_type is passed via special pytest parameter fixture
+    image_type = request.param
+
     username = "test"
     password = "password"
+
+    output_path = pathlib.Path(tmpdir_factory.mktemp("data")) / "output"
+    output_path.mkdir(exist_ok=True)
+
+    journal_log_path = output_path / "journal.log"
+    artifact = {
+        "qcow2": pathlib.Path(output_path) / "qcow2/disk.qcow2",
+        "ami": pathlib.Path(output_path) / "image/disk.raw",
+    }
+    assert len(artifact) == len(SUPPORTED_IMAGE_TYPES), \
+        "please keep artifact mapping and supported images in sync"
+    generated_img = artifact[image_type]
+
+    # if the fixture already ran and generated an image, use that
+    if generated_img.exists():
+        journal_output = journal_log_path.read_text(encoding="utf8")
+        return ImageBuildResult(generated_img, username, password, journal_output)
+
+    # no image yet, build it
     CFG = {
         "blueprint": {
             "customizations": {
@@ -73,31 +107,9 @@ def build_image(build_container, output_path, image_type):
         "--type", image_type,
     ])
     journal_output = testutil.journal_after_cursor(cursor)
+    journal_log_path.write_text(journal_output, encoding="utf8")
 
-    artifact = {
-        "qcow2": pathlib.Path(output_path) / "qcow2/disk.qcow2",
-        "ami": pathlib.Path(output_path) / "image/disk.raw",
-    }
-    generated_img = artifact[image_type]
-    ImageBuildResult = collections.namedtuple(
-        "ImageBuildResult", ["img_path", "username", "password", "journal_output"])
     return ImageBuildResult(generated_img, username, password, journal_output)
-
-
-@pytest.fixture(name="build_image_qcow2", scope="session")
-def build_qcow2_fixture(tmpdir_factory, build_container):
-    output_path = pathlib.Path(tmpdir_factory.mktemp("data")) / "output"
-    output_path.mkdir(exist_ok=True)
-
-    return build_image(build_container, output_path, "qcow2")
-
-
-@pytest.fixture(name="build_image_ami", scope="session")
-def build_ami_fixture(tmpdir_factory, build_container):
-    output_path = pathlib.Path(tmpdir_factory.mktemp("data")) / "output"
-    output_path.mkdir(exist_ok=True)
-
-    return build_image(build_container, output_path, "ami")
 
 
 def test_container_builds(build_container):
@@ -106,20 +118,20 @@ def test_container_builds(build_container):
     assert build_container in output
 
 
-def test_image_is_generated(build_image_qcow2, build_image_ami):
-    for image in [build_image_qcow2, build_image_ami]:
-        assert image.img_path.exists(), "output file missing, dir "\
-            f"content: {os.listdir(os.fspath(image.img_path))}"
+@pytest.mark.parametrize("image_type", SUPPORTED_IMAGE_TYPES, indirect=["image_type"])
+def test_image_is_generated(image_type):
+    assert image_type.img_path.exists(), "output file missing, dir "\
+        f"content: {os.listdir(os.fspath(image_type.img_path))}"
 
 
-def test_image_boots(build_image_qcow2, build_image_ami):
-    for image in [build_image_qcow2, build_image_ami]:
-        with VM(image.img_path) as test_vm:
-            exit_status, _ = test_vm.run("true", user=image.username, password=image.password)
-            assert exit_status == 0
-            exit_status, output = test_vm.run("echo hello", user="test", password="password")
-            assert exit_status == 0
-            assert "hello" in output
+@pytest.mark.parametrize("image_type", SUPPORTED_IMAGE_TYPES, indirect=["image_type"])
+def test_image_boots(image_type):
+    with VM(image_type.img_path) as test_vm:
+        exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
+        assert exit_status == 0
+        exit_status, output = test_vm.run("echo hello", user=image_type.username, password=image_type.password)
+        assert exit_status == 0
+        assert "hello" in output
 
 
 def log_has_osbuild_selinux_denials(log):
@@ -149,9 +161,9 @@ def has_selinux():
 
 
 @pytest.mark.skipif(not has_selinux(), reason="selinux not enabled")
-def test_image_build_without_se_linux_denials(build_image_qcow2, build_image_ami):
-    for build_image in [build_image_qcow2, build_image_ami]:
-        # the journal always contains logs from the image building
-        assert build_image.journal_output != ""
-        assert not log_has_osbuild_selinux_denials(build_image.journal_output), \
-            f"denials in log {build_image.journal_output}"
+@pytest.mark.parametrize("image_type", SUPPORTED_IMAGE_TYPES, indirect=["image_type"])
+def test_image_build_without_se_linux_denials(image_type):
+    # the journal always contains logs from the image building
+    assert image_type.journal_output != ""
+    assert not log_has_osbuild_selinux_denials(image_type.journal_output), \
+        f"denials in log {image_type.journal_output}"
