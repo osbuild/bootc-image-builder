@@ -28,7 +28,7 @@ def test_wait_ssh_ready_sleeps_no_connection(mocked_sleep, free_port):
 def test_wait_ssh_ready_sleeps_wrong_reply(free_port, tmp_path):
     with contextlib.ExitStack() as cm:
         p = subprocess.Popen(
-            f"echo not-ssh | nc -v -l {free_port}",
+            f"echo not-ssh | nc -v -l -p {free_port}",
             shell=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -37,7 +37,9 @@ def test_wait_ssh_ready_sleeps_wrong_reply(free_port, tmp_path):
         cm.callback(p.kill)
         # wait for nc to be ready
         while True:
-            if "Listening " in p.stdout.readline():
+            # netcat tranditional uses "listening", others "Listening"
+            # so just omit the first char
+            if "istening " in p.stdout.readline():
                 break
         # now connect
         with patch("time.sleep") as mocked_sleep:
@@ -50,6 +52,6 @@ def test_wait_ssh_ready_sleeps_wrong_reply(free_port, tmp_path):
 @pytest.mark.skipif(not has_executable("nc"), reason="needs nc")
 def test_wait_ssh_ready_integration(free_port, tmp_path):
     with contextlib.ExitStack() as cm:
-        p = subprocess.Popen(f"echo OpenSSH | nc -l {free_port}", shell=True)
+        p = subprocess.Popen(f"echo OpenSSH | nc -l -p {free_port}", shell=True)
         cm.callback(p.kill)
         wait_ssh_ready(free_port, sleep=0.1, max_wait_sec=10)
