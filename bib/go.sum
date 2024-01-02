@@ -213,8 +213,8 @@ github.com/opencontainers/runc v1.1.10 h1:EaL5WeO9lv9wmS6SASjszOeQdSctvpbu0DdBQB
 github.com/opencontainers/runc v1.1.10/go.mod h1:+/R6+KmDlh+hOO8NkjmgkG9Qzvypzk0yXxAPYYR65+M=
 github.com/opencontainers/runtime-spec v1.1.0 h1:HHUyrt9mwHUjtasSbXSMvs4cyFxh+Bll4AjJ9odEGpg=
 github.com/opencontainers/runtime-spec v1.1.0/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
-github.com/osbuild/images v0.27.0 h1:YXfinJtYA2qfMPdn4kiygEjNMM4OWGUmraWsdZVvm0k=
-github.com/osbuild/images v0.27.0/go.mod h1:NTfHFxj0kyOP1ur/nfX5KQki/fnbsAmY7v7Onk0l5wg=
+github.com/osbuild/images v0.28.0 h1:xKbBV8FkMobMUW66alk6eVkkjl5jF4gDNx8WWul6EHs=
+github.com/osbuild/images v0.28.0/go.mod h1:qWXkQRoeIuWn1v9Ibr2/tEjMSox0deP+MjUvkU14DZU=
 github.com/otiai10/copy v1.14.0 h1:dCI/t1iTdYGtkvCuBG2BgR6KZa83PTclw4U5n2wAllU=
 github.com/pelletier/go-toml v1.7.0/go.mod h1:vwGMzjaWMwyfHwgIBhI2YUM4fB6nL6lVAvS1LBMMhTE=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
