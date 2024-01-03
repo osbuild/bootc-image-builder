@@ -47,49 +47,32 @@ type ManifestConfig struct {
 func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
 	rng := createRand()
 
-	var img image.ImageKind
-	var err error
-
 	switch c.ImgType {
 	case "ami", "qcow2", "raw":
-		img, err = pipelinesForDiskImage(c, rng)
+		return manifestForDiskImage(c, rng)
 	case "iso":
-		img, err = pipelinesForISO(c, rng)
+		return manifestForISO(c, rng)
 	default:
 		return nil, fmt.Errorf("Manifest(): unsupported image type %q", c.ImgType)
 	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	mf := manifest.New()
-	mf.Distro = manifest.DISTRO_FEDORA
-	runner := &runner.Fedora{Version: 39}
-	_, err = img.InstantiateManifest(&mf, c.Repos, runner, rng)
-
-	return &mf, err
 }
 
-func pipelinesForDiskImage(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, error) {
+func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, error) {
 	if c.Imgref == "" {
 		return nil, fmt.Errorf("pipeline: no base image defined")
 	}
-	ref := "ostree/1/1/0"
 	containerSource := container.SourceSpec{
 		Source:    c.Imgref,
 		Name:      c.Imgref,
 		TLSVerify: &c.TLSVerify,
 	}
 
-	img := image.NewOSTreeDiskImageFromContainer(containerSource, ref)
-	img.ContainerBuildable = true
-
 	var customizations *blueprint.Customizations
 	if c.Config != nil && c.Config.Blueprint != nil {
 		customizations = c.Config.Blueprint.Customizations
 	}
 
+	img := image.NewBootcDiskImage(containerSource)
 	img.Users = users.UsersFromBP(customizations.GetUsers())
 	img.Groups = users.GroupsFromBP(customizations.GetGroups())
 
@@ -120,8 +103,7 @@ func pipelinesForDiskImage(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, 
 			BasePlatform: platform.BasePlatform{
 				ImageFormat: imageFormat,
 			},
-			BIOS:       true,
-			UEFIVendor: "fedora",
+			BIOS: true,
 		}
 	case arch.ARCH_AARCH64:
 		img.Platform = &platform.Aarch64{
@@ -133,13 +115,9 @@ func pipelinesForDiskImage(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, 
 		}
 	}
 
-	img.OSName = "default"
-
 	if kopts := customizations.GetKernel(); kopts != nil && kopts.Append != "" {
 		img.KernelOptionsAppend = append(img.KernelOptionsAppend, kopts.Append)
 	}
-
-	img.Workload = &NullWorkload{}
 
 	basept, ok := partitionTables[c.Architecture.String()]
 	if !ok {
@@ -153,10 +131,22 @@ func pipelinesForDiskImage(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, 
 
 	img.Filename = filename
 
-	return img, nil
+	mf := manifest.New()
+	mf.Distro = manifest.DISTRO_FEDORA
+	runner := &runner.Fedora{Version: 39}
+	containerSources := []container.SourceSpec{
+		{
+			Source:    c.Imgref,
+			Name:      c.Imgref,
+			TLSVerify: &c.TLSVerify,
+		},
+	}
+	_, err = img.InstantiateManifestFromContainers(&mf, containerSources, runner, rng)
+
+	return &mf, err
 }
 
-func pipelinesForISO(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, error) {
+func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, error) {
 	if c.Imgref == "" {
 		return nil, fmt.Errorf("pipeline: no base image defined")
 	}
@@ -320,7 +310,11 @@ func pipelinesForISO(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, error)
 	img.OSName = "default"
 	img.Filename = "install.iso"
 
-	return img, nil
+	mf := manifest.New()
+	mf.Distro = manifest.DISTRO_FEDORA
+	runner := &runner.Fedora{Version: 39}
+	_, err := img.InstantiateManifest(&mf, c.Repos, runner, rng)
+	return &mf, err
 }
 
 func createRand() *rand.Rand {
