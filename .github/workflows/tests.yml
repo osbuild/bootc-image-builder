@@ -79,8 +79,9 @@ jobs:
 
   integration-macos:
     name: "Integration macos"
-    # needed to get latest cpu
-    runs-on: macos-13
+    # disabled GH runner as it takes ~50min to run this test
+    #runs-on: macos-13  # needed to get latest cpu
+    runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
       with:
