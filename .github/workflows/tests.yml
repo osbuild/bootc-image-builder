@@ -79,7 +79,8 @@ jobs:
 
   integration-macos:
     name: "Integration macos"
-    # disabled GH runner as it takes ~50min to run this test
+    # disabled GH runner as it takes ~50min to run this test, self-hosted
+    # is much faster (~15min)
     #runs-on: macos-13  # needed to get latest cpu
     runs-on: self-hosted
     steps:
@@ -90,12 +91,16 @@ jobs:
       uses: actions/setup-python@v5
       with:
         cache: 'pip'
-    - run: pip install -r test/requirements.txt
+    - run: python3 -m pip install -r test/requirements.txt
     - name: Setup up podman
       run: |
         brew install podman netcat
-        podman machine init --rootful
-        podman machine start
+        if ! podman machine inspect; then
+            podman machine init --rootful
+        fi
+        if [ "$(podman machine inspect --format='{{.State}}')" != "running" ]; then
+            podman machine start
+        fi
     - name: Run tests
       run: |
         pytest -rs -s -vv
