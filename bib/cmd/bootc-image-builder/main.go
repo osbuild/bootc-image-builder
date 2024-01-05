@@ -155,7 +155,9 @@ func saveManifest(ms manifest.OSBuildManifest, fpath string) error {
 }
 
 func build(cmd *cobra.Command, args []string) {
-	err := setup.EnsureEnvironment()
+	err := setup.Validate()
+	check(err)
+	err = setup.EnsureEnvironment()
 	check(err)
 
 	hostArch := arch.Current()

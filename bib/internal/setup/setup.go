@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/osbuild/bootc-image-builder/bib/internal/podmanutils"
 	"github.com/osbuild/bootc-image-builder/bib/internal/utils"
 )
 
@@ -74,5 +75,12 @@ func EnsureEnvironment() error {
 // Validate checks that the environment is supported (e.g. caller set up the
 // container correctly)
 func Validate() error {
+	isRootless, err := podmanutils.IsRootless()
+	if err != nil {
+		return fmt.Errorf("checking rootless: %w", err)
+	}
+	if isRootless {
+		return fmt.Errorf("this command must be run in rootful (not rootless) podman")
+	}
 	return nil
 }
