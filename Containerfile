@@ -15,7 +15,7 @@ FROM registry.fedoraproject.org/fedora:39
 COPY ./group_osbuild-osbuild-fedora-39.repo /etc/yum.repos.d/
 RUN dnf install -y osbuild osbuild-ostree osbuild-depsolve-dnf && dnf clean all
 COPY --from=builder /build/bin/bootc-image-builder /usr/bin/bootc-image-builder
-COPY prepare.sh entrypoint.sh /
+COPY entrypoint.sh /
 
 ENTRYPOINT ["/entrypoint.sh"]
 VOLUME /output
