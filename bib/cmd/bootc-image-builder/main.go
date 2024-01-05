@@ -242,30 +242,36 @@ func build(cmd *cobra.Command, args []string) {
 
 func main() {
 	rootCmd := &cobra.Command{
-		Use:                   "bootc-image-builder <imgref>",
-		Long:                  "create a bootable image from an ostree native container",
+		Use:  "bootc-image-builder",
+		Long: "create a bootable image from an ostree native container",
+	}
+
+	buildCmd := &cobra.Command{
+		Use:                   "build",
+		Long:                  rootCmd.Long,
 		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
 		Run:                   build,
 	}
+	rootCmd.AddCommand(buildCmd)
 
 	logrus.SetLevel(logrus.ErrorLevel)
-	rootCmd.Flags().String("output", ".", "artifact output directory")
-	rootCmd.Flags().String("store", ".osbuild", "osbuild store for intermediate pipeline trees")
-	rootCmd.Flags().String("rpmmd", "/var/cache/osbuild/rpmmd", "rpm metadata cache directory")
-	rootCmd.Flags().String("config", "", "build config file")
-	rootCmd.Flags().String("type", "qcow2", "image type to build [qcow2, ami]")
-	rootCmd.Flags().Bool("tls-verify", true, "require HTTPS and verify certificates when contacting registries")
-	rootCmd.Flags().String("aws-region", "", "target region for AWS uploads (only for type=ami)")
-	rootCmd.Flags().String("aws-bucket", "", "target S3 bucket name for intermediate storage when creating AMI (only for type=ami)")
-	rootCmd.Flags().String("aws-ami-name", "", "name for the AMI in AWS (only for type=ami)")
+	buildCmd.Flags().String("output", ".", "artifact output directory")
+	buildCmd.Flags().String("store", ".osbuild", "osbuild store for intermediate pipeline trees")
+	buildCmd.Flags().String("rpmmd", "/var/cache/osbuild/rpmmd", "rpm metadata cache directory")
+	buildCmd.Flags().String("config", "", "build config file")
+	buildCmd.Flags().String("type", "qcow2", "image type to build [qcow2, ami]")
+	buildCmd.Flags().Bool("tls-verify", true, "require HTTPS and verify certificates when contacting registries")
+	buildCmd.Flags().String("aws-region", "", "target region for AWS uploads (only for type=ami)")
+	buildCmd.Flags().String("aws-bucket", "", "target S3 bucket name for intermediate storage when creating AMI (only for type=ami)")
+	buildCmd.Flags().String("aws-ami-name", "", "name for the AMI in AWS (only for type=ami)")
 
 	// flag rules
-	check(rootCmd.MarkFlagDirname("output"))
-	check(rootCmd.MarkFlagDirname("store"))
-	check(rootCmd.MarkFlagDirname("rpmmd"))
-	check(rootCmd.MarkFlagFilename("config"))
-	rootCmd.MarkFlagsRequiredTogether("aws-region", "aws-bucket", "aws-ami-name")
+	check(buildCmd.MarkFlagDirname("output"))
+	check(buildCmd.MarkFlagDirname("store"))
+	check(buildCmd.MarkFlagDirname("rpmmd"))
+	check(buildCmd.MarkFlagFilename("config"))
+	buildCmd.MarkFlagsRequiredTogether("aws-region", "aws-bucket", "aws-ami-name")
 
 	check(rootCmd.Execute())
 }
