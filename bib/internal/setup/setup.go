@@ -9,6 +9,7 @@ import (
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/podmanutils"
 	"github.com/osbuild/bootc-image-builder/bib/internal/utils"
+	"golang.org/x/sys/unix"
 )
 
 // EnsureEnvironment mutates external filesystem state as necessary
@@ -82,5 +83,16 @@ func Validate() error {
 	if isRootless {
 		return fmt.Errorf("this command must be run in rootful (not rootless) podman")
 	}
+
+	// Having /sys be writable is an easy to check proxy for privileges; more effective
+	// is really looking for CAP_SYS_ADMIN, but that involves more Go libraries.
+	var stvfsbuf unix.Statfs_t
+	if err := unix.Statfs("/sys", &stvfsbuf); err != nil {
+		return fmt.Errorf("failed to stat /sys: %w", err)
+	}
+	if (stvfsbuf.Flags & unix.ST_RDONLY) > 0 {
+		return fmt.Errorf("this command requires a privileged container")
+	}
+
 	return nil
 }
