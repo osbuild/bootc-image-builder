@@ -3,13 +3,42 @@ import subprocess
 import sys
 from io import StringIO
 
+from paramiko.client import AutoAddPolicy, SSHClient
+
 from testutil import get_free_port, wait_ssh_ready
 
 
-from paramiko.client import AutoAddPolicy, SSHClient
-
-
 class VM:
+
+    def __del__(self):
+        self.force_stop()
+
+    def start(self):
+        raise NotImplementedError
+
+    def _log(self, msg):
+        # XXX: use a proper logger
+        sys.stdout.write(msg.rstrip("\n") + "\n")
+
+    def wait_ssh_ready(self):
+        wait_ssh_ready(self._ssh_port, sleep=1, max_wait_sec=600)
+
+    def force_stop(self):
+        raise NotImplementedError
+
+    def run(self, cmd, user, password):
+        raise NotImplementedError
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, type, value, tb):
+        self.force_stop()
+
+
+class QEMU(VM):
+
     MEM = "2000"
     # TODO: support qemu-system-aarch64 too :)
     QEMU = "qemu-system-x86_64"
@@ -19,9 +48,6 @@ class VM:
         self._qemu_p = None
         self._ssh_port = None
         self._snapshot = snapshot
-
-    def __del__(self):
-        self.force_stop()
 
     def start(self):
         if self._qemu_p is not None:
@@ -51,24 +77,10 @@ class VM:
         self.wait_ssh_ready()
         self._log(f"vm ready at port {self._ssh_port}")
 
-    def _log(self, msg):
-        # XXX: use a proper logger
-        sys.stdout.write(msg.rstrip("\n") + "\n")
-
-    def wait_ssh_ready(self):
-        wait_ssh_ready(self._ssh_port, sleep=1, max_wait_sec=600)
-
     def force_stop(self):
         if self._qemu_p:
             self._qemu_p.kill()
             self._qemu_p = None
-
-    def __enter__(self):
-        self.start()
-        return self
-
-    def __exit__(self, type, value, tb):
-        self.force_stop()
 
     def run(self, cmd, user, password):
         if not self._qemu_p:
