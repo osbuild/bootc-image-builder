@@ -1,6 +1,9 @@
 # bootc-image-builder
 
-A container for deploying bootable container images.
+A container to create disk-images from [bootc](https://github.com/containers/bootc) container inputs.
+
+This tools allows to build and deploy disk-images from bootc container
+inputs.
 
 ## 🔨 Installation
 
