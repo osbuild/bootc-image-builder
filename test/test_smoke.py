@@ -46,10 +46,12 @@ SUPPORTED_IMAGE_TYPES = ["qcow2", "ami"]
 
 
 class ImageBuildResult(NamedTuple):
+    img_type: str
     img_path: str
     username: str
     password: str
     journal_output: str
+    metadata: dict = {}
 
 
 @pytest.fixture(name="image_type", scope="session")
@@ -86,7 +88,7 @@ def image_type_fixture(tmpdir_factory, build_container, request):
     # if the fixture already ran and generated an image, use that
     if generated_img.exists():
         journal_output = journal_log_path.read_text(encoding="utf8")
-        return ImageBuildResult(generated_img, username, password, journal_output)
+        return ImageBuildResult(image_type, generated_img, username, password, journal_output)
 
     # no image yet, build it
     CFG = {
@@ -138,9 +140,17 @@ def image_type_fixture(tmpdir_factory, build_container, request):
             *upload_args,
         ])
     journal_output = testutil.journal_after_cursor(cursor)
+    metadata = {}
+    if image_type == "ami":
+        metadata["ami_id"] = parse_ami_id_from_log(journal_output)
+
+        def del_ami():
+            testutil.deregister_ami(metadata["ami_id"])
+        request.addfinalizer(del_ami)
+
     journal_log_path.write_text(journal_output, encoding="utf8")
 
-    return ImageBuildResult(generated_img, username, password, journal_output)
+    return ImageBuildResult(image_type, generated_img, username, password, journal_output, metadata)
 
 
 def test_container_builds(build_container):
@@ -169,6 +179,13 @@ def test_image_boots(image_type):
 def log_has_osbuild_selinux_denials(log):
     OSBUID_SELINUX_DENIALS_RE = re.compile(r"(?ms)avc:\ +denied.*osbuild")
     return re.search(OSBUID_SELINUX_DENIALS_RE, log)
+
+
+def parse_ami_id_from_log(log_output):
+    ami_id_re = re.compile(r"AMI registered: (?P<ami_id>ami-[a-z0-9]+)\n")
+    ami_ids = ami_id_re.findall(log_output)
+    assert len(ami_ids) > 0
+    return ami_ids[0]
 
 
 def test_osbuild_selinux_denials_re_works():
