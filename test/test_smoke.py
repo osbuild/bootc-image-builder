@@ -107,18 +107,36 @@ def image_type_fixture(tmpdir_factory, build_container, request):
     config_json_path.write_text(json.dumps(CFG), encoding="utf-8")
 
     cursor = testutil.journal_cursor()
-    # run container to deploy an image into output/qcow2/disk.qcow2
-    subprocess.check_call([
-        "podman", "run", "--rm",
-        "--privileged",
-        "--security-opt", "label=type:unconfined_t",
-        "-v", f"{output_path}:/output",
-        "-v", "/store",  # share the cache between builds
-        build_container,
-        container_to_build_ref,
-        "--config", "/output/config.json",
-        "--type", image_type,
-    ])
+
+    upload_args = []
+    creds_args = []
+    with tempfile.TemporaryDirectory() as tempdir:
+        if image_type == "ami":
+            upload_args = [
+                f"--aws-ami-name=bootc-image-builder-test-{str(uuid.uuid4())}",
+                f"--aws-region={testutil.AWS_REGION}",
+                "--aws-bucket=bootc-image-builder-ci",
+            ]
+
+            creds_file = pathlib.Path(tempdir) / "aws.creds"
+            testutil.write_aws_creds(creds_file)
+            creds_args = ["-v", f"{creds_file}:/root/.aws/credentials:ro",
+                          "--env", "AWS_PROFILE=default"]
+
+        # run container to deploy an image into a bootable disk and upload to a cloud service if applicable
+        subprocess.check_call([
+            "podman", "run", "--rm",
+            "--privileged",
+            "--security-opt", "label=type:unconfined_t",
+            "-v", f"{output_path}:/output",
+            "-v", "/store",  # share the cache between builds
+            *creds_args,
+            build_container,
+            container_to_build_ref,
+            "--config", "/output/config.json",
+            "--type", image_type,
+            *upload_args,
+        ])
     journal_output = testutil.journal_after_cursor(cursor)
     journal_log_path.write_text(journal_output, encoding="utf8")
 
