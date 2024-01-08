@@ -10,7 +10,7 @@ import pytest
 
 # local test utils
 import testutil
-from vm import VM
+from vm import QEMU
 
 if not testutil.has_executable("podman"):
     pytest.skip("no podman, skipping integration tests that required podman", allow_module_level=True)
@@ -138,7 +138,7 @@ def test_image_is_generated(image_type):
 @pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
 @pytest.mark.parametrize("image_type", SUPPORTED_IMAGE_TYPES, indirect=["image_type"])
 def test_image_boots(image_type):
-    with VM(image_type.img_path) as test_vm:
+    with QEMU(image_type.img_path) as test_vm:
         exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
         assert exit_status == 0
         exit_status, output = test_vm.run("echo hello", user=image_type.username, password=image_type.password)
