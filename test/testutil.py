@@ -1,10 +1,13 @@
 import os
 import pathlib
 import platform
-import socket
 import shutil
+import socket
 import subprocess
 import time
+
+import boto3
+from botocore.exceptions import ClientError
 
 AWS_REGION = "us-east-1"
 
@@ -77,3 +80,27 @@ def can_start_rootful_containers():
             return res.stdout.strip() == "true"
         case unknown:
             raise ValueError(f"unknown platform {unknown}")
+
+
+def write_aws_creds(path):
+    key_id = os.environ.get("AWS_ACCESS_KEY_ID")
+    secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    if not key_id or not secret_key:
+        print("WARNING: aws credentials not available")
+    with open(path, mode="w", encoding="utf-8") as creds_file:
+        creds_file.write("[default]\n")
+        creds_file.write(f"aws_access_key_id = {key_id}\n")
+        creds_file.write(f"aws_secret_access_key = {secret_key}\n")
+
+
+def delete_ami(ami_id):
+    ec2 = boto3.resource("ec2", region_name=AWS_REGION)
+    try:
+        print(f"Deregistering image {ami_id}")
+        ec2.deregister_image(ImageId=ami_id)
+        print("Image deregistered")
+    except ClientError as err:
+        err_code = err.response["Error"]["Code"]
+        err_msg = err.response["Error"]["Message"]
+        print(f"Couldn't deregister image {ami_id}.")
+        print(f"Error {err_code}: {err_msg}")
