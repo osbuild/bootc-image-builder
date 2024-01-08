@@ -40,6 +40,7 @@ def build_container_fixture():
 
 # image types to test
 SUPPORTED_IMAGE_TYPES = ["qcow2", "ami"]
+CLOUD_IMAGE_TYPES = ["ami"]
 
 
 class ImageBuildResult(NamedTuple):
@@ -164,6 +165,21 @@ def test_image_boots(image_type):
         exit_status, output = test_vm.run("echo hello", user=image_type.username, password=image_type.password)
         assert exit_status == 0
         assert "hello" in output
+
+
+@pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
+@pytest.mark.parametrize("image_type", CLOUD_IMAGE_TYPES, indirect=["image_type"])
+def test_image_boots_cloud(image_type):
+    if image_type.img_type == "ami":
+        with AWS(image_type.metadata["ami_id"]) as test_vm:
+            exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
+            assert exit_status == 0
+            exit_status, output = test_vm.run("echo hello", user=image_type.username, password=image_type.password)
+            assert exit_status == 0
+            assert "hello" in output
+        return
+
+    raise NotImplementedError(f"no cloud boot test configured for image type {image_type.img_type}")
 
 
 def log_has_osbuild_selinux_denials(log):
