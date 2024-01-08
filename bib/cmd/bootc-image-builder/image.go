@@ -55,6 +55,8 @@ func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
 		fallthrough
 	case "ami":
 		img, err = pipelinesForDiskImage(c, rng)
+	case "iso":
+		img, err = pipelinesForISO(c, rng)
 	default:
 		fail(fmt.Sprintf("Manifest(): unsupported image type %q", c.ImgType))
 	}
@@ -150,6 +152,195 @@ func pipelinesForDiskImage(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, 
 	img.PartitionTable = pt
 
 	img.Filename = filename
+
+	return img, nil
+}
+
+func pipelinesForISO(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, error) {
+	if c.Imgref == "" {
+		fail("pipeline: no base image defined")
+	}
+	ref := "ostree/1/1/0"
+	tlsVerify := true
+	containerSource := container.SourceSpec{
+		Source:    c.Imgref,
+		Name:      c.Imgref,
+		TLSVerify: &tlsVerify,
+	}
+
+	img := image.NewAnacondaContainerInstaller(containerSource, ref)
+	img.ExtraBasePackages = rpmmd.PackageSet{
+		Include: []string{
+			"anaconda-dracut",
+			"atheros-firmware",
+			"brcmfmac-firmware",
+			"curl",
+			"dracut-config-generic",
+			"dracut-network",
+			"hostname",
+			"iwlwifi-dvm-firmware",
+			"iwlwifi-mvm-firmware",
+			"kernel",
+			"linux-firmware",
+			"less",
+			"nfs-utils",
+			"openssh-clients",
+			"ostree",
+			"plymouth",
+			"realtek-firmware",
+			"rng-tools",
+			"rpcbind",
+			"selinux-policy-targeted",
+			"systemd",
+			"tar",
+			"xfsprogs",
+			"xz",
+		},
+	}
+
+	img.ExtraBasePackages = img.ExtraBasePackages.Append(rpmmd.PackageSet{
+		Include: []string{
+			"aajohan-comfortaa-fonts",
+			"abattis-cantarell-fonts",
+			"alsa-firmware",
+			"alsa-tools-firmware",
+			"anaconda",
+			"anaconda-dracut",
+			"anaconda-install-env-deps",
+			"anaconda-widgets",
+			"atheros-firmware",
+			"audit",
+			"bind-utils",
+			"bitmap-fangsongti-fonts",
+			"brcmfmac-firmware",
+			"bzip2",
+			"cryptsetup",
+			"curl",
+			"dbus-x11",
+			"dejavu-sans-fonts",
+			"dejavu-sans-mono-fonts",
+			"device-mapper-persistent-data",
+			"dmidecode",
+			"dnf",
+			"dracut-config-generic",
+			"dracut-network",
+			"efibootmgr",
+			"ethtool",
+			"fcoe-utils",
+			"ftp",
+			"gdb-gdbserver",
+			"gdisk",
+			"glibc-all-langpacks",
+			"gnome-kiosk",
+			"google-noto-sans-cjk-ttc-fonts",
+			"grub2-tools",
+			"grub2-tools-extra",
+			"grub2-tools-minimal",
+			"grubby",
+			"gsettings-desktop-schemas",
+			"hdparm",
+			"hexedit",
+			"hostname",
+			"initscripts",
+			"ipmitool",
+			"iwlwifi-dvm-firmware",
+			"iwlwifi-mvm-firmware",
+			"jomolhari-fonts",
+			"kbd",
+			"kbd-misc",
+			"kdump-anaconda-addon",
+			"kernel",
+			"khmeros-base-fonts",
+			"less",
+			"libblockdev-lvm-dbus",
+			"libibverbs",
+			"libreport-plugin-bugzilla",
+			"libreport-plugin-reportuploader",
+			"librsvg2",
+			"linux-firmware",
+			"lldpad",
+			"lsof",
+			"madan-fonts",
+			"mtr",
+			"mt-st",
+			"net-tools",
+			"nfs-utils",
+			"nmap-ncat",
+			"nm-connection-editor",
+			"nss-tools",
+			"openssh-clients",
+			"openssh-server",
+			"ostree",
+			"pciutils",
+			"perl-interpreter",
+			"pigz",
+			"plymouth",
+			"python3-pyatspi",
+			"rdma-core",
+			"realtek-firmware",
+			"rit-meera-new-fonts",
+			"rng-tools",
+			"rpcbind",
+			"rpm-ostree",
+			"rsync",
+			"rsyslog",
+			"selinux-policy-targeted",
+			"sg3_utils",
+			"sil-abyssinica-fonts",
+			"sil-padauk-fonts",
+			"smartmontools",
+			"spice-vdagent",
+			"strace",
+			"systemd",
+			"tar",
+			"tigervnc-server-minimal",
+			"tigervnc-server-module",
+			"udisks2",
+			"udisks2-iscsi",
+			"usbutils",
+			"vim-minimal",
+			"volume_key",
+			"wget",
+			"xfsdump",
+			"xfsprogs",
+			"xorg-x11-drivers",
+			"xorg-x11-fonts-misc",
+			"xorg-x11-server-Xorg",
+			"xorg-x11-xauth",
+			"xrdb",
+			"xz",
+		},
+	})
+	img.ISOLabelTempl = "Container-Installer-%s"
+
+	var customizations *blueprint.Customizations
+	if c.Config != nil && c.Config.Blueprint != nil {
+		customizations = c.Config.Blueprint.Customizations
+	}
+
+	img.Users = users.UsersFromBP(customizations.GetUsers())
+	img.Groups = users.GroupsFromBP(customizations.GetGroups())
+
+	switch c.Architecture {
+	case arch.ARCH_X86_64:
+		img.Platform = &platform.X86{
+			BasePlatform: platform.BasePlatform{
+				ImageFormat: platform.FORMAT_ISO,
+			},
+			BIOS:       true,
+			UEFIVendor: "fedora",
+		}
+	case arch.ARCH_AARCH64:
+		img.Platform = &platform.Aarch64{
+			BasePlatform: platform.BasePlatform{
+				ImageFormat: platform.FORMAT_ISO,
+			},
+			UEFIVendor: "fedora",
+		}
+	}
+
+	img.OSName = "default"
+	img.Filename = "install.iso"
 
 	return img, nil
 }
