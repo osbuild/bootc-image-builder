@@ -4,13 +4,15 @@ import pathlib
 import platform
 import re
 import subprocess
+import tempfile
+import uuid
 from typing import NamedTuple
 
 import pytest
 
 # local test utils
 import testutil
-from vm import VM
+from vm import AWS, QEMU
 
 if not testutil.has_executable("podman"):
     pytest.skip("no podman, skipping integration tests that required podman", allow_module_level=True)
@@ -38,13 +40,16 @@ def build_container_fixture():
 
 # image types to test
 SUPPORTED_IMAGE_TYPES = ["qcow2", "ami"]
+CLOUD_IMAGE_TYPES = ["ami"]
 
 
 class ImageBuildResult(NamedTuple):
+    img_type: str
     img_path: str
     username: str
     password: str
     journal_output: str
+    metadata: dict = {}
 
 
 @pytest.fixture(name="image_type", scope="session")
@@ -74,7 +79,7 @@ def image_type_fixture(tmpdir_factory, build_container, request):
     # if the fixture already ran and generated an image, use that
     if generated_img.exists():
         journal_output = journal_log_path.read_text(encoding="utf8")
-        return ImageBuildResult(generated_img, username, password, journal_output)
+        return ImageBuildResult(image_type, generated_img, username, password, journal_output)
 
     # no image yet, build it
     CFG = {
@@ -95,22 +100,48 @@ def image_type_fixture(tmpdir_factory, build_container, request):
     config_json_path.write_text(json.dumps(CFG), encoding="utf-8")
 
     cursor = testutil.journal_cursor()
-    # run container to deploy an image into output/qcow2/disk.qcow2
-    subprocess.check_call([
-        "podman", "run", "--rm",
-        "--privileged",
-        "--security-opt", "label=type:unconfined_t",
-        "-v", f"{output_path}:/output",
-        "-v", "/store",  # share the cache between builds
-        build_container,
-        "quay.io/centos-bootc/fedora-bootc:eln",
-        "--config", "/output/config.json",
-        "--type", image_type,
-    ])
+
+    upload_args = []
+    creds_args = []
+    with tempfile.TemporaryDirectory() as tempdir:
+        if image_type == "ami":
+            upload_args = [
+                f"--aws-ami-name=bootc-image-builder-test-{str(uuid.uuid4())}",
+                f"--aws-region={testutil.AWS_REGION}",
+                "--aws-bucket=bootc-image-builder-ci",
+            ]
+
+            creds_file = pathlib.Path(tempdir) / "aws.creds"
+            testutil.write_aws_creds(creds_file)
+            creds_args = ["-v", f"{creds_file}:/root/.aws/credentials:ro",
+                          "--env", "AWS_PROFILE=default"]
+
+        # run container to deploy an image into a bootable disk and upload to a cloud service if applicable
+        subprocess.check_call([
+            "podman", "run", "--rm",
+            "--privileged",
+            "--security-opt", "label=type:unconfined_t",
+            "-v", f"{output_path}:/output",
+            "-v", "/store",  # share the cache between builds
+            *creds_args,
+            build_container,
+            "quay.io/centos-bootc/fedora-bootc:eln",
+            "--config", "/output/config.json",
+            "--type", image_type,
+            *upload_args,
+        ])
     journal_output = testutil.journal_after_cursor(cursor)
+    metadata = {}
+    if image_type == "ami":
+        metadata["ami_id"] = parse_ami_id_from_log(journal_output)
+
+        def del_ami():
+            testutil.delete_ami(metadata["ami_id"])
+        request.addfinalizer(del_ami)
+
     journal_log_path.write_text(journal_output, encoding="utf8")
 
-    return ImageBuildResult(generated_img, username, password, journal_output)
+    return ImageBuildResult(image_type, generated_img, username, password, journal_output, metadata)
 
 
 def test_container_builds(build_container):
@@ -128,7 +159,7 @@ def test_image_is_generated(image_type):
 @pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
 @pytest.mark.parametrize("image_type", SUPPORTED_IMAGE_TYPES, indirect=["image_type"])
 def test_image_boots(image_type):
-    with VM(image_type.img_path) as test_vm:
+    with QEMU(image_type.img_path) as test_vm:
         exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
         assert exit_status == 0
         exit_status, output = test_vm.run("echo hello", user=image_type.username, password=image_type.password)
@@ -136,9 +167,31 @@ def test_image_boots(image_type):
         assert "hello" in output
 
 
+@pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
+@pytest.mark.parametrize("image_type", CLOUD_IMAGE_TYPES, indirect=["image_type"])
+def test_image_boots_cloud(image_type):
+    if image_type.img_type == "ami":
+        with AWS(image_type.metadata["ami_id"]) as test_vm:
+            exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
+            assert exit_status == 0
+            exit_status, output = test_vm.run("echo hello", user=image_type.username, password=image_type.password)
+            assert exit_status == 0
+            assert "hello" in output
+        return
+
+    raise NotImplementedError(f"no cloud boot test configured for image type {image_type.img_type}")
+
+
 def log_has_osbuild_selinux_denials(log):
     OSBUID_SELINUX_DENIALS_RE = re.compile(r"(?ms)avc:\ +denied.*osbuild")
     return re.search(OSBUID_SELINUX_DENIALS_RE, log)
+
+
+def parse_ami_id_from_log(log_output):
+    ami_id_re = re.compile(r"AMI registered: (?P<ami_id>ami-[a-z0-9]+)\n")
+    ami_ids = ami_id_re.findall(log_output)
+    assert len(ami_ids) > 0
+    return ami_ids[0]
 
 
 def test_osbuild_selinux_denials_re_works():
