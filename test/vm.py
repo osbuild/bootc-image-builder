@@ -2,11 +2,14 @@ import abc
 import pathlib
 import subprocess
 import sys
+import uuid
 from io import StringIO
 
+import boto3
+from botocore.exceptions import ClientError
 from paramiko.client import AutoAddPolicy, SSHClient
 
-from testutil import get_free_port, wait_ssh_ready
+from testutil import AWS_REGION, get_free_port, wait_ssh_ready
 
 
 class VM(abc.ABC):
@@ -101,6 +104,123 @@ class QEMU(VM):
 
     def run(self, cmd, user, password):
         if not self._qemu_p:
+            self.start()
+        client = SSHClient()
+        client.set_missing_host_key_policy(AutoAddPolicy)
+        client.connect(
+            self._address, self._ssh_port, user, password,
+            allow_agent=False, look_for_keys=False)
+        chan = client.get_transport().open_session()
+        chan.get_pty()
+        chan.exec_command(cmd)
+        stdout_f = chan.makefile()
+        output = StringIO()
+        while True:
+            out = stdout_f.readline()
+            if not out:
+                break
+            self._log(out)
+            output.write(out)
+        exit_status = stdout_f.channel.recv_exit_status()
+        return exit_status, output.getvalue()
+
+
+class AWS(VM):
+
+    _instance_type = "t3.medium"  # set based on architecture when we add arm tests
+
+    def __init__(self, ami_id):
+        super().__init__()
+        self._ssh_port = 22
+        self._ami_id = ami_id
+        self._ec2_instance = None
+        self._ec2_security_group = None
+        self._ec2_resource = boto3.resource("ec2", region_name=AWS_REGION)
+
+    def start(self):
+        sec_group_ids = []
+        if not self._ec2_security_group:
+            self._set_ssh_security_group()
+        sec_group_ids = [self._ec2_security_group.id]
+        try:
+            self._log(f"Creating ec2 instance from {self._ami_id}")
+            instances = self._ec2_resource.create_instances(
+                ImageId=self._ami_id,
+                InstanceType=self._instance_type,
+                SecurityGroupIds=sec_group_ids,
+                MinCount=1, MaxCount=1
+            )
+            self._ec2_instance = instances[0]
+            self._log(f"Waiting for instance {self._ec2_instance.id} to start")
+            self._ec2_instance.wait_until_running()
+            self._ec2_instance.reload()  # make sure the instance info is up to date
+            self._address = self._ec2_instance.public_ip_address
+            self._log("Instance is running")
+            self.wait_ssh_ready()
+            self._log("SSH is ready")
+        except ClientError as err:
+            err_code = err.response["Error"]["Code"]
+            err_msg = err.response["Error"]["Message"]
+            self._log(f"Couldn't create instance with image {self._ami_id} and type {self._instance_type}.")
+            self._log(f"Error {err_code}: {err_msg}")
+            raise
+
+    def _set_ssh_security_group(self):
+        group_name = f"bootc-image-builder-test-{str(uuid.uuid4())}"
+        group_desc = "bootc-image-builder test security group: SSH rule"
+        try:
+            self._log(f"Creating security group {group_name}")
+            self._ec2_security_group = self._ec2_resource.create_security_group(GroupName=group_name,
+                                                                                Description=group_desc)
+            ip_permissions = [
+                {
+                    "IpProtocol": "tcp",
+                    "FromPort": self._ssh_port,
+                    "ToPort": self._ssh_port,
+                    "IpRanges": [{"CidrIp": "0.0.0.0/0"}],
+                }
+            ]
+            self._log(f"Authorizing inbound rule for {group_name} ({self._ec2_security_group})")
+            self._ec2_security_group.authorize_ingress(IpPermissions=ip_permissions)
+            self._log("Security group created")
+        except ClientError as err:
+            err_code = err.response["Error"]["Code"]
+            err_msg = err.response["Error"]["Message"]
+            self._log(f"Couldn't create security group {group_name} or authorize inbound rule.")
+            self._log(f"Error {err_code}: {err_msg}")
+            raise
+
+    def force_stop(self):
+        if self._ec2_instance:
+            self._log(f"Terminating instance {self._ec2_instance.id}")
+            try:
+                self._ec2_instance.terminate()
+                self._ec2_instance.wait_until_terminated()
+                self._ec2_instance = None
+                self._address = None
+            except ClientError as err:
+                err_code = err.response["Error"]["Code"]
+                err_msg = err.response["Error"]["Message"]
+                self._log(f"Couldn't terminate instance {self._ec2_instance.id}.")
+                self._log(f"Error {err_code}: {err_msg}")
+        else:
+            self._log("No EC2 instance defined. Skipping termination.")
+
+        if self._ec2_security_group:
+            self._log(f"Deleting security group {self._ec2_security_group.id}")
+            try:
+                self._ec2_security_group.delete()
+                self._ec2_security_group = None
+            except ClientError as err:
+                err_code = err.response["Error"]["Code"]
+                err_msg = err.response["Error"]["Message"]
+                self._log(f"Couldn't delete security group {self._ec2_security_group.id}.")
+                self._log(f"Error {err_code}: {err_msg}")
+        else:
+            self._log("No security group defined. Skipping deletion.")
+
+    def run(self, cmd, user, password):
+        if not self._ec2_instance:
             self.start()
         client = SSHClient()
         client.set_missing_host_key_policy(AutoAddPolicy)
