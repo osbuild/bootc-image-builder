@@ -6,6 +6,8 @@ import socket
 import subprocess
 import time
 
+AWS_REGION = "us-east-1"
+
 
 def run_journalctl(*args):
     pre = []
