@@ -4,13 +4,15 @@ import pathlib
 import platform
 import re
 import subprocess
+import tempfile
+import uuid
 from typing import NamedTuple
 
 import pytest
 
 # local test utils
 import testutil
-from vm import QEMU
+from vm import AWS, QEMU
 
 if not testutil.has_executable("podman"):
     pytest.skip("no podman, skipping integration tests that required podman", allow_module_level=True)
