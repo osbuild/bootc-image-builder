@@ -47,7 +47,7 @@ class VM(abc.ABC):
         self.start()
         return self
 
-    def __exit__(self, type, value, tb):
+    def __exit__(self, exc_type, exc_value, traceback):
         self.force_stop()
 
 
