@@ -176,6 +176,16 @@ def test_image_boots(image_type):
         assert "hello" in output
 
 
+@pytest.mark.parametrize("image_type", ["ami"], indirect=["image_type"])
+def test_ami_boots_in_aws(image_type):
+    with AWS(image_type.metadata["ami_id"]) as test_vm:
+        exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
+        assert exit_status == 0
+        exit_status, output = test_vm.run("echo hello", user=image_type.username, password=image_type.password)
+        assert exit_status == 0
+        assert "hello" in output
+
+
 def log_has_osbuild_selinux_denials(log):
     OSBUID_SELINUX_DENIALS_RE = re.compile(r"(?ms)avc:\ +denied.*osbuild")
     return re.search(OSBUID_SELINUX_DENIALS_RE, log)
