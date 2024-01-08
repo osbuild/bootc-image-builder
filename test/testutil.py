@@ -1,8 +1,8 @@
 import os
 import pathlib
 import platform
-import socket
 import shutil
+import socket
 import subprocess
 import time
 
@@ -37,12 +37,12 @@ def get_free_port() -> int:
         return s.getsockname()[1]
 
 
-def wait_ssh_ready(port, sleep, max_wait_sec):
+def wait_ssh_ready(address, port, sleep, max_wait_sec):
     for i in range(int(max_wait_sec / sleep)):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(sleep)
             try:
-                s.connect(("localhost", port))
+                s.connect((address, port))
                 data = s.recv(256)
                 if b"OpenSSH" in data:
                     return
