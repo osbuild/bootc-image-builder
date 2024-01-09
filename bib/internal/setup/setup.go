@@ -2,9 +2,7 @@ package setup
 
 import (
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/podmanutil"
@@ -39,36 +37,21 @@ func EnsureEnvironment() error {
 		return err
 	}
 	if !utils.IsMountpoint(runTmp) {
-		if err := exec.Command("mount", "-t", "tmpfs", "tmpfs", runTmp).Run(); err != nil {
-			return fmt.Errorf("failed to mount tmpfs to %s: %w", runTmp, err)
+		if err := utils.RunCmdSync("mount", "-t", "tmpfs", "tmpfs", runTmp); err != nil {
+			return err
 		}
 	}
-	src, err := os.Open("/usr/bin/osbuild")
-	if err != nil {
-		return err
-	}
-	defer src.Close()
 	destPath := filepath.Join(runTmp, "osbuild")
-	dst, err := os.Create(destPath)
-	if err != nil {
+	if err := utils.RunCmdSync("cp", "-p", "/usr/bin/osbuild", destPath); err != nil {
 		return err
 	}
-	defer dst.Close()
-	if _, err := io.Copy(dst, src); err != nil {
+	if err := utils.RunCmdSync("chcon", installType, destPath); err != nil {
 		return err
 	}
-	if err := dst.Chmod(0o755); err != nil {
-		return err
-	}
-	dst.Close()
-	if err := exec.Command("chcon", installType, destPath).Run(); err != nil {
-		return fmt.Errorf("failed to chcon: %w", err)
-	}
-
 	// Create a bind mount into our target location; we can't copy it because
 	// again we have to perserve the SELinux label.
-	if err := exec.Command("mount", "--bind", destPath, osbuildPath).Run(); err != nil {
-		return fmt.Errorf("failed to bind mount to %s: %w", osbuildPath, err)
+	if err := utils.RunCmdSync("mount", "--bind", destPath, osbuildPath); err != nil {
+		return err
 	}
 	return nil
 }
