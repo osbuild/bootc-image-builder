@@ -40,10 +40,35 @@ class VM(abc.ABC):
         Stop the VM and clean up any resources that were created when setting up and starting the machine.
         """
 
-    @abc.abstractmethod
     def run(self, cmd, user, password):
         """
         Run a command on the VM via SSH using the provided credentials.
+        """
+        if not self.running():
+            self.start()
+        client = SSHClient()
+        client.set_missing_host_key_policy(AutoAddPolicy)
+        client.connect(
+            self._address, self._ssh_port, user, password,
+            allow_agent=False, look_for_keys=False)
+        chan = client.get_transport().open_session()
+        chan.get_pty()
+        chan.exec_command(cmd)
+        stdout_f = chan.makefile()
+        output = StringIO()
+        while True:
+            out = stdout_f.readline()
+            if not out:
+                break
+            self._log(out)
+            output.write(out)
+        exit_status = stdout_f.channel.recv_exit_status()
+        return exit_status, output.getvalue()
+
+    @abc.abstractmethod
+    def running(self):
+        """
+        True if the VM is running.
         """
 
     def __enter__(self):
@@ -67,7 +92,7 @@ class QEMU(VM):
         self._snapshot = snapshot
 
     def start(self):
-        if self._qemu_p is not None:
+        if self.running():
             return
         log_path = self._img.with_suffix(".serial-log")
         self._ssh_port = get_free_port()
@@ -102,27 +127,8 @@ class QEMU(VM):
             self._address = None
             self._ssh_port = None
 
-    def run(self, cmd, user, password):
-        if not self._qemu_p:
-            self.start()
-        client = SSHClient()
-        client.set_missing_host_key_policy(AutoAddPolicy)
-        client.connect(
-            self._address, self._ssh_port, user, password,
-            allow_agent=False, look_for_keys=False)
-        chan = client.get_transport().open_session()
-        chan.get_pty()
-        chan.exec_command(cmd)
-        stdout_f = chan.makefile()
-        output = StringIO()
-        while True:
-            out = stdout_f.readline()
-            if not out:
-                break
-            self._log(out)
-            output.write(out)
-        exit_status = stdout_f.channel.recv_exit_status()
-        return exit_status, output.getvalue()
+    def running(self):
+        return self._qemu_p is not None
 
 
 class AWS(VM):
@@ -138,6 +144,8 @@ class AWS(VM):
         self._ec2_resource = boto3.resource("ec2", region_name=AWS_REGION)
 
     def start(self):
+        if self.running():
+            return
         sec_group_ids = []
         if not self._ec2_security_group:
             self._set_ssh_security_group()
@@ -219,24 +227,5 @@ class AWS(VM):
         else:
             self._log("No security group defined. Skipping deletion.")
 
-    def run(self, cmd, user, password):
-        if not self._ec2_instance:
-            self.start()
-        client = SSHClient()
-        client.set_missing_host_key_policy(AutoAddPolicy)
-        client.connect(
-            self._address, self._ssh_port, user, password,
-            allow_agent=False, look_for_keys=False)
-        chan = client.get_transport().open_session()
-        chan.get_pty()
-        chan.exec_command(cmd)
-        stdout_f = chan.makefile()
-        output = StringIO()
-        while True:
-            out = stdout_f.readline()
-            if not out:
-                break
-            self._log(out)
-            output.write(out)
-        exit_status = stdout_f.channel.recv_exit_status()
-        return exit_status, output.getvalue()
+    def running(self):
+        return self._ec2_instance is not None
