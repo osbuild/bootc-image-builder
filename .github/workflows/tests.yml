@@ -71,6 +71,9 @@ jobs:
       run: |
         sudo apt install -y podman python3-pytest python3-paramiko flake8 qemu-system-x86
     - name: Run tests
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       run: |
         # podman needs (parts of) the environment but will break when
         # XDG_RUNTIME_DIR is set.
@@ -102,5 +105,8 @@ jobs:
             podman machine start
         fi
     - name: Run tests
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       run: |
         pytest -rs -s -vv
