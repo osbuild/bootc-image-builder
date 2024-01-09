@@ -55,7 +55,7 @@ class ImageBuildResult(NamedTuple):
 
 
 @pytest.fixture(name="image_type", scope="session")
-def image_type_fixture(tmpdir_factory, build_container, request):
+def image_type_fixture(tmpdir_factory, build_container, request, force_aws_upload):
     """
     Build an image inside the passed build_container and return an
     ImageBuildResult with the resulting image path and user/password
@@ -112,18 +112,22 @@ def image_type_fixture(tmpdir_factory, build_container, request):
 
     upload_args = []
     creds_args = []
+
     with tempfile.TemporaryDirectory() as tempdir:
         if image_type == "ami":
-            upload_args = [
-                f"--aws-ami-name=bootc-image-builder-test-{str(uuid.uuid4())}",
-                f"--aws-region={testutil.AWS_REGION}",
-                "--aws-bucket=bootc-image-builder-ci",
-            ]
-
             creds_file = pathlib.Path(tempdir) / "aws.creds"
-            testutil.write_aws_creds(creds_file)
-            creds_args = ["-v", f"{creds_file}:/root/.aws/credentials:ro",
-                          "--env", "AWS_PROFILE=default"]
+            if testutil.write_aws_creds(creds_file):
+                creds_args = ["-v", f"{creds_file}:/root/.aws/credentials:ro",
+                              "--env", "AWS_PROFILE=default"]
+
+                upload_args = [
+                    f"--aws-ami-name=bootc-image-builder-test-{str(uuid.uuid4())}",
+                    f"--aws-region={testutil.AWS_REGION}",
+                    "--aws-bucket=bootc-image-builder-ci",
+                ]
+            elif force_aws_upload:
+                # upload forced but credentials aren't set
+                raise RuntimeError("AWS credentials not available (upload forced)")
 
         # run container to deploy an image into a bootable disk and upload to a cloud service if applicable
         subprocess.check_call([
@@ -141,7 +145,7 @@ def image_type_fixture(tmpdir_factory, build_container, request):
         ])
     journal_output = testutil.journal_after_cursor(cursor)
     metadata = {}
-    if image_type == "ami":
+    if image_type == "ami" and upload_args:
         metadata["ami_id"] = parse_ami_id_from_log(journal_output)
 
         def del_ami():
@@ -177,7 +181,13 @@ def test_image_boots(image_type):
 
 
 @pytest.mark.parametrize("image_type", ["ami"], indirect=["image_type"])
-def test_ami_boots_in_aws(image_type):
+def test_ami_boots_in_aws(image_type, force_aws_upload):
+    if not testutil.write_aws_creds("/dev/null"):  # we don't care about the file, just the variables being there
+        if force_aws_upload:
+            # upload forced but credentials aren't set
+            raise RuntimeError("AWS credentials not available")
+        pytest.skip("AWS credentials not available (upload not forced)")
+
     with AWS(image_type.metadata["ami_id"]) as test_vm:
         exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
         assert exit_status == 0

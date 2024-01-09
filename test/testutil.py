@@ -86,11 +86,14 @@ def write_aws_creds(path):
     key_id = os.environ.get("AWS_ACCESS_KEY_ID")
     secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
     if not key_id or not secret_key:
-        raise RuntimeError("aws credentials not available")
+        return False
+
     with open(path, mode="w", encoding="utf-8") as creds_file:
         creds_file.write("[default]\n")
         creds_file.write(f"aws_access_key_id = {key_id}\n")
         creds_file.write(f"aws_secret_access_key = {secret_key}\n")
+
+    return True
 
 
 def deregister_ami(ami_id):
