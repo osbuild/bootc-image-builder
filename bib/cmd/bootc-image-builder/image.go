@@ -161,11 +161,10 @@ func pipelinesForISO(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, error)
 		fail("pipeline: no base image defined")
 	}
 	ref := "ostree/1/1/0"
-	tlsVerify := true
 	containerSource := container.SourceSpec{
 		Source:    c.Imgref,
 		Name:      c.Imgref,
-		TLSVerify: &tlsVerify,
+		TLSVerify: &c.TLSVerify,
 	}
 
 	img := image.NewAnacondaContainerInstaller(containerSource, ref)
