@@ -51,9 +51,7 @@ func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
 	var err error
 
 	switch c.ImgType {
-	case "qcow2":
-		fallthrough
-	case "ami":
+	case "ami", "qcow2", "raw":
 		img, err = pipelinesForDiskImage(c, rng)
 	case "iso":
 		img, err = pipelinesForISO(c, rng)
@@ -111,7 +109,7 @@ func pipelinesForDiskImage(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, 
 	case "qcow2":
 		imageFormat = platform.FORMAT_QCOW2
 		filename = "disk.qcow2"
-	case "ami":
+	case "ami", "raw":
 		imageFormat = platform.FORMAT_RAW
 		filename = "disk.raw"
 	}
