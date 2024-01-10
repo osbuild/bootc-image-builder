@@ -163,7 +163,7 @@ class AWS(VM):
             self._ec2_instance.wait_until_running()
             self._ec2_instance.reload()  # make sure the instance info is up to date
             self._address = self._ec2_instance.public_ip_address
-            self._log("Instance is running")
+            self._log(f"Instance is running at {self._address}")
             self.wait_ssh_ready()
             self._log("SSH is ready")
         except ClientError as err:

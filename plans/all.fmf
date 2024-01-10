@@ -16,4 +16,4 @@ prepare:
     - qemu-kvm
 execute:
   how: tmt
-  script: pytest -s -vv
+  script: pytest -s -vv --force-aws-upload
