@@ -170,35 +170,6 @@ func pipelinesForISO(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, error)
 	img := image.NewAnacondaContainerInstaller(containerSource, ref)
 	img.ExtraBasePackages = rpmmd.PackageSet{
 		Include: []string{
-			"anaconda-dracut",
-			"atheros-firmware",
-			"brcmfmac-firmware",
-			"curl",
-			"dracut-config-generic",
-			"dracut-network",
-			"hostname",
-			"iwlwifi-dvm-firmware",
-			"iwlwifi-mvm-firmware",
-			"kernel",
-			"linux-firmware",
-			"less",
-			"nfs-utils",
-			"openssh-clients",
-			"ostree",
-			"plymouth",
-			"realtek-firmware",
-			"rng-tools",
-			"rpcbind",
-			"selinux-policy-targeted",
-			"systemd",
-			"tar",
-			"xfsprogs",
-			"xz",
-		},
-	}
-
-	img.ExtraBasePackages = img.ExtraBasePackages.Append(rpmmd.PackageSet{
-		Include: []string{
 			"aajohan-comfortaa-fonts",
 			"abattis-cantarell-fonts",
 			"alsa-firmware",
@@ -260,12 +231,12 @@ func pipelinesForISO(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, error)
 			"lldpad",
 			"lsof",
 			"madan-fonts",
-			"mtr",
 			"mt-st",
+			"mtr",
 			"net-tools",
 			"nfs-utils",
-			"nmap-ncat",
 			"nm-connection-editor",
+			"nmap-ncat",
 			"nss-tools",
 			"openssh-clients",
 			"openssh-server",
@@ -309,7 +280,8 @@ func pipelinesForISO(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, error)
 			"xrdb",
 			"xz",
 		},
-	})
+	}
+
 	img.ISOLabelTempl = "Container-Installer-%s"
 
 	var customizations *blueprint.Customizations
