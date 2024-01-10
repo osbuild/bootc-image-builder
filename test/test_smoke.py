@@ -42,7 +42,7 @@ def build_container_fixture():
 
 
 # image types to test
-SUPPORTED_IMAGE_TYPES = ["qcow2", "ami"]
+SUPPORTED_IMAGE_TYPES = ["qcow2", "ami", "raw"]
 
 
 class ImageBuildResult(NamedTuple):
@@ -80,6 +80,7 @@ def image_type_fixture(tmpdir_factory, build_container, request, force_aws_uploa
     artifact = {
         "qcow2": pathlib.Path(output_path) / "qcow2/disk.qcow2",
         "ami": pathlib.Path(output_path) / "image/disk.raw",
+        "raw": pathlib.Path(output_path) / "image/disk.raw",
     }
     assert len(artifact) == len(SUPPORTED_IMAGE_TYPES), \
         "please keep artifact mapping and supported images in sync"

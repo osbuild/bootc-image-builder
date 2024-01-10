@@ -204,12 +204,12 @@ func build(cmd *cobra.Command, args []string) {
 	switch imgType {
 	case "qcow2":
 		exports = []string{"qcow2"}
-	case "ami":
+	case "ami", "raw":
 		exports = []string{"image"}
 	case "iso":
 		exports = []string{"bootiso"}
 	default:
-		fail(fmt.Sprintf("valid types are 'qcow2', 'ami', 'iso', not: '%s'", imgType))
+		fail(fmt.Sprintf("valid types are 'qcow2', 'ami', 'raw', 'iso', not: '%s'", imgType))
 	}
 
 	manifest_fname := fmt.Sprintf("manifest-%s.json", imgType)
