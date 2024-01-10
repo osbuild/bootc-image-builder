@@ -56,3 +56,4 @@ jobs:
         git_ref: ${{ github.event.pull_request.head.ref }}
         pull_request_status_name: "Testing farm"
         tf_scope: private
+        secrets: "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }};AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
