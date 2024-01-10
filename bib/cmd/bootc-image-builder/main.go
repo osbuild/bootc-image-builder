@@ -182,8 +182,13 @@ func build(cmd *cobra.Command, args []string) {
 			fail(fmt.Sprintf("aws flags set for non-ami image type (type is set to %s)", imgType))
 		}
 		// initialise the client to check if the env vars exist before building the image
-		_, err := awscloud.NewDefault(region)
+		client, err := awscloud.NewDefault(region)
 		check(err)
+
+		fmt.Printf("Checking AWS permission by listing regions...\n")
+		_, err = client.Regions()
+		check(err)
+
 		upload = true
 	}
 
