@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/podmanutil"
-	"github.com/osbuild/bootc-image-builder/bib/internal/utils"
+	"github.com/osbuild/bootc-image-builder/bib/internal/util"
 	"golang.org/x/sys/unix"
 )
 
@@ -14,7 +14,7 @@ import (
 // to run in a container environment.  This function is idempotent.
 func EnsureEnvironment() error {
 	osbuildPath := "/usr/bin/osbuild"
-	if utils.IsMountpoint(osbuildPath) {
+	if util.IsMountpoint(osbuildPath) {
 		return nil
 	}
 
@@ -36,21 +36,21 @@ func EnsureEnvironment() error {
 	if err := os.MkdirAll(runTmp, 0o755); err != nil {
 		return err
 	}
-	if !utils.IsMountpoint(runTmp) {
-		if err := utils.RunCmdSync("mount", "-t", "tmpfs", "tmpfs", runTmp); err != nil {
+	if !util.IsMountpoint(runTmp) {
+		if err := util.RunCmdSync("mount", "-t", "tmpfs", "tmpfs", runTmp); err != nil {
 			return err
 		}
 	}
 	destPath := filepath.Join(runTmp, "osbuild")
-	if err := utils.RunCmdSync("cp", "-p", "/usr/bin/osbuild", destPath); err != nil {
+	if err := util.RunCmdSync("cp", "-p", "/usr/bin/osbuild", destPath); err != nil {
 		return err
 	}
-	if err := utils.RunCmdSync("chcon", installType, destPath); err != nil {
+	if err := util.RunCmdSync("chcon", installType, destPath); err != nil {
 		return err
 	}
 	// Create a bind mount into our target location; we can't copy it because
 	// again we have to perserve the SELinux label.
-	if err := utils.RunCmdSync("mount", "--bind", destPath, osbuildPath); err != nil {
+	if err := util.RunCmdSync("mount", "--bind", destPath, osbuildPath); err != nil {
 		return err
 	}
 	return nil
