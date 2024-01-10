@@ -67,6 +67,8 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
     - name: Setup up python
       uses: actions/setup-python@v5
+    - name: Apt update
+      run: sudo apt update
     - name: Install test dependencies
       run: |
         sudo apt update
