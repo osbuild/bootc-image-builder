@@ -269,7 +269,7 @@ func main() {
 	buildCmd.Flags().String("store", ".osbuild", "osbuild store for intermediate pipeline trees")
 	buildCmd.Flags().String("rpmmd", "/var/cache/osbuild/rpmmd", "rpm metadata cache directory")
 	buildCmd.Flags().String("config", "", "build config file")
-	buildCmd.Flags().String("type", "qcow2", "image type to build [qcow2, ami]")
+	buildCmd.Flags().String("type", "qcow2", "image type to build [qcow2, ami, iso]")
 	buildCmd.Flags().Bool("tls-verify", true, "require HTTPS and verify certificates when contacting registries")
 	buildCmd.Flags().String("aws-region", "", "target region for AWS uploads (only for type=ami)")
 	buildCmd.Flags().String("aws-bucket", "", "target S3 bucket name for intermediate storage when creating AMI (only for type=ami)")
