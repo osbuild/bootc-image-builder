@@ -78,6 +78,8 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       run: |
+        # make sure test deps are available for root
+        sudo -E pip install --user -r test/requirements.txt
         # podman needs (parts of) the environment but will break when
         # XDG_RUNTIME_DIR is set.
         # TODO: figure out what exactly podman needs

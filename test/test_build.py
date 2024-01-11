@@ -28,7 +28,9 @@ if platform.system() == "Linux" and platform.machine() == "x86_64" and not testu
 
 
 # image types to test
-SUPPORTED_IMAGE_TYPES = ["qcow2", "ami", "raw"]
+DIRECT_BOOT_IMAGE_TYPES = ["qcow2", "ami", "raw"]
+INSTALLER_IMAGE_TYPES = ["iso"]
+SUPPORTED_IMAGE_TYPES = DIRECT_BOOT_IMAGE_TYPES + INSTALLER_IMAGE_TYPES
 
 
 class ImageBuildResult(NamedTuple):
@@ -60,6 +62,7 @@ def image_type_fixture(tmpdir_factory, build_container, request, force_aws_uploa
         "qcow2": pathlib.Path(output_path) / "qcow2/disk.qcow2",
         "ami": pathlib.Path(output_path) / "image/disk.raw",
         "raw": pathlib.Path(output_path) / "image/disk.raw",
+        "iso": pathlib.Path(output_path) / "bootiso/install.iso",
     }
     assert len(artifact) == len(SUPPORTED_IMAGE_TYPES), \
         "please keep artifact mapping and supported images in sync"
@@ -150,7 +153,7 @@ def test_image_is_generated(image_type):
 
 
 @pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
-@pytest.mark.parametrize("image_type", SUPPORTED_IMAGE_TYPES, indirect=["image_type"])
+@pytest.mark.parametrize("image_type", DIRECT_BOOT_IMAGE_TYPES, indirect=["image_type"])
 def test_image_boots(image_type):
     with QEMU(image_type.img_path) as test_vm:
         exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
@@ -216,3 +219,21 @@ def test_image_build_without_se_linux_denials(image_type):
     assert image_type.journal_output != ""
     assert not log_has_osbuild_selinux_denials(image_type.journal_output), \
         f"denials in log {image_type.journal_output}"
+
+
+@pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
+@pytest.mark.parametrize("image_type", INSTALLER_IMAGE_TYPES, indirect=["image_type"])
+def test_iso_installs(image_type):
+    installer_iso_path = image_type.img_path
+    test_disk_path = installer_iso_path.with_name("test-disk.img")
+    with open(test_disk_path, "w") as fp:
+        fp.truncate(10_1000_1000_1000)
+    # install to test disk
+    with QEMU(test_disk_path, cdrom=installer_iso_path) as vm:
+        vm.start(wait_event="qmp:RESET", snapshot=False, use_ovmf=True)
+        vm.force_stop()
+    # boot test disk and do extremly simple check
+    with QEMU(test_disk_path) as vm:
+        vm.start(use_ovmf=True)
+        exit_status, _ = vm.run("true", user=image_type.username, password=image_type.password)
+        assert exit_status == 0
