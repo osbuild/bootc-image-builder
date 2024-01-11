@@ -169,6 +169,7 @@ func build(cmd *cobra.Command, args []string) {
 	rpmCacheRoot, _ := cmd.Flags().GetString("rpmmd")
 	configFile, _ := cmd.Flags().GetString("config")
 	imgType, _ := cmd.Flags().GetString("type")
+	rootFSType, _ := cmd.Flags().GetString("rootfs")
 	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
 
 	if err := os.MkdirAll(outputDir, 0777); err != nil {
@@ -209,6 +210,7 @@ func build(cmd *cobra.Command, args []string) {
 	manifestConfig := &ManifestConfig{
 		Imgref:       imgref,
 		ImgType:      imgType,
+		RootFSType:   rootFSType,
 		Config:       &config,
 		Repos:        repos,
 		Architecture: hostArch,
@@ -267,6 +269,7 @@ func main() {
 	buildCmd.Flags().String("rpmmd", "/var/cache/osbuild/rpmmd", "rpm metadata cache directory")
 	buildCmd.Flags().String("config", "", "build config file")
 	buildCmd.Flags().String("type", "qcow2", "image type to build [qcow2, ami]")
+	buildCmd.Flags().String("rootfs", "ext4", "Root filesystem type [ext4, xfs]")
 	buildCmd.Flags().Bool("tls-verify", true, "require HTTPS and verify certificates when contacting registries")
 	buildCmd.Flags().String("aws-region", "", "target region for AWS uploads (only for type=ami)")
 	buildCmd.Flags().String("aws-bucket", "", "target S3 bucket name for intermediate storage when creating AMI (only for type=ami)")

@@ -31,6 +31,11 @@ type ManifestConfig struct {
 	// TODO: Make this an enum.
 	ImgType string
 
+	// Root filesystem type (eg. ext4, xfs. empty defaults to ext4)
+	//
+	// TODO: Make this an enum driven by images/pkg/disk
+	RootFSType string
+
 	// Build config
 	Config *BuildConfig
 
@@ -141,7 +146,7 @@ func pipelinesForDiskImage(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, 
 
 	img.Workload = &NullWorkload{}
 
-	basept, ok := partitionTables[c.Architecture.String()]
+	basept, ok := partitionTables(c.RootFSType)[c.Architecture.String()]
 	if !ok {
 		fail(fmt.Sprintf("pipelines: no partition tables defined for %s", c.Architecture))
 	}

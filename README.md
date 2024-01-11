@@ -117,6 +117,7 @@ Flags:
 | **--config** | Path to a [build config](#-build-config)                         |       ❌      |
 | --tls-verify | Require HTTPS and verify certificates when contacting registries |    `true`     |
 | **--type**   | [Image type](#-image-types) to build                             |    `qcow2`    |
+| --rootfs     | Root filesystem type to create. eg. ext4, xfs                    |    `ext4`     |
 
 *💡 Tip: Flags in **bold** are the most important ones.*
 
