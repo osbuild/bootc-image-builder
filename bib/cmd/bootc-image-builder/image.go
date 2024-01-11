@@ -160,14 +160,16 @@ func pipelinesForISO(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, error)
 	if c.Imgref == "" {
 		fail("pipeline: no base image defined")
 	}
-	ref := "ostree/1/1/0"
+
 	containerSource := container.SourceSpec{
 		Source:    c.Imgref,
 		Name:      c.Imgref,
 		TLSVerify: &c.TLSVerify,
 	}
 
-	img := image.NewAnacondaContainerInstaller(containerSource, ref)
+	// The ref is not needed and will be removed from the ctor later
+	// in time
+	img := image.NewAnacondaContainerInstaller(containerSource, "")
 	img.SquashfsCompression = "zstd"
 
 	img.ExtraBasePackages = rpmmd.PackageSet{
