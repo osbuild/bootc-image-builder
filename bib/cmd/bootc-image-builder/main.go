@@ -155,22 +155,49 @@ func saveManifest(ms manifest.OSBuildManifest, fpath string) error {
 	return nil
 }
 
-func build(cmd *cobra.Command, args []string) {
-	err := setup.Validate()
-	check(err)
-	err = setup.EnsureEnvironment()
-	check(err)
-
+func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	hostArch := arch.Current()
 	repos := loadRepos(hostArch.String())
 
 	imgref := args[0]
-	outputDir, _ := cmd.Flags().GetString("output")
-	osbuildStore, _ := cmd.Flags().GetString("store")
 	rpmCacheRoot, _ := cmd.Flags().GetString("rpmmd")
 	configFile, _ := cmd.Flags().GetString("config")
-	imgType, _ := cmd.Flags().GetString("type")
 	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
+	imgType, _ := cmd.Flags().GetString("type")
+
+	config := BuildConfig{}
+	if configFile != "" {
+		config = loadConfig(configFile)
+	}
+
+	manifestConfig := &ManifestConfig{
+		Imgref:       imgref,
+		ImgType:      imgType,
+		Config:       &config,
+		Repos:        repos,
+		Architecture: hostArch,
+		TLSVerify:    tlsVerify,
+	}
+	return makeManifest(manifestConfig, rpmCacheRoot)
+}
+
+func cmdManifest(cmd *cobra.Command, args []string) {
+	mf, err := manifestFromCobra(cmd, args)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Print(string(mf))
+}
+
+func cmdBuild(cmd *cobra.Command, args []string) {
+	outputDir, _ := cmd.Flags().GetString("output")
+	osbuildStore, _ := cmd.Flags().GetString("store")
+	imgType, _ := cmd.Flags().GetString("type")
+
+	err := setup.Validate()
+	check(err)
+	err = setup.EnsureEnvironment()
+	check(err)
 
 	if err := os.MkdirAll(outputDir, 0777); err != nil {
 		fail(fmt.Sprintf("failed to create target directory: %s", err.Error()))
@@ -195,10 +222,13 @@ func build(cmd *cobra.Command, args []string) {
 	canChown, err := canChownInPath(outputDir)
 	check(err)
 
-	config := BuildConfig{}
-	if configFile != "" {
-		config = loadConfig(configFile)
+	manifest_fname := fmt.Sprintf("manifest-%s.json", imgType)
+	fmt.Printf("Generating %s ... ", manifest_fname)
+	mf, err := manifestFromCobra(cmd, args)
+	if err != nil {
+		panic(err)
 	}
+	fmt.Print("DONE\n")
 
 	var exports []string
 	switch imgType {
@@ -211,20 +241,6 @@ func build(cmd *cobra.Command, args []string) {
 	default:
 		fail(fmt.Sprintf("valid types are 'qcow2', 'ami', 'raw', 'iso', not: '%s'", imgType))
 	}
-
-	manifest_fname := fmt.Sprintf("manifest-%s.json", imgType)
-	fmt.Printf("Generating %s ... ", manifest_fname)
-	manifestConfig := &ManifestConfig{
-		Imgref:       imgref,
-		ImgType:      imgType,
-		Config:       &config,
-		Repos:        repos,
-		Architecture: hostArch,
-		TLSVerify:    tlsVerify,
-	}
-	mf, err := makeManifest(manifestConfig, rpmCacheRoot)
-	check(err)
-	fmt.Print("DONE\n")
 
 	manifestPath := filepath.Join(outputDir, manifest_fname)
 	check(saveManifest(mf, manifestPath))
@@ -265,17 +281,26 @@ func main() {
 		Long:                  rootCmd.Long,
 		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
-		Run:                   build,
+		Run:                   cmdBuild,
 	}
 	rootCmd.AddCommand(buildCmd)
+	manifestCmd := &cobra.Command{
+		Use:                   "manifest",
+		Long:                  rootCmd.Long,
+		Args:                  cobra.ExactArgs(1),
+		DisableFlagsInUseLine: true,
+		Run:                   cmdManifest,
+	}
+	rootCmd.AddCommand(manifestCmd)
+	manifestCmd.Flags().String("rpmmd", "/var/cache/osbuild/rpmmd", "rpm metadata cache directory")
+	manifestCmd.Flags().String("config", "", "build config file")
+	manifestCmd.Flags().String("type", "qcow2", "image type to build [qcow2, ami]")
+	manifestCmd.Flags().Bool("tls-verify", true, "require HTTPS and verify certificates when contacting registries")
 
 	logrus.SetLevel(logrus.ErrorLevel)
+	buildCmd.Flags().AddFlagSet(manifestCmd.Flags())
 	buildCmd.Flags().String("output", ".", "artifact output directory")
 	buildCmd.Flags().String("store", ".osbuild", "osbuild store for intermediate pipeline trees")
-	buildCmd.Flags().String("rpmmd", "/var/cache/osbuild/rpmmd", "rpm metadata cache directory")
-	buildCmd.Flags().String("config", "", "build config file")
-	buildCmd.Flags().String("type", "qcow2", "image type to build [qcow2, ami, iso]")
-	buildCmd.Flags().Bool("tls-verify", true, "require HTTPS and verify certificates when contacting registries")
 	buildCmd.Flags().String("aws-region", "", "target region for AWS uploads (only for type=ami)")
 	buildCmd.Flags().String("aws-bucket", "", "target S3 bucket name for intermediate storage when creating AMI (only for type=ami)")
 	buildCmd.Flags().String("aws-ami-name", "", "name for the AMI in AWS (only for type=ami)")
