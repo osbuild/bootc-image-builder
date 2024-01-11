@@ -40,7 +40,7 @@ def build_container_fixture():
 
 
 # image types to test
-SUPPORTED_IMAGE_TYPES = ["qcow2", "ami"]
+SUPPORTED_IMAGE_TYPES = ["qcow2,xfs", "qcow2,ext4", "ami,ext4"]
 
 
 class ImageBuildResult(NamedTuple):
@@ -48,6 +48,7 @@ class ImageBuildResult(NamedTuple):
     username: str
     password: str
     journal_output: str
+    rootfs: str
 
 
 @pytest.fixture(name="image_type", scope="session")
@@ -64,7 +65,7 @@ def image_type_fixture(tmpdir_factory, build_container, request):
     )
 
     # image_type is passed via special pytest parameter fixture
-    image_type = request.param
+    image_type, rootfs = request.param.split(",")
 
     username = "test"
     password = "password"
@@ -77,7 +78,7 @@ def image_type_fixture(tmpdir_factory, build_container, request):
         "qcow2": pathlib.Path(output_path) / "qcow2/disk.qcow2",
         "ami": pathlib.Path(output_path) / "image/disk.raw",
     }
-    assert len(artifact) == len(SUPPORTED_IMAGE_TYPES), \
+    assert len(artifact) == len(set([t.split(",")[0] for t in SUPPORTED_IMAGE_TYPES])), \
         "please keep artifact mapping and supported images in sync"
     generated_img = artifact[image_type]
 
@@ -116,11 +117,12 @@ def image_type_fixture(tmpdir_factory, build_container, request):
         container_to_build_ref,
         "--config", "/output/config.json",
         "--type", image_type,
+        "--rootfs", rootfs,
     ])
     journal_output = testutil.journal_after_cursor(cursor)
     journal_log_path.write_text(journal_output, encoding="utf8")
 
-    return ImageBuildResult(generated_img, username, password, journal_output)
+    return ImageBuildResult(generated_img, username, password, journal_output, rootfs)
 
 
 def test_container_builds(build_container):
@@ -144,6 +146,9 @@ def test_image_boots(image_type):
         exit_status, output = test_vm.run("echo hello", user=image_type.username, password=image_type.password)
         assert exit_status == 0
         assert "hello" in output
+        exit_status, output = test_vm.run("findmnt -no FSTYPE -T /", user=image_type.username, password=image_type.password)
+        assert exit_status == 0
+        assert output.strip() == image_type.rootfs
 
 
 def log_has_osbuild_selinux_denials(log):
