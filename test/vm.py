@@ -1,7 +1,9 @@
 import abc
+import os
 import pathlib
 import subprocess
 import sys
+import time
 import uuid
 from io import StringIO
 
@@ -72,26 +74,42 @@ class VM(abc.ABC):
         """
 
     def __enter__(self):
-        self.start()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.force_stop()
 
 
-class QEMU(VM):
+# needed as each distro puts the OVMF.fd in a different location
+def find_ovmf():
+    for p in [
+            "/usr/share/ovmf/OVMF.fd",       # Debian
+            "/usr/share/OVMF/OVMF_CODE.fd",  # Fedora
+    ]:
+        if os.path.exists(p):
+            return p
+    raise ValueError("cannot find a OVMF bios")
 
+
+class QEMU(VM):
     MEM = "2000"
     # TODO: support qemu-system-aarch64 too :)
     QEMU = "qemu-system-x86_64"
 
-    def __init__(self, img, snapshot=True):
+    def __init__(self, img, snapshot=True, cdrom=None):
         super().__init__()
         self._img = pathlib.Path(img)
+        self._qmp_socket = self._img.with_suffix(".qemp-socket")
         self._qemu_p = None
         self._snapshot = snapshot
+        self._cdrom = cdrom
+        self._ssh_port = None
 
-    def start(self):
+    def __del__(self):
+        self.force_stop()
+
+    # XXX: move args to init() so that __enter__ can use them?
+    def start(self, wait_event="ssh", snapshot=True, use_ovmf=False):
         if self.running():
             return
         log_path = self._img.with_suffix(".serial-log")
@@ -107,18 +125,53 @@ class QEMU(VM):
             "-monitor", "none",
             "-netdev", f"user,id=net.0,hostfwd=tcp::{self._ssh_port}-:22",
             "-device", "rtl8139,netdev=net.0",
+            "-qmp", f"unix:{self._qmp_socket},server,nowait",
         ]
-        if self._snapshot:
+        if use_ovmf:
+            qemu_cmdline.extend(["-bios", find_ovmf()])
+        if self._cdrom:
+            qemu_cmdline.extend(["-cdrom", self._cdrom])
+        if snapshot:
             qemu_cmdline.append("-snapshot")
         qemu_cmdline.append(self._img)
         self._log(f"vm starting, log available at {log_path}")
 
         # XXX: use systemd-run to ensure cleanup?
         self._qemu_p = subprocess.Popen(
-            qemu_cmdline, stdout=sys.stdout, stderr=sys.stderr)
+            qemu_cmdline,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        )
         # XXX: also check that qemu is working and did not crash
-        self.wait_ssh_ready()
-        self._log(f"vm ready at port {self._ssh_port}")
+        ev = wait_event.split(":")
+        if ev == ["ssh"]:
+            self.wait_ssh_ready()
+            self._log(f"vm ready at port {self._ssh_port}")
+        elif ev[0] == "qmp":
+            qmp_event = ev[1]
+            self.wait_qmp_event(qmp_event)
+            self._log(f"qmp event {qmp_event}")
+        else:
+            raise ValueError(f"unsupported wait_event {wait_event}")
+
+    def _wait_qmp_socket(self, timeout_sec):
+        for _ in range(timeout_sec):
+            if os.path.exists(self._qmp_socket):
+                return True
+            time.sleep(1)
+        raise Exception(f"no {self._qmp_socket} after {timeout_sec} seconds")
+
+    def wait_qmp_event(self, qmp_event):
+        # import lazy to avoid requiring it for all operations
+        import qmp
+        self._wait_qmp_socket(30)
+        mon = qmp.QEMUMonitorProtocol(os.fspath(self._qmp_socket))
+        mon.connect()
+        while True:
+            event = mon.pull_event(wait=True)
+            self._log(f"DEBUG: got event {event}")
+            if event["event"] == qmp_event:
+                return
 
     def force_stop(self):
         if self._qemu_p:

@@ -2,3 +2,4 @@ pytest==7.4.3
 flake8==6.1.0
 paramiko==2.12.0
 boto3==1.33.13
+qmp==1.1.0
