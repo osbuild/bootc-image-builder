@@ -12,6 +12,7 @@ import pytest
 
 # local test utils
 import testutil
+from containerbuild import build_container_fixture, container_to_build_ref  # noqa: F401
 from vm import AWS, QEMU
 
 if not testutil.has_executable("podman"):
@@ -24,21 +25,6 @@ if not testutil.can_start_rootful_containers():
 # to detect if we have x86-64-v3 (not perfect but should be good enough)
 if platform.system() == "Linux" and platform.machine() == "x86_64" and not testutil.has_x86_64_v3_cpu():
     pytest.skip("need x86_64-v3 capable CPU", allow_module_level=True)
-
-
-@pytest.fixture(name="build_container", scope="session")
-def build_container_fixture():
-    """Build a container from the Containerfile and returns the name"""
-    if tag_from_env := os.getenv("BIB_TEST_BUILD_CONTAINER_TAG"):
-        return tag_from_env
-
-    container_tag = "bootc-image-builder-test"
-    subprocess.check_call([
-        "podman", "build",
-        "-f", "Containerfile",
-        "-t", container_tag,
-    ])
-    return container_tag
 
 
 # image types to test
@@ -60,13 +46,6 @@ def image_type_fixture(tmpdir_factory, build_container, request, force_aws_uploa
     Build an image inside the passed build_container and return an
     ImageBuildResult with the resulting image path and user/password
     """
-    # TODO: make this another indirect fixture input, e.g. by making
-    # making "image_type" an "image" tuple (type, container_ref_to_test)
-    container_to_build_ref = os.getenv(
-        "BIB_TEST_BOOTC_CONTAINER_TAG",
-        "quay.io/centos-bootc/fedora-bootc:eln",
-    )
-
     # image_type is passed via special pytest parameter fixture
     image_type = request.param
 
@@ -139,7 +118,7 @@ def image_type_fixture(tmpdir_factory, build_container, request, force_aws_uploa
             "-v", "/store",  # share the cache between builds
             *creds_args,
             build_container,
-            container_to_build_ref,
+            container_to_build_ref(),
             "--config", "/output/config.json",
             "--type", image_type,
             *upload_args,
