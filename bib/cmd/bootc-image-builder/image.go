@@ -172,6 +172,9 @@ func pipelinesForISO(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, error)
 	img := image.NewAnacondaContainerInstaller(containerSource, "")
 	img.SquashfsCompression = "zstd"
 
+	// TODO: Parametrize me!
+	img.Product = "Fedora"
+
 	img.ExtraBasePackages = rpmmd.PackageSet{
 		Include: []string{
 			"aajohan-comfortaa-fonts",
