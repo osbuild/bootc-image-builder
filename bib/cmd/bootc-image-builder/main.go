@@ -115,9 +115,19 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 	}
 
 	// resolve container
-	resolver := container.NewResolver(c.Architecture.String())
+	hostArch := arch.Current()
+	resolverNative := container.NewResolver(hostArch.String())
+	resolverTarget := container.NewResolver(c.Architecture.String())
+
 	containerSpecs := make(map[string][]container.Spec)
 	for plName, sourceSpecs := range manifest.GetContainerSourceSpecs() {
+		var resolver container.Resolver
+		if plName == "build" {
+			resolver = resolverNative
+		} else {
+			resolver = resolverTarget
+		}
+
 		for _, c := range sourceSpecs {
 			resolver.Add(c)
 		}
@@ -152,8 +162,8 @@ func saveManifest(ms manifest.OSBuildManifest, fpath string) error {
 }
 
 func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
-	hostArch := arch.Current()
-	repos, err := loadRepos(hostArch.String())
+	buildArch := arch.Current()
+	repos, err := loadRepos(buildArch.String())
 	if err != nil {
 		return nil, err
 	}
@@ -163,6 +173,20 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	configFile, _ := cmd.Flags().GetString("config")
 	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
 	imgType, _ := cmd.Flags().GetString("type")
+	targetArch, _ := cmd.Flags().GetString("target-arch")
+	if targetArch != "" {
+		// TODO: detect if binfmt_misc for target arch is
+		// available, e.g. by mounting the binfmt_misc fs into
+		// the container and inspects the files or by
+		// including tiny statically linked target-arch
+		// binaries inside our bib container
+		fmt.Fprintf(os.Stderr, "WARNING: target-arch is experimental and needs an installed 'qemu-user' package\n")
+		if imgType == "iso" {
+			return nil, fmt.Errorf("cannot build iso for different target arches yet")
+		}
+		buildArch = arch.FromString(targetArch)
+	}
+	// TODO: add "target-variant", see https://github.com/osbuild/bootc-image-builder/pull/139/files#r1467591868
 
 	var config *BuildConfig
 	if configFile != "" {
@@ -179,7 +203,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 		ImgType:      imgType,
 		Config:       config,
 		Repos:        repos,
-		Architecture: hostArch,
+		Architecture: buildArch,
 		TLSVerify:    tlsVerify,
 	}
 	return makeManifest(manifestConfig, rpmCacheRoot)
@@ -315,6 +339,7 @@ func run() error {
 	manifestCmd.Flags().String("config", "", "build config file")
 	manifestCmd.Flags().String("type", "qcow2", "image type to build [qcow2, ami]")
 	manifestCmd.Flags().Bool("tls-verify", true, "require HTTPS and verify certificates when contacting registries")
+	manifestCmd.Flags().String("target-arch", "", "build for the given target architecture (experimental)")
 
 	logrus.SetLevel(logrus.ErrorLevel)
 	buildCmd.Flags().AddFlagSet(manifestCmd.Flags())
