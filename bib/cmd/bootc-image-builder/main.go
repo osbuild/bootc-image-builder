@@ -148,7 +148,7 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 	if err != nil {
 		return nil, fmt.Errorf("cannot get container size: %w", err)
 	}
-	c.Filesystems = []blueprint.FilesystemCustomization{
+	c.DefaultFilesystems = []blueprint.FilesystemCustomization{
 		{Mountpoint: "/", MinSize: cntSize * containerSizeToDiskSizeMultiplier},
 	}
 
