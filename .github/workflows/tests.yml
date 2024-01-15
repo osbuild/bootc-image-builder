@@ -102,7 +102,7 @@ jobs:
     - run: python3 -m pip install -r test/requirements.txt
     - name: Setup up podman
       run: |
-        brew install podman netcat
+        nix-env -iA nixpkgs.podman nixpkgs.netcat
         if ! podman machine inspect; then
             podman machine init --rootful
             podman machine set --cpus 4 --memory 4096
