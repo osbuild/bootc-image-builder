@@ -137,8 +137,12 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		}
 		rootFS.Type = c.RootFSType
 	}
+	filesystems := customizations.GetFilesystems()
+	if len(filesystems) == 0 {
+		filesystems = c.Filesystems
+	}
 
-	pt, err := disk.NewPartitionTable(&basept, c.Filesystems, DEFAULT_SIZE, disk.RawPartitioningMode, nil, rng)
+	pt, err := disk.NewPartitionTable(&basept, filesystems, DEFAULT_SIZE, disk.RawPartitioningMode, nil, rng)
 	if err != nil {
 		return nil, err
 	}
