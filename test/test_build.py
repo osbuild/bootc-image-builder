@@ -217,6 +217,16 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
                     "groups": ["wheel"],
                 },
             ],
+            "filesystem": [
+                {
+                    "mountpoint": "/",
+                    "minsize": "12GiB"
+                },
+                {
+                    "mountpoint": "/var/log",
+                    "minsize": "1GiB"
+                },
+            ],
             "kernel": {
                 "append": kargs,
             },
@@ -370,6 +380,15 @@ def test_image_boots(image_type):
         _, output = test_vm.run("bootc status", user="root", keyfile=image_type.ssh_keyfile_private_path)
         # XXX: read the fully yaml instead?
         assert f"image: {image_type.container_ref}" in output
+
+        # Figure out how big / is and make sure it is > 10GiB
+        # Note that df output is in 1k blocks, not bytes
+        for line in output.splitlines():
+            fields = line.split()
+            if fields[0] == "/sysroot":
+                size = int(fields[1])
+                assert size > 10 * 1024 * 1024
+                break
 
 
 @pytest.mark.parametrize("image_type", gen_testcases("ami-boot"), indirect=["image_type"])
