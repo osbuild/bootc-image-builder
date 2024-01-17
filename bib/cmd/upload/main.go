@@ -35,7 +35,7 @@ func uploadAMI(cmd *cobra.Command, args []string) {
 	targetArch, err := flags.GetString("target-arch")
 	check(err)
 
-	check(uploader.UploadAndRegister(client, filename, bucketName, imageName, targetArch))
+	check(uploader.UploadAndRegister(client, filename, bucketName, imageName, targetArch, nil))
 }
 
 func setupCLI() *cobra.Command {
