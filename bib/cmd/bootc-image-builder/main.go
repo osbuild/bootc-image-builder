@@ -359,6 +359,7 @@ func run() error {
 	buildCmd.Flags().String("aws-region", "", "target region for AWS uploads (only for type=ami)")
 	buildCmd.Flags().String("aws-bucket", "", "target S3 bucket name for intermediate storage when creating AMI (only for type=ami)")
 	buildCmd.Flags().String("aws-ami-name", "", "name for the AMI in AWS (only for type=ami)")
+	buildCmd.Flags().String("progress", "text", "type of progress bar to use")
 
 	// flag rules
 	for _, dname := range []string{"output", "store", "rpmmd"} {

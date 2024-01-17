@@ -35,6 +35,7 @@ class ImageBuildResult(NamedTuple):
     img_arch: str
     username: str
     password: str
+    bib_output: str
     journal_output: str
     metadata: dict = {}
 
@@ -71,6 +72,7 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
     output_path.mkdir(exist_ok=True)
 
     journal_log_path = output_path / "journal.log"
+    bib_output_path = output_path / "bib-output.log"
     artifact = {
         "qcow2": pathlib.Path(output_path) / "qcow2/disk.qcow2",
         "ami": pathlib.Path(output_path) / "image/disk.raw",
@@ -84,7 +86,8 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
     if generated_img.exists():
         print(f"NOTE: reusing cached image {generated_img}")
         journal_output = journal_log_path.read_text(encoding="utf8")
-        yield ImageBuildResult(image_type, generated_img, target_arch, username, password, journal_output)
+        bib_output = bib_output_path.read_text(encoding="utf8")
+        yield ImageBuildResult(image_type, generated_img, target_arch, username, password, bib_output, journal_output)
         return
 
     # no image yet, build it
@@ -130,7 +133,7 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
                 raise RuntimeError("AWS credentials not available (upload forced)")
 
         # run container to deploy an image into a bootable disk and upload to a cloud service if applicable
-        subprocess.check_call([
+        p = subprocess.Popen([
             "podman", "run", "--rm",
             "--privileged",
             "--security-opt", "label=type:unconfined_t",
@@ -143,7 +146,18 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
             "--type", image_type,
             *upload_args,
             *target_arch_args,
-        ])
+        ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        # not using subprocss.check_output() to ensure we get live output
+        # during the text
+        bib_output = ""
+        while True:
+            line = p.stdout.readline()
+            if not line:
+                break
+            print(line, end="")
+            bib_output += line
+        p.wait(timeout=10)
+
     journal_output = testutil.journal_after_cursor(cursor)
     metadata = {}
     if image_type == "ami" and upload_args:
@@ -154,8 +168,11 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
         request.addfinalizer(del_ami)
 
     journal_log_path.write_text(journal_output, encoding="utf8")
+    bib_output_path.write_text(bib_output, encoding="utf8")
 
-    yield ImageBuildResult(image_type, generated_img, target_arch, username, password, journal_output, metadata)
+    yield ImageBuildResult(
+        image_type, generated_img, target_arch, username, password,
+        bib_output, journal_output, metadata)
     # Try to cache as much as possible
     disk_usage = shutil.disk_usage(generated_img)
     print(f"NOTE: disk usage after {generated_img}: {disk_usage.free / 1_000_000} / {disk_usage.total / 1_000_000}")
@@ -197,6 +214,13 @@ def test_ami_boots_in_aws(image_type, force_aws_upload):
             raise RuntimeError("AWS credentials not available")
         pytest.skip("AWS credentials not available (upload not forced)")
 
+    # check that upload progress is in the output log. Uploads looks like:
+    #
+    # Uploading /output/image/disk.raw to bootc-image-builder-ci:aac64b64-6e57-47df-9730-54763061d84b-disk.raw
+    #  0 B / 10.00 GiB    0.00%
+    # In the tests with no pty no progress bar is shown in the output just
+    # xx / yy zz%
+    assert " 100.00%\n" in image_type.bib_output
     with AWS(image_type.metadata["ami_id"]) as test_vm:
         exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
         assert exit_status == 0
