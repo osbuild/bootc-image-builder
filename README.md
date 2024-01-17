@@ -23,13 +23,21 @@ $ podman machine start
 
 ## 🚀 Examples
 
-The following example builds a [Fedora ELN](https://docs.fedoraproject.org/en-US/eln/) bootable container into a QCOW2 image for the architecture you're running
-the command on.
+The default expected entrypoint to a bootc system is to first create a derived container image
+with your desired operating system state, authentication, firewalling etc.  For more on
+this, please see [the documentation](https://centos.github.io/centos-bootc/builds/).
 
-The `fedora-bootc:eln` base image does not include a default user. This example injects a [user configuration file](#-build-config)
+NOTE at the current time this project [does not yet support CentOS Stream 9](https://github.com/osbuild/bootc-image-builder/issues/20).
+
+The base images [do not contain a user](https://centos.github.io/centos-bootc/builds/#users-and-groups).
+In order allow decoupling authentication credentials from the container image, where desired,
+this project also supports a [user configuration file](#-build-config).  This can be provided
 by adding a volume-mount for the local file as well as the `--config` flag to the bootc-image-builder container.
 
-The following command will create a QCOW2 disk image. First, create `./config.json` as described above to configure user access.
+The following command will create a QCOW2 disk image.  If you prefer to maintain
+credentials outside of the image, create `./config.json` as described above to configure user access.
+But, other options are possible, for example you can add `cloud-init` to your image
+instead and rely on that ecosystem.
 
 ```
 sudo podman run \
@@ -43,7 +51,7 @@ sudo podman run \
     quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
     --config /config.json \
-    quay.io/centos-bootc/fedora-bootc:eln
+    <your custom image>
 ```
 
 ### Running the resulting QCOW2 file on Linux (x86_64)
