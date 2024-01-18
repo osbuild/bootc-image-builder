@@ -65,21 +65,21 @@ def has_x86_64_v3_cpu():
 
 
 def can_start_rootful_containers():
-    match platform.system():
-        case "Linux":
-            # on linux we need to run "podman" with sudo to get full
-            # root containers
-            return os.getuid() == 0
-        case "Darwin":
-            # on darwin a container is root if the podman machine runs
-            # in "rootful" mode, i.e. no need to run "podman" as root
-            # as it's just proxying to the VM
-            res = subprocess.run([
-                "podman", "machine", "inspect", "--format={{.Rootful}}",
-            ], capture_output=True, encoding="utf8", check=True)
-            return res.stdout.strip() == "true"
-        case unknown:
-            raise ValueError(f"unknown platform {unknown}")
+    system = platform.system()
+    if system == "Linux":
+        # on linux we need to run "podman" with sudo to get full
+        # root containers
+        return os.getuid() == 0
+    elif system == "Darwin":
+        # on darwin a container is root if the podman machine runs
+        # in "rootful" mode, i.e. no need to run "podman" as root
+        # as it's just proxying to the VM
+        res = subprocess.run([
+            "podman", "machine", "inspect", "--format={{.Rootful}}",
+        ], capture_output=True, encoding="utf8", check=True)
+        return res.stdout.strip() == "true"
+    else:
+        raise ValueError(f"unknown platform {system}")
 
 
 def write_aws_creds(path):
