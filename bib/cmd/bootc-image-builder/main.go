@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -28,17 +29,6 @@ const (
 	modulePlatformID = "platform:f39"
 	releaseVersion   = "39"
 )
-
-func fail(msg string) {
-	fmt.Fprintln(os.Stderr, msg)
-	os.Exit(1)
-}
-
-func check(err error) {
-	if err != nil {
-		fail(err.Error())
-	}
-}
 
 type BuildConfig struct {
 	Blueprint *blueprint.Blueprint `json:"blueprint,omitempty"`
@@ -78,34 +68,40 @@ func loadRepos(archName string) []rpmmd.RepoConfig {
 	var repoData map[string][]rpmmd.RepoConfig
 	err := json.Unmarshal([]byte(reposStr), &repoData)
 	if err != nil {
-		fail(fmt.Sprintf("error loading repositories: %s", err))
+		log.Fatalf("error loading repositories: %s", err)
 	}
 	archRepos, ok := repoData[archName]
 	if !ok {
-		fail(fmt.Sprintf("no repositories defined for %s", archName))
+		log.Fatalf("no repositories defined for %s", archName)
 	}
 	return archRepos
 }
 
 func loadConfig(path string) BuildConfig {
 	fp, err := os.Open(path)
-	check(err)
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
 	defer fp.Close()
 
 	dec := json.NewDecoder(fp)
 	dec.DisallowUnknownFields()
 	var conf BuildConfig
 
-	check(dec.Decode(&conf))
+	if err := dec.Decode(&conf); err != nil {
+		log.Fatalf("%s", err)
+	}
 	if dec.More() {
-		fail(fmt.Sprintf("multiple configuration objects or extra data found in %q", path))
+		log.Fatalf("multiple configuration objects or extra data found in %q", path)
 	}
 	return conf
 }
 
 func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest, error) {
 	manifest, err := Manifest(c)
-	check(err)
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
 
 	// depsolve packages
 	solver := dnfjson.NewSolver(modulePlatformID, releaseVersion, c.Architecture.String(), distroName, cacheRoot)
@@ -133,7 +129,7 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 
 	mf, err := manifest.Serialize(depsolvedSets, containerSpecs, nil)
 	if err != nil {
-		fail(fmt.Sprintf("[ERROR] manifest serialization failed: %s", err.Error()))
+		log.Fatalf("[ERROR] manifest serialization failed: %s", err.Error())
 	}
 	return mf, nil
 }
@@ -194,33 +190,39 @@ func cmdBuild(cmd *cobra.Command, args []string) {
 	osbuildStore, _ := cmd.Flags().GetString("store")
 	imgType, _ := cmd.Flags().GetString("type")
 
-	err := setup.Validate()
-	check(err)
-	err = setup.EnsureEnvironment()
-	check(err)
+	if err := setup.Validate(); err != nil {
+		log.Fatalf("%s", err)
+	}
+	if err := setup.EnsureEnvironment(); err != nil {
+		log.Fatalf("%s", err)
+	}
 
 	if err := os.MkdirAll(outputDir, 0777); err != nil {
-		fail(fmt.Sprintf("failed to create target directory: %s", err.Error()))
+		log.Fatalf("failed to create target directory: %s", err.Error())
 	}
 
 	upload := false
 	if region, _ := cmd.Flags().GetString("aws-region"); region != "" {
 		if imgType != "ami" {
-			fail(fmt.Sprintf("aws flags set for non-ami image type (type is set to %s)", imgType))
+			log.Fatalf("aws flags set for non-ami image type (type is set to %s)", imgType)
 		}
 		// initialise the client to check if the env vars exist before building the image
 		client, err := awscloud.NewDefault(region)
-		check(err)
+		if err != nil {
+			log.Fatalf("%s", err)
+		}
 
 		fmt.Printf("Checking AWS permission by listing regions...\n")
-		_, err = client.Regions()
-		check(err)
-
+		if _, err := client.Regions(); err != nil {
+			log.Fatalf("%s", err)
+		}
 		upload = true
 	}
 
 	canChown, err := canChownInPath(outputDir)
-	check(err)
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
 
 	manifest_fname := fmt.Sprintf("manifest-%s.json", imgType)
 	fmt.Printf("Generating %s ... ", manifest_fname)
@@ -239,11 +241,13 @@ func cmdBuild(cmd *cobra.Command, args []string) {
 	case "iso":
 		exports = []string{"bootiso"}
 	default:
-		fail(fmt.Sprintf("valid types are 'qcow2', 'ami', 'raw', 'iso', not: '%s'", imgType))
+		log.Fatalf("valid types are 'qcow2', 'ami', 'raw', 'iso', not: '%s'", imgType)
 	}
 
 	manifestPath := filepath.Join(outputDir, manifest_fname)
-	check(saveManifest(mf, manifestPath))
+	if err := saveManifest(mf, manifestPath); err != nil {
+		log.Fatalf("%s", err)
+	}
 
 	fmt.Printf("Building %s\n", manifest_fname)
 
@@ -253,16 +257,20 @@ func cmdBuild(cmd *cobra.Command, args []string) {
 		osbuildEnv = []string{"OSBUILD_EXPORT_FORCE_NO_PRESERVE_OWNER=1"}
 	}
 	_, err = osbuild.RunOSBuild(mf, osbuildStore, outputDir, exports, nil, osbuildEnv, false, os.Stderr)
-	check(err)
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
 
 	fmt.Println("Build complete!")
 	if upload {
 		switch imgType {
 		case "ami":
 			diskpath := filepath.Join(outputDir, exports[0], "disk.raw")
-			check(uploadAMI(diskpath, cmd.Flags()))
+			if err := uploadAMI(diskpath, cmd.Flags()); err != nil {
+				log.Fatalf("%s", err)
+			}
 		default:
-			panic(fmt.Sprintf("upload set but image type %s doesn't support uploading", imgType))
+			log.Panicf("upload set but image type %s doesn't support uploading", imgType)
 		}
 	} else {
 		fmt.Printf("Results saved in\n%s\n", outputDir)
@@ -306,11 +314,17 @@ func main() {
 	buildCmd.Flags().String("aws-ami-name", "", "name for the AMI in AWS (only for type=ami)")
 
 	// flag rules
-	check(buildCmd.MarkFlagDirname("output"))
-	check(buildCmd.MarkFlagDirname("store"))
-	check(buildCmd.MarkFlagDirname("rpmmd"))
-	check(buildCmd.MarkFlagFilename("config"))
+	for _, dname := range []string{"output", "store", "rpmmd"} {
+		if err := buildCmd.MarkFlagDirname(dname); err != nil {
+			log.Fatalf("%s", err)
+		}
+	}
+	if err := buildCmd.MarkFlagFilename("config"); err != nil {
+		log.Fatalf("%s", err)
+	}
 	buildCmd.MarkFlagsRequiredTogether("aws-region", "aws-bucket", "aws-ami-name")
 
-	check(rootCmd.Execute())
+	if err := rootCmd.Execute(); err != nil {
+		log.Fatalf("%s", err)
+	}
 }
