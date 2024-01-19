@@ -64,43 +64,43 @@ func canChownInPath(path string) (bool, error) {
 
 // Parse embedded repositories and return repo configs for the given
 // architecture.
-func loadRepos(archName string) []rpmmd.RepoConfig {
+func loadRepos(archName string) ([]rpmmd.RepoConfig, error) {
 	var repoData map[string][]rpmmd.RepoConfig
 	err := json.Unmarshal([]byte(reposStr), &repoData)
 	if err != nil {
-		log.Fatalf("error loading repositories: %s", err)
+		return nil, err
 	}
 	archRepos, ok := repoData[archName]
 	if !ok {
-		log.Fatalf("no repositories defined for %s", archName)
+		return nil, fmt.Errorf("no repositories defined for %s", archName)
 	}
-	return archRepos
+	return archRepos, nil
 }
 
-func loadConfig(path string) BuildConfig {
+func loadConfig(path string) (*BuildConfig, error) {
 	fp, err := os.Open(path)
 	if err != nil {
-		log.Fatalf("%s", err)
+		return nil, err
 	}
 	defer fp.Close()
 
 	dec := json.NewDecoder(fp)
 	dec.DisallowUnknownFields()
-	var conf BuildConfig
 
+	var conf BuildConfig
 	if err := dec.Decode(&conf); err != nil {
-		log.Fatalf("%s", err)
+		return nil, err
 	}
 	if dec.More() {
-		log.Fatalf("multiple configuration objects or extra data found in %q", path)
+		return nil, fmt.Errorf("multiple configuration objects or extra data found in %q", path)
 	}
-	return conf
+	return &conf, nil
 }
 
 func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest, error) {
 	manifest, err := Manifest(c)
 	if err != nil {
-		log.Fatalf("%s", err)
+		return nil, err
 	}
 
 	// depsolve packages
@@ -129,7 +129,7 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 
 	mf, err := manifest.Serialize(depsolvedSets, containerSpecs, nil)
 	if err != nil {
-		log.Fatalf("[ERROR] manifest serialization failed: %s", err.Error())
+		return nil, fmt.Errorf("[ERROR] manifest serialization failed: %s", err.Error())
 	}
 	return mf, nil
 }
@@ -153,7 +153,10 @@ func saveManifest(ms manifest.OSBuildManifest, fpath string) error {
 
 func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	hostArch := arch.Current()
-	repos := loadRepos(hostArch.String())
+	repos, err := loadRepos(hostArch.String())
+	if err != nil {
+		return nil, err
+	}
 
 	imgref := args[0]
 	rpmCacheRoot, _ := cmd.Flags().GetString("rpmmd")
@@ -161,15 +164,20 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
 	imgType, _ := cmd.Flags().GetString("type")
 
-	config := BuildConfig{}
+	var config *BuildConfig
 	if configFile != "" {
-		config = loadConfig(configFile)
+		config, err = loadConfig(configFile)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		config = &BuildConfig{}
 	}
 
 	manifestConfig := &ManifestConfig{
 		Imgref:       imgref,
 		ImgType:      imgType,
-		Config:       &config,
+		Config:       config,
 		Repos:        repos,
 		Architecture: hostArch,
 		TLSVerify:    tlsVerify,
@@ -177,51 +185,52 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	return makeManifest(manifestConfig, rpmCacheRoot)
 }
 
-func cmdManifest(cmd *cobra.Command, args []string) {
+func cmdManifest(cmd *cobra.Command, args []string) error {
 	mf, err := manifestFromCobra(cmd, args)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	fmt.Print(string(mf))
+	return nil
 }
 
-func cmdBuild(cmd *cobra.Command, args []string) {
+func cmdBuild(cmd *cobra.Command, args []string) error {
 	outputDir, _ := cmd.Flags().GetString("output")
 	osbuildStore, _ := cmd.Flags().GetString("store")
 	imgType, _ := cmd.Flags().GetString("type")
 
 	if err := setup.Validate(); err != nil {
-		log.Fatalf("%s", err)
+		return err
 	}
 	if err := setup.EnsureEnvironment(); err != nil {
-		log.Fatalf("%s", err)
+		return err
 	}
 
 	if err := os.MkdirAll(outputDir, 0777); err != nil {
-		log.Fatalf("failed to create target directory: %s", err.Error())
+		return err
 	}
 
 	upload := false
 	if region, _ := cmd.Flags().GetString("aws-region"); region != "" {
 		if imgType != "ami" {
-			log.Fatalf("aws flags set for non-ami image type (type is set to %s)", imgType)
+			return fmt.Errorf("aws flags set for non-ami image type (type is set to %s)", imgType)
 		}
 		// initialise the client to check if the env vars exist before building the image
 		client, err := awscloud.NewDefault(region)
 		if err != nil {
-			log.Fatalf("%s", err)
+			return err
 		}
 
 		fmt.Printf("Checking AWS permission by listing regions...\n")
 		if _, err := client.Regions(); err != nil {
-			log.Fatalf("%s", err)
+			return err
 		}
 		upload = true
 	}
 
 	canChown, err := canChownInPath(outputDir)
 	if err != nil {
-		log.Fatalf("%s", err)
+		return err
 	}
 
 	manifest_fname := fmt.Sprintf("manifest-%s.json", imgType)
@@ -241,12 +250,12 @@ func cmdBuild(cmd *cobra.Command, args []string) {
 	case "iso":
 		exports = []string{"bootiso"}
 	default:
-		log.Fatalf("valid types are 'qcow2', 'ami', 'raw', 'iso', not: '%s'", imgType)
+		return fmt.Errorf("valid types are 'qcow2', 'ami', 'raw', 'iso', not: '%s'", imgType)
 	}
 
 	manifestPath := filepath.Join(outputDir, manifest_fname)
 	if err := saveManifest(mf, manifestPath); err != nil {
-		log.Fatalf("%s", err)
+		return err
 	}
 
 	fmt.Printf("Building %s\n", manifest_fname)
@@ -258,7 +267,7 @@ func cmdBuild(cmd *cobra.Command, args []string) {
 	}
 	_, err = osbuild.RunOSBuild(mf, osbuildStore, outputDir, exports, nil, osbuildEnv, false, os.Stderr)
 	if err != nil {
-		log.Fatalf("%s", err)
+		return err
 	}
 
 	fmt.Println("Build complete!")
@@ -267,18 +276,18 @@ func cmdBuild(cmd *cobra.Command, args []string) {
 		case "ami":
 			diskpath := filepath.Join(outputDir, exports[0], "disk.raw")
 			if err := uploadAMI(diskpath, cmd.Flags()); err != nil {
-				log.Fatalf("%s", err)
+				return err
 			}
 		default:
-			log.Panicf("upload set but image type %s doesn't support uploading", imgType)
+			return fmt.Errorf("upload set but image type %s doesn't support uploading", imgType)
 		}
 	} else {
 		fmt.Printf("Results saved in\n%s\n", outputDir)
 	}
-
+	return nil
 }
 
-func main() {
+func run() error {
 	rootCmd := &cobra.Command{
 		Use:  "bootc-image-builder",
 		Long: "create a bootable image from an ostree native container",
@@ -289,7 +298,7 @@ func main() {
 		Long:                  rootCmd.Long,
 		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
-		Run:                   cmdBuild,
+		RunE:                  cmdBuild,
 	}
 	rootCmd.AddCommand(buildCmd)
 	manifestCmd := &cobra.Command{
@@ -297,7 +306,7 @@ func main() {
 		Long:                  rootCmd.Long,
 		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
-		Run:                   cmdManifest,
+		RunE:                  cmdManifest,
 	}
 	rootCmd.AddCommand(manifestCmd)
 	manifestCmd.Flags().String("rpmmd", "/var/cache/osbuild/rpmmd", "rpm metadata cache directory")
@@ -316,15 +325,19 @@ func main() {
 	// flag rules
 	for _, dname := range []string{"output", "store", "rpmmd"} {
 		if err := buildCmd.MarkFlagDirname(dname); err != nil {
-			log.Fatalf("%s", err)
+			return err
 		}
 	}
 	if err := buildCmd.MarkFlagFilename("config"); err != nil {
-		log.Fatalf("%s", err)
+		return err
 	}
 	buildCmd.MarkFlagsRequiredTogether("aws-region", "aws-bucket", "aws-ami-name")
 
-	if err := rootCmd.Execute(); err != nil {
-		log.Fatalf("%s", err)
+	return rootCmd.Execute()
+}
+
+func main() {
+	if err := run(); err != nil {
+		log.Fatalf("error: %s", err)
 	}
 }
