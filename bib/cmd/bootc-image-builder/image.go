@@ -2,7 +2,7 @@ package main
 
 import (
 	cryptorand "crypto/rand"
-	"fmt"
+	"log"
 	"math"
 	"math/big"
 	"math/rand"
@@ -56,11 +56,11 @@ func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
 	case "iso":
 		img, err = pipelinesForISO(c, rng)
 	default:
-		fail(fmt.Sprintf("Manifest(): unsupported image type %q", c.ImgType))
+		log.Fatalf("Manifest(): unsupported image type %q", c.ImgType)
 	}
 
 	if err != nil {
-		fail(err.Error())
+		log.Fatalf("%s", err)
 	}
 
 	mf := manifest.New()
@@ -73,7 +73,7 @@ func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
 
 func pipelinesForDiskImage(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, error) {
 	if c.Imgref == "" {
-		fail("pipeline: no base image defined")
+		log.Fatalf("pipeline: no base image defined")
 	}
 	ref := "ostree/1/1/0"
 	containerSource := container.SourceSpec{
@@ -143,10 +143,12 @@ func pipelinesForDiskImage(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, 
 
 	basept, ok := partitionTables[c.Architecture.String()]
 	if !ok {
-		fail(fmt.Sprintf("pipelines: no partition tables defined for %s", c.Architecture))
+		log.Fatalf("pipelines: no partition tables defined for %s", c.Architecture)
 	}
 	pt, err := disk.NewPartitionTable(&basept, nil, DEFAULT_SIZE, disk.RawPartitioningMode, nil, rng)
-	check(err)
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
 	img.PartitionTable = pt
 
 	img.Filename = filename
@@ -156,7 +158,7 @@ func pipelinesForDiskImage(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, 
 
 func pipelinesForISO(c *ManifestConfig, rng *rand.Rand) (image.ImageKind, error) {
 	if c.Imgref == "" {
-		fail("pipeline: no base image defined")
+		log.Fatalf("pipeline: no base image defined")
 	}
 
 	containerSource := container.SourceSpec{
