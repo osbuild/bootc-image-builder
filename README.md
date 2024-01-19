@@ -134,6 +134,12 @@ The following image types are currently available via the `--type` argument:
 
 ### Amazon Machine Images (AMIs)
 
+#### Prerequisites
+
+In order to successfully import an AMI into your AWS account, you need to have the [vmimport service role](https://docs.aws.amazon.com/vm-import/latest/userguide/required-permissions.html) configured on your account.
+
+#### Flags
+
 AMIs can be automatically uploaded to AWS by specifying the following flags:
 
 | Argument       | Description                                                      |
