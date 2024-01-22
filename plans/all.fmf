@@ -2,6 +2,10 @@ summary: Run all tests inside a VM environment
 provision:
   how: virtual
   image: fedora:39
+  # 120 means 120GB, disk has to be specificed here, the format from:
+  #   https://tmt.readthedocs.io/en/stable/spec/hardware.html#disk
+  # does not work here or below under "hardware"
+  disk: 120
   hardware:
     virtualization:
       is-supported: true
@@ -17,3 +21,6 @@ prepare:
 execute:
   how: tmt
   script: pytest -s -vv --force-aws-upload
+finish:
+  how: shell
+  script: df -h
