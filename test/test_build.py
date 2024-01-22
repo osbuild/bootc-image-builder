@@ -12,7 +12,8 @@ import pytest
 
 # local test utils
 import testutil
-from containerbuild import build_container_fixture, container_to_build_ref  # noqa: F401
+from containerbuild import build_container_fixture  # noqa: F401
+from testcases import gen_testcases
 from vm import AWS, QEMU
 
 if not testutil.has_executable("podman"):
@@ -25,12 +26,6 @@ if not testutil.can_start_rootful_containers():
 # to detect if we have x86-64-v3 (not perfect but should be good enough)
 if platform.system() == "Linux" and platform.machine() == "x86_64" and not testutil.has_x86_64_v3_cpu():
     pytest.skip("need x86_64-v3 capable CPU", allow_module_level=True)
-
-
-# image types to test
-DIRECT_BOOT_IMAGE_TYPES = ["qcow2", "ami", "raw"]
-INSTALLER_IMAGE_TYPES = ["iso"]
-SUPPORTED_IMAGE_TYPES = DIRECT_BOOT_IMAGE_TYPES + INSTALLER_IMAGE_TYPES
 
 
 class ImageBuildResult(NamedTuple):
@@ -49,7 +44,7 @@ def image_type_fixture(tmpdir_factory, build_container, request, force_aws_uploa
     ImageBuildResult with the resulting image path and user/password
     """
     # image_type is passed via special pytest parameter fixture
-    image_type = request.param
+    container_ref, image_type = request.param.split(",")
 
     username = "test"
     password = "password"
@@ -64,7 +59,7 @@ def image_type_fixture(tmpdir_factory, build_container, request, force_aws_uploa
         "raw": pathlib.Path(output_path) / "image/disk.raw",
         "iso": pathlib.Path(output_path) / "bootiso/install.iso",
     }
-    assert len(artifact) == len(SUPPORTED_IMAGE_TYPES), \
+    assert len(artifact) == len(set(t.split(",")[1] for t in gen_testcases("all"))), \
         "please keep artifact mapping and supported images in sync"
     generated_img = artifact[image_type]
 
@@ -121,7 +116,7 @@ def image_type_fixture(tmpdir_factory, build_container, request, force_aws_uploa
             "-v", "/store",  # share the cache between builds
             *creds_args,
             build_container,
-            container_to_build_ref(),
+            container_ref,
             "--config", "/output/config.json",
             "--type", image_type,
             *upload_args,
@@ -146,14 +141,14 @@ def test_container_builds(build_container):
     assert build_container in output
 
 
-@pytest.mark.parametrize("image_type", SUPPORTED_IMAGE_TYPES, indirect=["image_type"])
+@pytest.mark.parametrize("image_type", gen_testcases("direct-boot"), indirect=["image_type"])
 def test_image_is_generated(image_type):
     assert image_type.img_path.exists(), "output file missing, dir "\
         f"content: {os.listdir(os.fspath(image_type.img_path))}"
 
 
 @pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
-@pytest.mark.parametrize("image_type", DIRECT_BOOT_IMAGE_TYPES, indirect=["image_type"])
+@pytest.mark.parametrize("image_type", gen_testcases("direct-boot"), indirect=["image_type"])
 def test_image_boots(image_type):
     with QEMU(image_type.img_path) as test_vm:
         exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
@@ -163,7 +158,7 @@ def test_image_boots(image_type):
         assert "hello" in output
 
 
-@pytest.mark.parametrize("image_type", ["ami"], indirect=["image_type"])
+@pytest.mark.parametrize("image_type", gen_testcases("ami-boot"), indirect=["image_type"])
 def test_ami_boots_in_aws(image_type, force_aws_upload):
     if not testutil.write_aws_creds("/dev/null"):  # we don't care about the file, just the variables being there
         if force_aws_upload:
@@ -213,7 +208,7 @@ def has_selinux():
 
 
 @pytest.mark.skipif(not has_selinux(), reason="selinux not enabled")
-@pytest.mark.parametrize("image_type", SUPPORTED_IMAGE_TYPES, indirect=["image_type"])
+@pytest.mark.parametrize("image_type", gen_testcases("direct-boot"), indirect=["image_type"])
 def test_image_build_without_se_linux_denials(image_type):
     # the journal always contains logs from the image building
     assert image_type.journal_output != ""
@@ -222,7 +217,7 @@ def test_image_build_without_se_linux_denials(image_type):
 
 
 @pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
-@pytest.mark.parametrize("image_type", INSTALLER_IMAGE_TYPES, indirect=["image_type"])
+@pytest.mark.parametrize("image_type", gen_testcases("iso"), indirect=["image_type"])
 def test_iso_installs(image_type):
     installer_iso_path = image_type.img_path
     test_disk_path = installer_iso_path.with_name("test-disk.img")

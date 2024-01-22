@@ -17,10 +17,14 @@ prepare:
     - python3-boto3
     - python3-flake8
     - python3-paramiko
+    - python3-pip
     - qemu-kvm
 execute:
   how: tmt
-  script: pytest -s -vv --force-aws-upload
+  script: |
+    pip install --user -r test/requirements.txt
+    pytest -s -vv --force-aws-upload
+  duration: 2h
 finish:
   how: shell
   script: df -h
