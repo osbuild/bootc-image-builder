@@ -17,12 +17,3 @@ def build_container_fixture():
         "-t", container_tag,
     ])
     return container_tag
-
-
-def container_to_build_ref():
-    # TODO: make this another indirect fixture input, e.g. by making
-    # making "image_type" an "image" tuple (type, container_ref_to_test)
-    return os.getenv(
-        "BIB_TEST_BOOTC_CONTAINER_TAG",
-        "quay.io/centos-bootc/fedora-bootc:eln",
-    )
