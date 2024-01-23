@@ -20,6 +20,7 @@ import (
 	"github.com/osbuild/images/pkg/image"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/platform"
+	"github.com/osbuild/images/pkg/policies"
 	"github.com/osbuild/images/pkg/rpmmd"
 	"github.com/osbuild/images/pkg/runner"
 	"github.com/sirupsen/logrus"
@@ -119,6 +120,11 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 
 	if kopts := customizations.GetKernel(); kopts != nil && kopts.Append != "" {
 		img.KernelOptionsAppend = append(img.KernelOptionsAppend, kopts.Append)
+	}
+
+	// Check the filesystem customizations against the policy
+	if err := blueprint.CheckMountpointsPolicy(customizations.GetFilesystems(), policies.OstreeMountpointPolicies); err != nil {
+		return nil, err
 	}
 
 	basept, ok := partitionTables[c.Architecture.String()]
