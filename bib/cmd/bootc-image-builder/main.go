@@ -299,6 +299,7 @@ func run() error {
 		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
 		RunE:                  cmdBuild,
+		SilenceUsage:          true,
 	}
 	rootCmd.AddCommand(buildCmd)
 	manifestCmd := &cobra.Command{
@@ -307,6 +308,7 @@ func run() error {
 		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
 		RunE:                  cmdManifest,
+		SilenceUsage:          true,
 	}
 	rootCmd.AddCommand(manifestCmd)
 	manifestCmd.Flags().String("rpmmd", "/var/cache/osbuild/rpmmd", "rpm metadata cache directory")
