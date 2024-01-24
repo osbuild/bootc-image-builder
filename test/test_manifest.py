@@ -1,5 +1,6 @@
 import json
 import platform
+import pathlib
 import subprocess
 import textwrap
 
@@ -224,3 +225,47 @@ def test_manifest_user_customizations_toml(tmp_path, build_container):
         "key": "ssh-rsa AAA ... user@email.com",
         "groups": ["wheel"],
     }
+
+
+@pytest.mark.parametrize("image_type", gen_testcases("manifest"))
+def test_mount_ostree_error(tmpdir_factory, build_container, image_type):
+    container_ref = image_type.split(",")[0]
+    CFG = {
+        "blueprint": {
+            "customizations": {
+                "filesystem": [
+                    {
+                        "mountpoint": "/",
+                        "minsize": "12GiB"
+                    },
+                    {
+                        "mountpoint": "/var/log",
+                        "minsize": "1GiB"
+                    },
+                    {
+                        "mountpoint": "/ostree",
+                        "minsize": "10GiB"
+                    }
+                ]
+            },
+        },
+    }
+
+    output_path = pathlib.Path(tmpdir_factory.mktemp("data")) / "output"
+    output_path.mkdir(exist_ok=True)
+    config_json_path = output_path / "config.json"
+    config_json_path.write_text(json.dumps(CFG), encoding="utf-8")
+
+    try:
+        subprocess.check_output([
+            "podman", "run", "--rm",
+            "--privileged",
+            "--security-opt", "label=type:unconfined_t",
+            "-v", f"{output_path}:/output",
+            f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "{container_ref}"]',
+            build_container,
+            "--config", "/output/config.json",
+        ], stderr=subprocess.PIPE)
+        assert False, "Did not raise a CalledProcessError when mounting /ostree"
+    except subprocess.CalledProcessError as err:
+        assert 'The following custom mountpoints are not supported ["/ostree"]' in err.stderr.decode("utf-8")
