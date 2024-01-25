@@ -133,7 +133,7 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 
 	mf := manifest.New()
 	mf.Distro = manifest.DISTRO_FEDORA
-	runner := &runner.Fedora{Version: 39}
+	runner := &runner.Linux{}
 	containerSources := []container.SourceSpec{
 		{
 			Source:    c.Imgref,
