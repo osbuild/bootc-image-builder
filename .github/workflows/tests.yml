@@ -105,6 +105,7 @@ jobs:
         brew install podman netcat
         if ! podman machine inspect; then
             podman machine init --rootful
+            podman machine set --cpus 4 --memory 4096
         fi
         if [ "$(podman machine inspect --format='{{.State}}')" != "running" ]; then
             podman machine start
