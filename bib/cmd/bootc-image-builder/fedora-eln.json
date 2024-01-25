@@ -1,11 +1,11 @@
 {
   "aarch64": [
     {
-      "baseurl": "https://odcs.fedoraproject.org/composes/production/latest-Fedora-ELN/compose/BaseOS/aarch64/os/",
+      "baseurl": "https://rpmrepo.osbuild.org/v2/mirror/public/eln/eln-aarch64-baseos-20240115/",
       "name": "baseos"
     },
     {
-      "baseurl": "https://odcs.fedoraproject.org/composes/production/latest-Fedora-ELN/compose/AppStream/aarch64/os/",
+      "baseurl": "https://rpmrepo.osbuild.org/v2/mirror/public/eln/eln-aarch64-appstream-20240115/",
       "name": "appstream"
     },
     {
@@ -43,11 +43,11 @@
   ],
   "x86_64": [
     {
-      "baseurl": "https://odcs.fedoraproject.org/composes/production/latest-Fedora-ELN/compose/BaseOS/x86_64/os/",
+      "baseurl": "https://rpmrepo.osbuild.org/v2/mirror/public/eln/eln-x86_64-baseos-20240115/",
       "name": "baseos"
     },
     {
-      "baseurl": "https://odcs.fedoraproject.org/composes/production/latest-Fedora-ELN/compose/AppStream/x86_64/os/",
+      "baseurl": "https://rpmrepo.osbuild.org/v2/mirror/public/eln/eln-x86_64-appstream-20240115/",
       "name": "appstream"
     },
     {
