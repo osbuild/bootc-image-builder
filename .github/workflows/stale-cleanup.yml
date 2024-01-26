@@ -1,0 +1,16 @@
+name: Mark and close stale issues and PRs
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: osbuild/common-stale-action@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
