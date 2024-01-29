@@ -12,6 +12,7 @@ provision:
 prepare:
   how: install
   package:
+    - edk2-aarch64
     - podman
     - pytest
     - python3-boto3
@@ -19,6 +20,8 @@ prepare:
     - python3-paramiko
     - python3-pip
     - qemu-kvm
+    - qemu-system-aarch64
+    - qemu-user-static
 execute:
   how: tmt
   script: |
