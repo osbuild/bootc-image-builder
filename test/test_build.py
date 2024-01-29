@@ -32,6 +32,7 @@ if platform.system() == "Linux" and platform.machine() == "x86_64" and not testu
 class ImageBuildResult(NamedTuple):
     img_type: str
     img_path: str
+    img_arch: str
     username: str
     password: str
     journal_output: str
@@ -51,13 +52,22 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
     ImageBuildResult with the resulting image path and user/password
     """
     # image_type is passed via special pytest parameter fixture
-    container_ref, image_type = request.param.split(",")
+    if request.param.count(",") == 2:
+        container_ref, image_type, target_arch = request.param.split(",")
+    elif request.param.count(",") == 1:
+        container_ref, image_type = request.param.split(",")
+        target_arch = None
+    else:
+        raise ValueError(f"cannot parse {request.param.count}")
 
     username = "test"
     password = "password"
 
-    for_image_type = request.param.translate(str.maketrans("/:,", "---"))
-    output_path = shared_tmpdir / f"cache-{for_image_type}"
+    # image_type can be long and the qmp socket (that has a limit of 100ish
+    # AF_UNIX) is derrived from the path
+    # so hash the image_type instead of just using it
+    for_image_type = request.param
+    output_path = shared_tmpdir / format(abs(hash(for_image_type)), "x")
     output_path.mkdir(exist_ok=True)
 
     journal_log_path = output_path / "journal.log"
@@ -74,7 +84,7 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
     if generated_img.exists():
         print(f"NOTE: reusing cached image {generated_img}")
         journal_output = journal_log_path.read_text(encoding="utf8")
-        yield ImageBuildResult(image_type, generated_img, username, password, journal_output)
+        yield ImageBuildResult(image_type, generated_img, target_arch, username, password, journal_output)
         return
 
     # no image yet, build it
@@ -99,6 +109,9 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
 
     upload_args = []
     creds_args = []
+    target_arch_args = []
+    if target_arch:
+        target_arch_args = ["--target-arch", target_arch]
 
     with tempfile.TemporaryDirectory() as tempdir:
         if image_type == "ami":
@@ -129,6 +142,7 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
             "--config", "/output/config.json",
             "--type", image_type,
             *upload_args,
+            *target_arch_args,
         ])
     journal_output = testutil.journal_after_cursor(cursor)
     metadata = {}
@@ -141,7 +155,7 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
 
     journal_log_path.write_text(journal_output, encoding="utf8")
 
-    yield ImageBuildResult(image_type, generated_img, username, password, journal_output, metadata)
+    yield ImageBuildResult(image_type, generated_img, target_arch, username, password, journal_output, metadata)
     # Try to cache as much as possible
     disk_usage = shutil.disk_usage(generated_img)
     print(f"NOTE: disk usage after {generated_img}: {disk_usage.free / 1_000_000} / {disk_usage.total / 1_000_000}")
@@ -167,7 +181,7 @@ def test_image_is_generated(image_type):
 @pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
 @pytest.mark.parametrize("image_type", gen_testcases("direct-boot"), indirect=["image_type"])
 def test_image_boots(image_type):
-    with QEMU(image_type.img_path) as test_vm:
+    with QEMU(image_type.img_path, arch=image_type.img_arch) as test_vm:
         exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
         assert exit_status == 0
         exit_status, output = test_vm.run("echo hello", user=image_type.username, password=image_type.password)
