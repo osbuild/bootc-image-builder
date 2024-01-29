@@ -1,6 +1,7 @@
 import abc
 import os
 import pathlib
+import platform
 import subprocess
 import sys
 import time
@@ -93,10 +94,8 @@ def find_ovmf():
 
 class QEMU(VM):
     MEM = "2000"
-    # TODO: support qemu-system-aarch64 too :)
-    QEMU = "qemu-system-x86_64"
 
-    def __init__(self, img, snapshot=True, cdrom=None):
+    def __init__(self, img, arch="", snapshot=True, cdrom=None):
         super().__init__()
         self._img = pathlib.Path(img)
         self._qmp_socket = self._img.with_suffix(".qemp-socket")
@@ -104,22 +103,37 @@ class QEMU(VM):
         self._snapshot = snapshot
         self._cdrom = cdrom
         self._ssh_port = None
+        if not arch:
+            arch = platform.machine()
+        self._arch = arch
 
     def __del__(self):
         self.force_stop()
 
-    # XXX: move args to init() so that __enter__ can use them?
-    def start(self, wait_event="ssh", snapshot=True, use_ovmf=False):
-        if self.running():
-            return
-        log_path = self._img.with_suffix(".serial-log")
-        self._ssh_port = get_free_port()
-        self._address = "localhost"
-        qemu_cmdline = [
-            self.QEMU, "-enable-kvm",
+    def _gen_qemu_cmdline(self, snapshot, use_ovmf):
+        if self._arch in ("arm64", "aarch64"):
+            qemu_cmdline = [
+                "qemu-system-aarch64",
+                "-machine", "virt",
+                "-cpu", "cortex-a57",
+                "-smp", "2",
+                "-bios", "/usr/share/AAVMF/AAVMF_CODE.fd",
+            ]
+        elif self._arch in ("amd64", "x86_64"):
+            qemu_cmdline = [
+                "qemu-system-x86_64",
+                "-M", "accel=kvm",
+                # get "illegal instruction" inside the VM otherwise
+                "-cpu", "host",
+            ]
+            if use_ovmf:
+                qemu_cmdline.extend(["-bios", find_ovmf()])
+        else:
+            raise ValueError(f"unsupported architecture {self._arch}")
+
+        # common part
+        qemu_cmdline += [
             "-m", self.MEM,
-            # get "illegal instruction" inside the VM otherwise
-            "-cpu", "host",
             "-serial", "stdio",
             "-monitor", "none",
             "-netdev", f"user,id=net.0,hostfwd=tcp::{self._ssh_port}-:22",
@@ -128,18 +142,23 @@ class QEMU(VM):
         ]
         if not os.environ.get("OSBUILD_TEST_QEMU_GUI"):
             qemu_cmdline.append("-nographic")
-        if use_ovmf:
-            qemu_cmdline.extend(["-bios", find_ovmf()])
         if self._cdrom:
             qemu_cmdline.extend(["-cdrom", self._cdrom])
         if snapshot:
             qemu_cmdline.append("-snapshot")
         qemu_cmdline.append(self._img)
-        self._log(f"vm starting, log available at {log_path}")
+        return qemu_cmdline
+
+    # XXX: move args to init() so that __enter__ can use them?
+    def start(self, wait_event="ssh", snapshot=True, use_ovmf=False):
+        if self.running():
+            return
+        self._ssh_port = get_free_port()
+        self._address = "localhost"
 
         # XXX: use systemd-run to ensure cleanup?
         self._qemu_p = subprocess.Popen(
-            qemu_cmdline,
+            self._gen_qemu_cmdline(snapshot, use_ovmf),
             stdout=sys.stdout,
             stderr=sys.stderr,
         )
