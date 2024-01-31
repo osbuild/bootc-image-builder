@@ -87,10 +87,7 @@ jobs:
 
   integration-macos:
     name: "Integration macos"
-    # disabled GH runner as it takes ~50min to run this test, self-hosted
-    # is much faster (~15min)
-    #runs-on: macos-13  # needed to get latest cpu
-    runs-on: self-hosted
+    runs-on: macos-14
     steps:
     - uses: actions/checkout@v4
       with:
