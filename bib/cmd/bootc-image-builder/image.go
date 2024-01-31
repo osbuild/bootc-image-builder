@@ -50,7 +50,7 @@ func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
 	switch c.ImgType {
 	case "ami", "qcow2", "raw":
 		return manifestForDiskImage(c, rng)
-	case "iso":
+	case "anaconda-iso", "iso":
 		return manifestForISO(c, rng)
 	default:
 		return nil, fmt.Errorf("Manifest(): unsupported image type %q", c.ImgType)

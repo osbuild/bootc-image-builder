@@ -6,7 +6,7 @@ def gen_testcases(what):
     # supported images that can be directly booted
     DIRECT_BOOT_IMAGE_TYPES = ("qcow2", "ami", "raw")
     # supported images that require an install
-    INSTALLER_IMAGE_TYPES = ("iso",)
+    INSTALLER_IMAGE_TYPES = ("anaconda-iso",)
 
     # bootc containers that are tested by default
     CONTAINERS_TO_TEST = {
@@ -26,7 +26,7 @@ def gen_testcases(what):
         return CONTAINERS_TO_TEST.values()
     elif what == "ami-boot":
         return [cnt + ",ami" for cnt in CONTAINERS_TO_TEST.values()]
-    elif what == "iso":
+    elif what == "anaconda-iso":
         test_cases = []
         # only fedora right now, centos iso installer is broken right now:
         # https://github.com/osbuild/bootc-image-builder/issues/157
