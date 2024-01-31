@@ -75,7 +75,7 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
         "qcow2": pathlib.Path(output_path) / "qcow2/disk.qcow2",
         "ami": pathlib.Path(output_path) / "image/disk.raw",
         "raw": pathlib.Path(output_path) / "image/disk.raw",
-        "iso": pathlib.Path(output_path) / "bootiso/install.iso",
+        "anaconda-iso": pathlib.Path(output_path) / "bootiso/install.iso",
     }
     assert len(artifact) == len(set(t.split(",")[1] for t in gen_testcases("all"))), \
         "please keep artifact mapping and supported images in sync"
@@ -248,7 +248,7 @@ def test_image_build_without_se_linux_denials(image_type):
 
 
 @pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
-@pytest.mark.parametrize("image_type", gen_testcases("iso"), indirect=["image_type"])
+@pytest.mark.parametrize("image_type", gen_testcases("anaconda-iso"), indirect=["image_type"])
 def test_iso_installs(image_type):
     installer_iso_path = image_type.img_path
     test_disk_path = installer_iso_path.with_name("test-disk.img")

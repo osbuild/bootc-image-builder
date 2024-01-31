@@ -128,7 +128,7 @@ The following image types are currently available via the `--type` argument:
 |-----------------------|---------------------------------------------------------------------------------------|
 | `ami`                 | [Amazon Machine Image](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) |
 | `qcow2` **(default)** | [QEMU](https://www.qemu.org/)                                                         |
-| `iso`                 | An unattended Anaconda installer that installs to the first disk found.               |
+| `anaconda-iso`        | An unattended Anaconda installer that installs to the first disk found.               |
 
 ## ☁️ Cloud uploaders
 
