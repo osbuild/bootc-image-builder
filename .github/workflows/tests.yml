@@ -32,7 +32,7 @@ jobs:
 
       # This is needed for the container upload dependencies
       - name: Install libgpgme devel package
-        run: sudo apt install -y libgpgme-dev
+        run: sudo apt install -y libgpgme-dev libbtrfs-dev libdevmapper-dev
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v3
