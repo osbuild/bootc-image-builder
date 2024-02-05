@@ -1,0 +1,35 @@
+FROM registry.fedoraproject.org/fedora:39 AS osbuild-builder
+# build osbuild RPMs
+RUN dnf install -y rpm-build dnf-plugins-core git-core
+COPY --from=osbuild . /build
+WORKDIR /build
+RUN dnf builddep -y osbuild.spec
+RUN git config --global --add safe.directory /build
+RUN make rpm
+
+
+FROM registry.fedoraproject.org/fedora:39 AS bib-builder
+# replace osbuild/images dependency and build bib
+RUN dnf install -y git-core golang gpgme-devel libassuan-devel
+COPY --from=images . /build/images
+COPY bib /build/bib
+COPY build.sh /build
+
+WORKDIR /build/bib
+RUN go mod edit -replace github.com/osbuild/images=../images
+RUN go mod tidy
+WORKDIR /build
+RUN ./build.sh
+
+
+FROM registry.fedoraproject.org/fedora:39
+RUN dnf install -y podman qemu-img
+COPY --from=osbuild-builder /build/rpmbuild/RPMS/noarch/*.rpm /rpms/
+RUN dnf install -y /rpms/*.rpm
+COPY --from=bib-builder /build/bin/bootc-image-builder /usr/bin/bootc-image-builder
+COPY entrypoint.sh /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+VOLUME /output
+VOLUME /store
+VOLUME /rpmmd
