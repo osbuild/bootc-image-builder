@@ -63,11 +63,6 @@ def image_type_fixture(tmpdir_factory, build_container, request, force_aws_uploa
         "please keep artifact mapping and supported images in sync"
     generated_img = artifact[image_type]
 
-    # if the fixture already ran and generated an image, use that
-    if generated_img.exists():
-        journal_output = journal_log_path.read_text(encoding="utf8")
-        return ImageBuildResult(image_type, generated_img, username, password, journal_output)
-
     # no image yet, build it
     CFG = {
         "blueprint": {
@@ -132,7 +127,10 @@ def image_type_fixture(tmpdir_factory, build_container, request, force_aws_uploa
 
     journal_log_path.write_text(journal_output, encoding="utf8")
 
-    return ImageBuildResult(image_type, generated_img, username, password, journal_output, metadata)
+    yield ImageBuildResult(image_type, generated_img, username, password, journal_output, metadata)
+    generated_img.unlink()
+    subprocess.run(["podman", "rmi", container_ref], check=False)
+    return
 
 
 def test_container_builds(build_container):
