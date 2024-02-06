@@ -73,6 +73,10 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y podman python3-pytest python3-paramiko python3-boto3 flake8 qemu-system-x86
+    - name: Diskspace (before)
+      run: |
+        df -h
+        sudo du -sh * /var/tmp /tmp /var/lib/containers | sort -sh
     - name: Run tests
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -84,6 +88,11 @@ jobs:
         # XDG_RUNTIME_DIR is set.
         # TODO: figure out what exactly podman needs
         sudo -E XDG_RUNTIME_DIR= pytest-3 -s -vv
+    - name: Diskspace (after)
+      if: ${{ failure() }}
+      run: |
+        df -h
+        sudo du -sh * /var/tmp /tmp /var/lib/containers | sort -sh
 
   integration-macos:
     name: "Integration macos"
