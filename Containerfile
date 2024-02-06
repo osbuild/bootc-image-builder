@@ -13,7 +13,8 @@ FROM registry.fedoraproject.org/fedora:39
 # - https://github.com/osbuild/bootc-image-builder/issues/9
 # - https://github.com/osbuild/osbuild/pull/1468
 COPY ./group_osbuild-osbuild-fedora-39.repo /etc/yum.repos.d/
-RUN dnf install -y osbuild osbuild-ostree osbuild-depsolve-dnf podman qemu-img && dnf clean all
+COPY ./package-requires.txt .
+RUN grep -vE '^#' package-requires.txt | xargs dnf install -y && rm -f package-requires.txt && dnf clean all
 COPY --from=builder /build/bin/bootc-image-builder /usr/bin/bootc-image-builder
 COPY entrypoint.sh /
 

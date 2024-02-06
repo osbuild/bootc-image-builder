@@ -1,0 +1,14 @@
+# List package dependencies here; this file is processed
+# from the Containerfile by default, using leading '#' as comments.
+
+# This project uses osbuild
+osbuild osbuild-ostree osbuild-depsolve-dnf
+
+# We mount container images internally
+podman
+
+# Image building dependencies
+qemu-img
+
+# rpm-ostree wants these for packages
+selinux-policy-targeted distribution-gpg-keys
