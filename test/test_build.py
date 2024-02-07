@@ -3,6 +3,7 @@ import os
 import pathlib
 import platform
 import re
+import shutil
 import subprocess
 import tempfile
 import uuid
@@ -37,8 +38,14 @@ class ImageBuildResult(NamedTuple):
     metadata: dict = {}
 
 
+@pytest.fixture(scope='session')
+def shared_tmpdir(tmpdir_factory):
+    tmp_path = pathlib.Path(tmpdir_factory.mktemp("shared"))
+    yield tmp_path
+
+
 @pytest.fixture(name="image_type", scope="session")
-def image_type_fixture(tmpdir_factory, build_container, request, force_aws_upload):
+def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload):
     """
     Build an image inside the passed build_container and return an
     ImageBuildResult with the resulting image path and user/password
@@ -49,7 +56,8 @@ def image_type_fixture(tmpdir_factory, build_container, request, force_aws_uploa
     username = "test"
     password = "password"
 
-    output_path = pathlib.Path(tmpdir_factory.mktemp("data")) / "output"
+    for_image_type = request.param.translate(str.maketrans("/:,", "---"))
+    output_path = shared_tmpdir / f"cache-{for_image_type}"
     output_path.mkdir(exist_ok=True)
 
     journal_log_path = output_path / "journal.log"
@@ -62,6 +70,12 @@ def image_type_fixture(tmpdir_factory, build_container, request, force_aws_uploa
     assert len(artifact) == len(set(t.split(",")[1] for t in gen_testcases("all"))), \
         "please keep artifact mapping and supported images in sync"
     generated_img = artifact[image_type]
+
+    if generated_img.exists():
+        print(f"NOTE: reusing cached image {generated_img}")
+        journal_output = journal_log_path.read_text(encoding="utf8")
+        yield ImageBuildResult(image_type, generated_img, username, password, journal_output)
+        return
 
     # no image yet, build it
     CFG = {
@@ -128,7 +142,12 @@ def image_type_fixture(tmpdir_factory, build_container, request, force_aws_uploa
     journal_log_path.write_text(journal_output, encoding="utf8")
 
     yield ImageBuildResult(image_type, generated_img, username, password, journal_output, metadata)
-    generated_img.unlink()
+    # Try to cache as much as possible
+    disk_usage = shutil.disk_usage(generated_img)
+    print(f"NOTE: disk usage after {generated_img}: {disk_usage.free / 1_000_000} / {disk_usage.total / 1_000_000}")
+    if disk_usage.free < 1_000_000_000:
+        print(f"WARNING: running low on disk space, removing {generated_img}")
+        generated_img.unlink()
     subprocess.run(["podman", "rmi", container_ref], check=False)
     return
 
