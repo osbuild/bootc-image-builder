@@ -53,7 +53,7 @@ type manifestTestCase struct {
 	imageType  string
 	packages   map[string][]rpmmd.PackageSpec
 	containers map[string][]container.Spec
-	err        error
+	err        interface{}
 }
 
 func TestManifestGenerationEmptyConfig(t *testing.T) {
@@ -147,6 +147,153 @@ func TestManifestGenerationUserConfig(t *testing.T) {
 
 			assert := assert.New(t)
 			assert.NoError(err)
+		})
+	}
+}
+
+func TestManifestSerialization(t *testing.T) {
+	// Tests that the manifest is generated without error and is serialized
+	// with expected key stages.
+
+	// Disk images require a container for the build pipeline and the ostree-deployment.
+	containerSpec := container.Spec{
+		Source:  "test-container",
+		Digest:  "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+		ImageID: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+	}
+	diskContainers := map[string][]container.Spec{
+		"build": {
+			containerSpec,
+		},
+		"ostree-deployment": {
+			containerSpec,
+		},
+	}
+
+	// ISOs require a container for the bootiso-tree, build packages, and packages for the anaconda-tree (with a kernel).
+	isoContainers := map[string][]container.Spec{
+		"bootiso-tree": {
+			containerSpec,
+		},
+	}
+	isoPackages := map[string][]rpmmd.PackageSpec{
+		"build": {
+			{
+				Name:     "package",
+				Version:  "113",
+				Checksum: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			},
+		},
+		"anaconda-tree": {
+			{
+				Name:     "kernel",
+				Version:  "10.11",
+				Checksum: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+			},
+			{
+				Name:     "package",
+				Version:  "113",
+				Checksum: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			},
+		},
+	}
+
+	pkgsNoBuild := map[string][]rpmmd.PackageSpec{
+		"anaconda-tree": {
+			{
+				Name:     "kernel",
+				Version:  "10.11",
+				Checksum: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+			},
+			{
+				Name:     "package",
+				Version:  "113",
+				Checksum: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			},
+		},
+	}
+
+	baseConfig := &main.ManifestConfig{Imgref: "testempty"}
+	testCases := map[string]manifestTestCase{
+		"ami-user": {
+			config:     baseConfig,
+			imageType:  "ami",
+			containers: diskContainers,
+		},
+		"raw-user": {
+			config:     baseConfig,
+			imageType:  "raw",
+			containers: diskContainers,
+		},
+		"qcow2-user": {
+			config:     baseConfig,
+			imageType:  "qcow2",
+			containers: diskContainers,
+		},
+		"iso-user": {
+			config:     baseConfig,
+			imageType:  "iso",
+			containers: isoContainers,
+			packages:   isoPackages,
+		},
+		"iso-nobuildpkg": {
+			config:     baseConfig,
+			imageType:  "iso",
+			containers: isoContainers,
+			packages:   pkgsNoBuild,
+			err:        "serialization not started", // bad error message
+		},
+		"iso-nocontainer": {
+			config:    baseConfig,
+			imageType: "iso",
+			packages:  isoPackages,
+			err:       "missing ostree, container, or ospipeline parameters in ISO tree pipeline",
+		},
+		"ami-nocontainer": {
+			config:    baseConfig,
+			imageType: "ami",
+			err:       "pipeline ostree-deployment requires exactly one ostree commit or one container (have commits: []; containers: [])",
+		},
+		"raw-nocontainer": {
+			config:    baseConfig,
+			imageType: "raw",
+			err:       "pipeline ostree-deployment requires exactly one ostree commit or one container (have commits: []; containers: [])",
+		},
+		"qcow2-nocontainer": {
+			config:    baseConfig,
+			imageType: "qcow2",
+			err:       "pipeline ostree-deployment requires exactly one ostree commit or one container (have commits: []; containers: [])",
+		},
+	}
+
+	assert := assert.New(t)
+	// Use an empty config: only the imgref is required
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			config := main.ManifestConfig(*tc.config)
+			config.ImgType = tc.imageType
+			manifest, err := main.Manifest(&config)
+			assert.NoError(err) // this isn't the error we're testing for
+
+			if tc.err != nil {
+				assert.PanicsWithValue(tc.err, func() { manifest.Serialize(tc.packages, tc.containers, nil) })
+			} else {
+				_, err := manifest.Serialize(tc.packages, tc.containers, nil)
+				assert.NoError(err)
+			}
+		})
+	}
+
+	{
+		// this one panics with a typed error and needs to be tested separately from the above (PanicsWithError())
+		t.Run("iso-nopkgs", func(t *testing.T) {
+			config := main.ManifestConfig(*baseConfig)
+			config.ImgType = "iso"
+			manifest, err := main.Manifest(&config)
+			assert.NoError(err) // this isn't the error we're testing for
+
+			expError := "package \"kernel\" not found in the PackageSpec list"
+			assert.PanicsWithError(expError, func() { manifest.Serialize(nil, isoContainers, nil) })
 		})
 	}
 }
