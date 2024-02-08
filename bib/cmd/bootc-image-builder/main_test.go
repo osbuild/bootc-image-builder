@@ -1,7 +1,9 @@
 package main_test
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 
@@ -11,6 +13,7 @@ import (
 	main "github.com/osbuild/bootc-image-builder/bib/cmd/bootc-image-builder"
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/container"
+	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/rpmmd"
 )
 
@@ -53,11 +56,40 @@ type manifestTestCase struct {
 	imageType  string
 	packages   map[string][]rpmmd.PackageSpec
 	containers map[string][]container.Spec
+	expStages  map[string][]string
+	nexpStages map[string][]string
 	err        interface{}
 }
 
+func getBaseConfig() *main.ManifestConfig {
+	return &main.ManifestConfig{Imgref: "testempty"}
+}
+
+func getUserConfig() *main.ManifestConfig {
+	// add a user
+	pass := "super-secret-password-42"
+	key := "ssh-ed25519 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	return &main.ManifestConfig{
+		Imgref:  "testuser",
+		ImgType: "",
+		Config: &main.BuildConfig{
+			Blueprint: &blueprint.Blueprint{
+				Customizations: &blueprint.Customizations{
+					User: []blueprint.UserCustomization{
+						{
+							Name:     "tester",
+							Password: &pass,
+							Key:      &key,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func TestManifestGenerationEmptyConfig(t *testing.T) {
-	baseConfig := &main.ManifestConfig{Imgref: "testempty"}
+	baseConfig := getBaseConfig()
 	testCases := map[string]manifestTestCase{
 		"ami-base": {
 			config:    baseConfig,
@@ -87,39 +119,18 @@ func TestManifestGenerationEmptyConfig(t *testing.T) {
 		},
 	}
 
-	assert := assert.New(t)
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			config := main.ManifestConfig(*tc.config)
 			config.ImgType = tc.imageType
 			_, err := main.Manifest(&config)
-			assert.Equal(err, tc.err)
+			assert.Equal(t, err, tc.err)
 		})
 	}
 }
 
 func TestManifestGenerationUserConfig(t *testing.T) {
-	// add a user
-	pass := "super-secret-password-42"
-	key := "ssh-ed25519 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-	userConfig := &main.ManifestConfig{
-		Imgref:  "testuser",
-		ImgType: "",
-		Config: &main.BuildConfig{
-			Blueprint: &blueprint.Blueprint{
-				Customizations: &blueprint.Customizations{
-					User: []blueprint.UserCustomization{
-						{
-							Name:     "tester",
-							Password: &pass,
-							Key:      &key,
-						},
-					},
-				},
-			},
-		},
-	}
-
+	userConfig := getUserConfig()
 	testCases := map[string]manifestTestCase{
 		"ami-user": {
 			config:    userConfig,
@@ -144,9 +155,7 @@ func TestManifestGenerationUserConfig(t *testing.T) {
 			config := main.ManifestConfig(*tc.config)
 			config.ImgType = tc.imageType
 			_, err := main.Manifest(&config)
-
-			assert := assert.New(t)
-			assert.NoError(err)
+			assert.NoError(t, err)
 		})
 	}
 }
@@ -213,73 +222,111 @@ func TestManifestSerialization(t *testing.T) {
 		},
 	}
 
-	baseConfig := &main.ManifestConfig{Imgref: "testempty"}
+	userConfig := getUserConfig()
 	testCases := map[string]manifestTestCase{
 		"ami-user": {
-			config:     baseConfig,
+			config:     userConfig,
 			imageType:  "ami",
 			containers: diskContainers,
+			expStages: map[string][]string{
+				"build": {"org.osbuild.container-deploy"},
+				"ostree-deployment": {
+					"org.osbuild.users",
+					"org.osbuild.ostree.deploy.container",
+				},
+			},
+			nexpStages: map[string][]string{
+				"build": {"org.osbuild.rpm"},
+			},
 		},
 		"raw-user": {
-			config:     baseConfig,
+			config:     userConfig,
 			imageType:  "raw",
 			containers: diskContainers,
+			expStages: map[string][]string{
+				"build": {"org.osbuild.container-deploy"},
+				"ostree-deployment": {
+					"org.osbuild.users", // user creation stage when we add users
+					"org.osbuild.ostree.deploy.container",
+				},
+			},
+			nexpStages: map[string][]string{
+				"build": {"org.osbuild.rpm"},
+			},
 		},
 		"qcow2-user": {
-			config:     baseConfig,
+			config:     userConfig,
 			imageType:  "qcow2",
 			containers: diskContainers,
+			expStages: map[string][]string{
+				"build": {"org.osbuild.container-deploy"},
+				"ostree-deployment": {
+					"org.osbuild.users", // user creation stage when we add users
+					"org.osbuild.ostree.deploy.container",
+				},
+			},
+			nexpStages: map[string][]string{
+				"build": {"org.osbuild.rpm"},
+			},
 		},
 		"iso-user": {
-			config:     baseConfig,
+			config:     userConfig,
 			imageType:  "iso",
 			containers: isoContainers,
 			packages:   isoPackages,
+			expStages: map[string][]string{
+				"build":        {"org.osbuild.rpm"},
+				"bootiso-tree": {"org.osbuild.skopeo"}, // adds the container to the ISO tree
+			},
 		},
 		"iso-nobuildpkg": {
-			config:     baseConfig,
+			config:     userConfig,
 			imageType:  "iso",
 			containers: isoContainers,
 			packages:   pkgsNoBuild,
-			err:        "serialization not started", // bad error message
+			err:        "serialization not started",
 		},
 		"iso-nocontainer": {
-			config:    baseConfig,
+			config:    userConfig,
 			imageType: "iso",
 			packages:  isoPackages,
 			err:       "missing ostree, container, or ospipeline parameters in ISO tree pipeline",
 		},
 		"ami-nocontainer": {
-			config:    baseConfig,
+			config:    userConfig,
 			imageType: "ami",
 			err:       "pipeline ostree-deployment requires exactly one ostree commit or one container (have commits: []; containers: [])",
 		},
 		"raw-nocontainer": {
-			config:    baseConfig,
+			config:    userConfig,
 			imageType: "raw",
 			err:       "pipeline ostree-deployment requires exactly one ostree commit or one container (have commits: []; containers: [])",
 		},
 		"qcow2-nocontainer": {
-			config:    baseConfig,
+			config:    userConfig,
 			imageType: "qcow2",
 			err:       "pipeline ostree-deployment requires exactly one ostree commit or one container (have commits: []; containers: [])",
 		},
 	}
 
-	assert := assert.New(t)
 	// Use an empty config: only the imgref is required
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
+			assert := assert.New(t)
 			config := main.ManifestConfig(*tc.config)
 			config.ImgType = tc.imageType
-			manifest, err := main.Manifest(&config)
+			mf, err := main.Manifest(&config)
 			assert.NoError(err) // this isn't the error we're testing for
 
 			if tc.err != nil {
-				assert.PanicsWithValue(tc.err, func() { manifest.Serialize(tc.packages, tc.containers, nil) })
+				assert.PanicsWithValue(tc.err, func() {
+					_, err := mf.Serialize(tc.packages, tc.containers, nil)
+					assert.NoError(err)
+				})
 			} else {
-				_, err := manifest.Serialize(tc.packages, tc.containers, nil)
+				manifestJson, err := mf.Serialize(tc.packages, tc.containers, nil)
 				assert.NoError(err)
+				assert.NoError(checkStages(manifestJson, tc.expStages, tc.nexpStages))
 			}
 		})
 	}
@@ -287,13 +334,76 @@ func TestManifestSerialization(t *testing.T) {
 	{
 		// this one panics with a typed error and needs to be tested separately from the above (PanicsWithError())
 		t.Run("iso-nopkgs", func(t *testing.T) {
-			config := main.ManifestConfig(*baseConfig)
+			assert := assert.New(t)
+			config := main.ManifestConfig(*userConfig)
 			config.ImgType = "iso"
 			manifest, err := main.Manifest(&config)
 			assert.NoError(err) // this isn't the error we're testing for
 
 			expError := "package \"kernel\" not found in the PackageSpec list"
-			assert.PanicsWithError(expError, func() { manifest.Serialize(nil, isoContainers, nil) })
+			assert.PanicsWithError(expError, func() {
+				_, err := manifest.Serialize(nil, isoContainers, nil)
+				assert.NoError(err)
+			})
 		})
 	}
+}
+
+// simplified representation of a manifest
+type testManifest struct {
+	Pipelines []pipeline `json:"pipelines"`
+}
+type pipeline struct {
+	Name   string  `json:"name"`
+	Stages []stage `json:"stages"`
+}
+type stage struct {
+	Type string `json:"type"`
+}
+
+func checkStages(serialized manifest.OSBuildManifest, pipelineStages map[string][]string, missingStages map[string][]string) error {
+	mf := &testManifest{}
+	if err := json.Unmarshal(serialized, mf); err != nil {
+		return err
+	}
+	pipelineMap := map[string]pipeline{}
+	for _, pl := range mf.Pipelines {
+		pipelineMap[pl.Name] = pl
+	}
+
+	for plname, stages := range pipelineStages {
+		pl, found := pipelineMap[plname]
+		if !found {
+			return fmt.Errorf("pipeline %q not found", plname)
+		}
+
+		stageMap := map[string]bool{}
+		for _, stage := range pl.Stages {
+			stageMap[stage.Type] = true
+		}
+		for _, stage := range stages {
+			if _, found := stageMap[stage]; !found {
+				return fmt.Errorf("pipeline %q - stage %q - not found", plname, stage)
+			}
+		}
+	}
+
+	for plname, stages := range missingStages {
+		pl, found := pipelineMap[plname]
+		if !found {
+			return fmt.Errorf("pipeline %q not found", plname)
+		}
+
+		stageMap := map[string]bool{}
+		for _, stage := range pl.Stages {
+			stageMap[stage.Type] = true
+		}
+		for _, stage := range stages {
+			if _, found := stageMap[stage]; found {
+				return fmt.Errorf("pipeline %q - stage %q - found (but should not be)", plname, stage)
+			}
+		}
+	}
+
+	return nil
 }
