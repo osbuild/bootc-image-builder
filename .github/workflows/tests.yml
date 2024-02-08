@@ -87,9 +87,12 @@ jobs:
         # podman needs (parts of) the environment but will break when
         # XDG_RUNTIME_DIR is set.
         # TODO: figure out what exactly podman needs
-        sudo -E XDG_RUNTIME_DIR= pytest-3 -s -vv
+        # use custom basetemp here because /var/tmp is on a smaller disk
+        # than /mnt
+        sudo mkdir -p /mnt/var/tmp/bib-tests
+        sudo -E XDG_RUNTIME_DIR= pytest-3 -s -vv --basetemp=/mnt/var/tmp/bib-tests
     - name: Diskspace (after)
-      if: ${{ failure() }}
+      if: ${{ always() }}
       run: |
         df -h
         sudo du -sh * /var/tmp /tmp /var/lib/containers | sort -sh
