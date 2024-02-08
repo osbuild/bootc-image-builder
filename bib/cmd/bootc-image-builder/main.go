@@ -114,14 +114,24 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 		depsolvedSets[name] = res
 	}
 
-	// resolve container
-	hostArch := arch.Current()
-	resolverNative := container.NewResolver(hostArch.String())
-	resolverTarget := container.NewResolver(c.Architecture.String())
+	// Resolve container - the normal case is that host and target
+	// architecture are the same. However it is possible to build
+	// cross-arch images. When this is done the "build" pipeline
+	// will run with the "native" architecture of the target
+	// container and the other pipelines (usually just "image"
+	// will use the target architecture).
+	hostArch := arch.Current().String()
+	targetArch := c.Architecture.String()
+
+	resolverNative := container.NewResolver(hostArch)
+	resolverTarget := resolverNative
+	if hostArch != targetArch {
+		resolverTarget = container.NewResolver(targetArch)
+	}
 
 	containerSpecs := make(map[string][]container.Spec)
 	for plName, sourceSpecs := range manifest.GetContainerSourceSpecs() {
-		var resolver container.Resolver
+		var resolver *container.Resolver
 		if plName == "build" {
 			resolver = resolverNative
 		} else {
