@@ -13,7 +13,7 @@ virtual machine(s) or installer media you can use [qemu](https://www.qemu.org/).
 
 On macOS, the podman machine must be running in rootful mode:
 
-```
+```bash
 $ podman machine stop   # if already running
 Waiting for VM to exit...
 Machine "podman-machine-default" stopped successfully
@@ -31,7 +31,7 @@ by adding a volume-mount for the local file as well as the `--config` flag to th
 
 The following command will create a QCOW2 disk image. First, create `./config.json` as described above to configure user access.
 
-```
+```bash
 sudo podman run \
     --rm \
     -it \
@@ -52,7 +52,7 @@ A virtual machine can be launched using `qemu-system-x86_64` or with `virt-insta
 
 #### qemu-system-x86_64
 
-```
+```bash
 qemu-system-x86_64 \
     -M accel=kvm \
     -cpu host \
@@ -65,7 +65,7 @@ qemu-system-x86_64 \
 
 #### virt-install
 
-```
+```bash
 sudo virt-install \
     --name fedora-bootc \
     --vcpus 4 \
@@ -78,7 +78,7 @@ sudo virt-install \
 
 This assumes qemu was installed through [homebrew](https://brew.sh/).
 
-```
+```bash
 qemu-system-aarch64 \
     -M accel=hvf \
     -cpu host \
@@ -92,7 +92,7 @@ qemu-system-aarch64 \
 
 ## 📝 Arguments
 
-```
+```bash
 Usage:
   sudo podman run \
     --rm \
@@ -149,16 +149,19 @@ AMIs can be automatically uploaded to AWS by specifying the following flags:
 | --aws-region   | Target region for AWS uploads                                    |
 
 *Notes:*
+
 - *These flags must all be specified together. If none are specified, the AMI is exported to the output directory.*
 - *The bucket must already exist in the selected region, bootc-image-builder will not create it if it is missing.*
 - *The output volume is not needed in this case. The image is uploaded to AWS and not exported.*
 
 #### AWS credentials file
+
 If you already have a credentials file (usually in `$HOME/.aws/credentials`) you need to forward the
 directory to the container
 
 For example:
- ```
+
+```bash
  $ sudo podman run \
   --rm \
   -it \
@@ -176,11 +179,13 @@ For example:
 ```
 
 Notes:
- - *you can also inject **ALL** your AWS configuration parameters with `--env AWS_*`*
+
+- *you can also inject **ALL** your AWS configuration parameters with `--env AWS_*`*
 
 see the [AWS CLI documentation](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html) for more information about other environment variables
 
 #### AWS credentials via environment
+
 AWS credentials can be specified through two environment variables:
 | Variable name         | Description                                                                                                         |
 |-----------------------|---------------------------------------------------------------------------------------------------------------------|
@@ -191,7 +196,8 @@ Those **should not** be specified with `--env` as plain value, but you can silen
 save these variables in a file and pass them using the `--env-file` flag for `podman run`.
 
 For example:
-```
+
+```bash
 $ cat aws.secrets
 AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
 AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
@@ -250,7 +256,7 @@ Firstly create a file `./config.json` and put the following content into it:
 
 Then, run `bootc-image-builder` with the following arguments:
 
-```
+```bash
 sudo podman run \
     --rm \
     -it \
@@ -273,7 +279,7 @@ Possible fields:
 |------------|--------------------------------------------|:--------:|
 | `name`     | Name of the user                           |    ✅    |
 | `password` | Unencrypted password                       |    No    |
-| `key     ` | Public SSH key contents                    |    No    |
+| `key`      | Public SSH key contents                    |    No    |
 | `groups`   | An array of secondary to put the user into |    No    |
 
 Example:
@@ -297,9 +303,11 @@ Example:
 ## Building
 
 To build the container locally you can run
+
 ```shell
 sudo podman build --tag bootc-image-builder .
 ```
+
 NOTE: running already the `podman build` as root avoids problems later as we need to run the building
 of the image as root anyway
 
@@ -307,7 +315,7 @@ of the image as root anyway
 
 With a virtual machine launched with the above [virt-install](#virt-install) example, access the system with
 
-```
+```shell
 ssh -i /path/to/private/ssh-key alice@ip-address
 ```
 
@@ -315,24 +323,24 @@ Note that if you do not provide a password for the provided user, `sudo` will no
 is configured. The base image `quay.io/centos-bootc/fedora-bootc:eln` does not configure passwordless sudo.
 This can be configured in a derived bootc container by including the following in a Containerfile.
 
-```
+```dockerfile
 FROM quay.io/centos-bootc/fedora-bootc:eln
 ADD wheel-passwordless-sudo /etc/sudoers.d/wheel-passwordless-sudo
 ```
 
 The contents of the file `$(pwd)/wheel-passwordless-sudo` should be
 
-```
+```text
 %wheel ALL=(ALL) NOPASSWD: ALL
 ```
 
 ## 📊 Project
 
-* **Website**: <https://www.osbuild.org>
-* **Bug Tracker**: <https://github.com/osbuild/bootc-image-builder/issues>
-* **Matrix**: #image-builder on [fedoraproject.org](https://matrix.to/#/#image-builder:fedoraproject.org)
-* **Mailing List**: image-builder@redhat.com
-* **Changelog**: <https://github.com/osbuild/bootc-image-builder/releases>
+- **Website**: <https://www.osbuild.org>
+- **Bug Tracker**: <https://github.com/osbuild/bootc-image-builder/issues>
+- **Matrix**: #image-builder on [fedoraproject.org](https://matrix.to/#/#image-builder:fedoraproject.org)
+- **Mailing List**: <image-builder@redhat.com>
+- **Changelog**: <https://github.com/osbuild/bootc-image-builder/releases>
 
 ### Contributing
 
@@ -349,4 +357,3 @@ workflow, code style and more.
 
 - **Apache-2.0**
 - See LICENSE file for details.
-
