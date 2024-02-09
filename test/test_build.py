@@ -13,7 +13,7 @@ import pytest
 
 # local test utils
 import testutil
-from containerbuild import build_container_fixture  # noqa: F401
+from containerbuild import build_container_fixture, build_ansible_container_fixture  # noqa: F401
 from testcases import gen_testcases
 from vm import AWS, QEMU
 
@@ -38,6 +38,42 @@ class ImageBuildResult(NamedTuple):
     journal_output: str
     metadata: dict = {}
 
+
+def get_distribution_and_version(test_vm, build_ansible_container, username, password):
+    """Run Ansible playbook to get distribution and version"""
+
+    output = test_vm.execute_ansible(build_ansible_container,
+                                     "./test/ansible-playbooks/get_distro_version.yml",
+                                     username,
+                                     password )
+
+    print(output)
+
+    # Parse output to extract distribution and version
+    distribution = None
+    version = None
+    dist_key = "Distribution:"
+    version_key = "Version:"
+    for line in output.splitlines():
+        if dist_key in line:
+            distribution = line.split(dist_key)[1].strip(" \"'")
+        elif version_key in line:
+            version = line.split(version_key)[1].strip(" \"'")
+
+    return distribution, version
+
+
+def check_user(test_vm, build_ansible_container, username, password, user_to_test):
+    """Run Ansible playbook to get distribution and version"""
+
+    output = test_vm.execute_ansible(build_ansible_container,
+                                     "./test/ansible-playbooks/check_user.yml",
+                                     username,
+                                     password,
+                                     env_vars=[f"BIB_TEST_USER={user_to_test}"])
+
+    print(output)
+    return " changed=0 " in output
 
 @pytest.fixture(scope='session')
 def shared_tmpdir(tmpdir_factory):
@@ -180,14 +216,20 @@ def test_image_is_generated(image_type):
 
 @pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
 @pytest.mark.parametrize("image_type", gen_testcases("direct-boot"), indirect=["image_type"])
-def test_image_boots(image_type):
+def test_image_boots(image_type, build_ansible_container):
     with QEMU(image_type.img_path, arch=image_type.img_arch) as test_vm:
         exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
         assert exit_status == 0
-        exit_status, output = test_vm.run("echo hello", user=image_type.username, password=image_type.password)
-        assert exit_status == 0
-        assert "hello" in output
 
+        distribution, version = get_distribution_and_version(test_vm, build_ansible_container,
+                                                             image_type.username, image_type.password)
+        assert distribution in ["Fedora", "CentOS"]
+        # version not the same for all tests - ignore for now
+        # assert version == "40"
+
+        user_checked = check_user(test_vm, build_ansible_container, image_type.username,
+                                  image_type.password, "test")
+        assert user_checked
 
 @pytest.mark.parametrize("image_type", gen_testcases("ami-boot"), indirect=["image_type"])
 def test_ami_boots_in_aws(image_type, force_aws_upload):

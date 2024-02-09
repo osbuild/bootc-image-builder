@@ -80,6 +80,52 @@ class VM(abc.ABC):
     def __exit__(self, exc_type, exc_value, traceback):
         self.force_stop()
 
+    def execute_ansible(self, ansible_container_tag, playbook, username, password, env_vars=[], check=True):
+        """
+        Run the given playbook with ansible against the VM
+
+        :param ansible_container_tag: a container tag which is able to run ansible
+        :param playbook: the filename of the playbook in the folder
+                         NOTE: always start relative paths with "./"
+        :param username: username to use for ansible/ssh
+        :param password: password to use for ansible/ssh
+        :param stdout_printing: whether to also print the output to stdout while executing
+        :param env_vars: array of strings in the form of "VAR=value" to pass in the environment
+                         to be used in the playbooks
+        :param check: by default run in check mode (no changes)
+
+        :return: stdout of the output as str
+        """
+        playbook_dir = os.path.dirname(playbook)
+        playbook_name = os.path.basename(playbook)
+
+        cmd = ["podman", "run",
+               "--rm", "-ti", "--net=host"]
+
+        env_vars.extend([f"ANSIBLE_STDOUT_CALLBACK=default",
+                         f"ANSIBLE_REMOTE_PORT={self._ssh_port}",
+                         f"ANSIBLE_REMOTE_USER={username}",
+                         f"ANSIBLE_PASSWORD={password}",
+                         f"ANSIBLE_NOCOLOR=True"])
+
+        for v in env_vars:
+            cmd.append("-e")
+            cmd.append(v)
+
+        cmd.extend([
+              "-v", f"{playbook_dir}:/runner/ansible-playbooks:Z",
+              ansible_container_tag,
+              "ansible-playbook"])
+
+        if check:
+            cmd.append("--check")
+        cmd.extend(["-i", f"{self._address},", f"ansible-playbooks/{playbook_name}"])
+
+        print("Calling: " + " ".join(cmd))
+        output = subprocess.check_output(cmd)
+
+        return output.decode()
+
 
 # needed as each distro puts the OVMF.fd in a different location
 def find_ovmf():

@@ -1,0 +1,15 @@
+---
+- hosts: all
+  gather_facts: yes
+  check_mode: true
+  vars:
+    test_user: "{{ lookup('env', 'BIB_TEST_USER') | default('root') }}"
+    ansible_password: "{{ lookup('env', 'ANSIBLE_PASSWORD') | default('password') }}"
+    # TODO capture the SSH key from the VM if possible, feed into the ansible container and re-enable host key checking
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+  tasks:
+    - name: Check User exists
+      ansible.builtin.user:
+        name: "{{ test_user }}"
+      register: user_exists
+      failed_when: user_exists.changed

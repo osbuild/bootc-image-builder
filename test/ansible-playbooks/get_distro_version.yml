@@ -1,0 +1,14 @@
+---
+- hosts: all
+  gather_facts: yes
+  vars:
+    ansible_password: "{{ lookup('env', 'ANSIBLE_PASSWORD') | default('password') }}"
+    # TODO capture the SSH key from the VM if possible, feed into the ansible container and re-enable host key checking
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+  tasks:
+    - name: Print distribution
+      debug:
+        msg: "Distribution: {{ ansible_distribution }}"
+    - name: Print version
+      debug:
+        msg: "Version: {{ ansible_distribution_version }}"
