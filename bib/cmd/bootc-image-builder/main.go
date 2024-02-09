@@ -335,7 +335,7 @@ func run() error {
 		SilenceUsage:          true,
 	}
 	rootCmd.AddCommand(manifestCmd)
-	manifestCmd.Flags().String("rpmmd", "/var/cache/osbuild/rpmmd", "rpm metadata cache directory")
+	manifestCmd.Flags().String("rpmmd", "/rpmmd", "rpm metadata cache directory")
 	manifestCmd.Flags().String("config", "", "build config file")
 	manifestCmd.Flags().String("type", "qcow2", "image type to build [qcow2, ami]")
 	manifestCmd.Flags().Bool("tls-verify", true, "require HTTPS and verify certificates when contacting registries")
@@ -344,7 +344,7 @@ func run() error {
 	logrus.SetLevel(logrus.ErrorLevel)
 	buildCmd.Flags().AddFlagSet(manifestCmd.Flags())
 	buildCmd.Flags().String("output", ".", "artifact output directory")
-	buildCmd.Flags().String("store", ".osbuild", "osbuild store for intermediate pipeline trees")
+	buildCmd.Flags().String("store", "/store", "osbuild store for intermediate pipeline trees")
 	buildCmd.Flags().String("aws-region", "", "target region for AWS uploads (only for type=ami)")
 	buildCmd.Flags().String("aws-bucket", "", "target S3 bucket name for intermediate storage when creating AMI (only for type=ami)")
 	buildCmd.Flags().String("aws-ami-name", "", "name for the AMI in AWS (only for type=ami)")

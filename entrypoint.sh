@@ -1,3 +1,5 @@
 #!/bin/bash
 set -euo pipefail
-/usr/bin/bootc-image-builder build --store /store --rpmmd /rpmmd --output /output "$@"
+# TODO: This script only exists for legacy reasons, the plan is to start requiring
+# a e.g. `build-image` entrypoint.
+/usr/bin/bootc-image-builder build "$@"
