@@ -20,6 +20,7 @@ COPY entrypoint.sh /
 
 ENTRYPOINT ["/entrypoint.sh"]
 VOLUME /output
+WORKDIR /output
 VOLUME /store
 VOLUME /rpmmd
 
