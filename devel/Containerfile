@@ -23,9 +23,9 @@ RUN ./build.sh
 
 
 FROM registry.fedoraproject.org/fedora:39
-RUN dnf install -y podman qemu-img
 COPY --from=osbuild-builder /build/rpmbuild/RPMS/noarch/*.rpm /rpms/
-RUN dnf install -y /rpms/*.rpm
+COPY ./package-requires.txt .
+RUN grep -vE '^#' package-requires.txt | xargs dnf install -y && rm -f package-requires.txt && dnf install -y /rpms/*.rpm && dnf clean all
 COPY --from=bib-builder /build/bin/bootc-image-builder /usr/bin/bootc-image-builder
 COPY entrypoint.sh /entrypoint.sh
 
