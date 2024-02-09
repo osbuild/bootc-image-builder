@@ -222,8 +222,60 @@ func TestManifestSerialization(t *testing.T) {
 		},
 	}
 
+	baseConfig := getBaseConfig()
 	userConfig := getUserConfig()
 	testCases := map[string]manifestTestCase{
+		"ami-base": {
+			config:     baseConfig,
+			imageType:  "ami",
+			containers: diskContainers,
+			expStages: map[string][]string{
+				"build": {"org.osbuild.container-deploy"},
+				"ostree-deployment": {
+					"org.osbuild.ostree.deploy.container",
+				},
+			},
+			nexpStages: map[string][]string{
+				"build": {"org.osbuild.rpm"},
+				"ostree-deployment": {
+					"org.osbuild.users",
+				},
+			},
+		},
+		"raw-base": {
+			config:     baseConfig,
+			imageType:  "raw",
+			containers: diskContainers,
+			expStages: map[string][]string{
+				"build": {"org.osbuild.container-deploy"},
+				"ostree-deployment": {
+					"org.osbuild.ostree.deploy.container",
+				},
+			},
+			nexpStages: map[string][]string{
+				"build": {"org.osbuild.rpm"},
+				"ostree-deployment": {
+					"org.osbuild.users",
+				},
+			},
+		},
+		"qcow2-base": {
+			config:     baseConfig,
+			imageType:  "qcow2",
+			containers: diskContainers,
+			expStages: map[string][]string{
+				"build": {"org.osbuild.container-deploy"},
+				"ostree-deployment": {
+					"org.osbuild.ostree.deploy.container",
+				},
+			},
+			nexpStages: map[string][]string{
+				"build": {"org.osbuild.rpm"},
+				"ostree-deployment": {
+					"org.osbuild.users",
+				},
+			},
+		},
 		"ami-user": {
 			config:     userConfig,
 			imageType:  "ami",
