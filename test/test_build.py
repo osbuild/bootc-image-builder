@@ -45,7 +45,7 @@ def get_distribution_and_version(test_vm, build_ansible_container, username, pas
     output = test_vm.execute_ansible(build_ansible_container,
                                      "./test/ansible-playbooks/get_distro_version.yml",
                                      username,
-                                     password )
+                                     password)
 
     print(output)
 
@@ -74,6 +74,7 @@ def check_user(test_vm, build_ansible_container, username, password, user_to_tes
 
     print(output)
     return " changed=0 " in output
+
 
 @pytest.fixture(scope='session')
 def shared_tmpdir(tmpdir_factory):
@@ -230,6 +231,7 @@ def test_image_boots(image_type, build_ansible_container):
         user_checked = check_user(test_vm, build_ansible_container, image_type.username,
                                   image_type.password, "test")
         assert user_checked
+
 
 @pytest.mark.parametrize("image_type", gen_testcases("ami-boot"), indirect=["image_type"])
 def test_ami_boots_in_aws(image_type, force_aws_upload):

@@ -102,20 +102,19 @@ class VM(abc.ABC):
         cmd = ["podman", "run",
                "--rm", "-ti", "--net=host"]
 
-        env_vars.extend([f"ANSIBLE_STDOUT_CALLBACK=default",
+        env_vars.extend(["ANSIBLE_STDOUT_CALLBACK=default",
                          f"ANSIBLE_REMOTE_PORT={self._ssh_port}",
                          f"ANSIBLE_REMOTE_USER={username}",
                          f"ANSIBLE_PASSWORD={password}",
-                         f"ANSIBLE_NOCOLOR=True"])
+                         "ANSIBLE_NOCOLOR=True"])
 
         for v in env_vars:
             cmd.append("-e")
             cmd.append(v)
 
-        cmd.extend([
-              "-v", f"{playbook_dir}:/runner/ansible-playbooks:Z",
-              ansible_container_tag,
-              "ansible-playbook"])
+        cmd.extend(["-v", f"{playbook_dir}:/runner/ansible-playbooks:Z",
+                    ansible_container_tag,
+                    "ansible-playbook"])
 
         if check:
             cmd.append("--check")
