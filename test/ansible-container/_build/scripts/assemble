@@ -1,0 +1,171 @@
+#!/bin/bash
+# Copyright (c) 2019 Red Hat, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Make a list of bindep dependencies and a collection of built binary
+# wheels for the repo in question as well as its python dependencies.
+# Install javascript tools as well to support python that needs javascript
+# at build time.
+set -ex
+
+RELEASE=$(source /etc/os-release; echo $ID)
+
+# NOTE(pabelanger): Allow users to force either microdnf or dnf as a package
+# manager.
+PKGMGR="${PKGMGR:-}"
+PKGMGR_OPTS="${PKGMGR_OPTS:-}"
+PKGMGR_PRESERVE_CACHE="${PKGMGR_PRESERVE_CACHE:-}"
+
+PYCMD="${PYCMD:=/usr/bin/python3}"
+PIPCMD="${PIPCMD:=$PYCMD -m pip}"
+
+$PYCMD -m ensurepip
+
+if [ -z $PKGMGR ]; then
+    # Expect dnf to be installed, however if we find microdnf default to it.
+    PKGMGR=/usr/bin/dnf
+    if [ -f "/usr/bin/microdnf" ]; then
+        PKGMGR=/usr/bin/microdnf
+    fi
+fi
+
+if [ "$PKGMGR" = "/usr/bin/microdnf" ]
+then
+    if [ -z $PKGMGR_OPTS ]; then
+        # NOTE(pabelanger): skip install docs and weak dependencies to
+        # make smaller images. Sadly, setting these in dnf.conf don't
+        # appear to work.
+        PKGMGR_OPTS="--nodocs --setopt install_weak_deps=0"
+    fi
+fi
+
+# NOTE(pabelanger): Ensure all the directory we use exists regardless
+# of the user first creating them or not.
+mkdir -p /output/bindep
+mkdir -p /output/wheels
+mkdir -p /tmp/src
+
+cd /tmp/src
+
+function install_bindep {
+    # Protect from the bindep builder image use of the assemble script
+    # to produce a wheel.  Note we append because we want all
+    # sibling packages in here too
+    if [ -f bindep.txt ] ; then
+        bindep -l newline | sort >> /output/bindep/run.txt || true
+        if [ "$RELEASE" == "centos" ] ; then
+            bindep -l newline -b epel | sort >> /output/bindep/stage.txt || true
+            grep -Fxvf /output/bindep/run.txt /output/bindep/stage.txt >> /output/bindep/epel.txt || true
+            rm -rf /output/bindep/stage.txt
+        fi
+        compile_packages=$(bindep -b compile || true)
+        if [ ! -z "$compile_packages" ] ; then
+            $PKGMGR install -y $PKGMGR_OPTS ${compile_packages}
+        fi
+    fi
+}
+
+function install_wheels {
+    # NOTE(pabelanger): If there are build requirements to install, do so.
+    # However do not cache them as we do not want them in the final image.
+    if [ -f /tmp/src/build-requirements.txt ] && [ ! -f /tmp/src/.build-requirements.txt ] ; then
+        $PIPCMD install $CONSTRAINTS $PIP_OPTS --no-cache -r /tmp/src/build-requirements.txt
+        touch /tmp/src/.build-requirements.txt
+    fi
+    # Build a wheel so that we have an install target.
+    # pip install . in the container context with the mounted
+    # source dir gets ... exciting, if setup.py exists.
+    # We run sdist first to trigger code generation steps such
+    # as are found in zuul, since the sequencing otherwise
+    # happens in a way that makes wheel content copying unhappy.
+    # pip wheel isn't used here because it puts all of the output
+    # in the output dir and not the wheel cache, so it's not
+    # possible to tell what is the wheel for the project and
+    # what is the wheel cache.
+    if [ -f setup.py ] ; then
+        $PYCMD setup.py sdist bdist_wheel -d /output/wheels
+    fi
+
+    # Install everything so that the wheel cache is populated with
+    # transitive depends. If a requirements.txt file exists, install
+    # it directly so that people can use git url syntax to do things
+    # like pick up patched but unreleased versions of dependencies.
+    # Only do this for the main package (i.e. only write requirements
+    # once).
+    if [ -f /tmp/src/requirements.txt ] && [ ! -f /output/requirements.txt ] ; then
+        $PIPCMD install $CONSTRAINTS $PIP_OPTS --cache-dir=/output/wheels -r /tmp/src/requirements.txt
+        cp /tmp/src/requirements.txt /output/requirements.txt
+    fi
+    # If we didn't build wheels, we can skip trying to install it.
+    if [ $(ls -1 /output/wheels/*whl 2>/dev/null | wc -l) -gt 0 ]; then
+        $PIPCMD uninstall -y /output/wheels/*.whl
+        $PIPCMD install $CONSTRAINTS $PIP_OPTS --cache-dir=/output/wheels /output/wheels/*whl
+    fi
+}
+
+PACKAGES=$*
+PIP_OPTS="${PIP_OPTS-}"
+
+# bindep the main package
+install_bindep
+
+# go through ZUUL_SIBLINGS, if any, and build those wheels too
+for sibling in ${ZUUL_SIBLINGS:-}; do
+    pushd .zuul-siblings/${sibling}
+    install_bindep
+    popd
+done
+
+# Use a clean virtualenv for install steps to prevent things from the
+# current environment making us not build a wheel.
+# NOTE(pabelanger): We allow users to install distro python packages of
+# libraries. This is important for projects that eventually want to produce
+# an RPM or offline install.
+$PYCMD -m venv /tmp/venv --system-site-packages --without-pip
+source /tmp/venv/bin/activate
+
+# If there is an upper-constraints.txt file in the source tree,
+# use it in the pip commands.
+if [ -f /tmp/src/upper-constraints.txt ] ; then
+    cp /tmp/src/upper-constraints.txt /output/upper-constraints.txt
+    CONSTRAINTS="-c /tmp/src/upper-constraints.txt"
+fi
+
+# If we got a list of packages, install them, otherwise install the
+# main package.
+if [[ $PACKAGES ]] ; then
+    $PIPCMD install $CONSTRAINTS $PIP_OPTS --cache-dir=/output/wheels $PACKAGES
+    for package in $PACKAGES ; do
+      echo "$package" >> /output/packages.txt
+    done
+else
+    install_wheels
+fi
+
+# go through ZUUL_SIBLINGS, if any, and build those wheels too
+for sibling in ${ZUUL_SIBLINGS:-}; do
+    pushd .zuul-siblings/${sibling}
+    install_wheels
+    popd
+done
+
+if [ -z $PKGMGR_PRESERVE_CACHE ]; then
+  $PKGMGR clean all
+  rm -rf /var/cache/{dnf,yum}
+fi
+
+rm -rf /var/lib/dnf/history.*
+rm -rf /var/log/{dnf.*,hawkey.log}
+rm -rf /tmp/venv

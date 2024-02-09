@@ -1,0 +1,107 @@
+#!/bin/bash
+# Copyright (c) 2019 Red Hat, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+set -ex
+# NOTE(pabelanger): Allow users to force either microdnf or dnf as a package
+# manager.
+PKGMGR="${PKGMGR:-}"
+PKGMGR_OPTS="${PKGMGR_OPTS:-}"
+PKGMGR_PRESERVE_CACHE="${PKGMGR_PRESERVE_CACHE:-}"
+
+PYCMD="${PYCMD:=/usr/bin/python3}"
+PIPCMD="${PIPCMD:=$PYCMD -m pip}"
+PIP_OPTS="${PIP_OPTS-}"
+
+$PYCMD -m ensurepip
+
+if [ -z $PKGMGR ]; then
+    # Expect dnf to be installed, however if we find microdnf default to it.
+    PKGMGR=/usr/bin/dnf
+    if [ -f "/usr/bin/microdnf" ]; then
+        PKGMGR=/usr/bin/microdnf
+    fi
+fi
+
+if [ "$PKGMGR" = "/usr/bin/microdnf" ]
+then
+    if [ -z $PKGMGR_OPTS ]; then
+        # NOTE(pabelanger): skip install docs and weak dependencies to
+        # make smaller images. Sadly, setting these in dnf.conf don't
+        # appear to work.
+        PKGMGR_OPTS="--nodocs --setopt install_weak_deps=0"
+    fi
+fi
+
+if [ -f /output/bindep/run.txt ] ; then
+    PACKAGES=$(cat /output/bindep/run.txt)
+    if [ ! -z "$PACKAGES" ]; then
+        $PKGMGR install -y $PKGMGR_OPTS $PACKAGES
+    fi
+fi
+
+if [ -f /output/bindep/epel.txt ] ; then
+    EPEL_PACKAGES=$(cat /output/bindep/epel.txt)
+    if [ ! -z "$EPEL_PACKAGES" ]; then
+        $PKGMGR install -y $PKGMGR_OPTS --enablerepo epel $EPEL_PACKAGES
+    fi
+fi
+
+# If there's a constraints file, use it.
+if [ -f /output/upper-constraints.txt ] ; then
+    CONSTRAINTS="-c /output/upper-constraints.txt"
+fi
+
+# If a requirements.txt file exists,
+# install it directly so that people can use git url syntax
+# to do things like pick up patched but unreleased versions
+# of dependencies.
+if [ -f /output/requirements.txt ] ; then
+    $PIPCMD install $CONSTRAINTS $PIP_OPTS --cache-dir=/output/wheels -r /output/requirements.txt
+fi
+
+# Add any requested extras to the list of things to install
+EXTRAS=""
+for extra in $* ; do
+    EXTRAS="${EXTRAS} -r /output/$extra/requirements.txt"
+done
+
+if [ -f /output/packages.txt ] ; then
+  # If a package list was passed to assemble, install that in the final
+  # image.
+  $PIPCMD install $CONSTRAINTS $PIP_OPTS --cache-dir=/output/wheels -r /output/packages.txt $EXTRAS
+else
+  # Install the wheels. Uninstall any existing version as siblings maybe
+  # be built with the same version number as the latest release, but we
+  # really want the speculatively built wheels installed over any
+  # automatic dependencies.
+  # NOTE(pabelanger): It is possible a project may not have a wheel, but does have requirements.txt
+  if [ $(ls -1 /output/wheels/*whl 2>/dev/null | wc -l) -gt 0 ]; then
+      $PIPCMD uninstall -y /output/wheels/*.whl
+      $PIPCMD install $CONSTRAINTS $PIP_OPTS --cache-dir=/output/wheels /output/wheels/*.whl $EXTRAS
+  elif [ ! -z "$EXTRAS" ] ; then
+      $PIPCMD uninstall -y $EXTRAS
+      $PIPCMD install $CONSTRAINTS $PIP_OPTS --cache-dir=/output/wheels $EXTRAS
+  fi
+fi
+
+# clean up after ourselves, unless requested to keep the cache
+if [[ "$PKGMGR_PRESERVE_CACHE" != always ]]; then
+  $PKGMGR clean all
+  rm -rf /var/cache/{dnf,yum}
+fi
+
+rm -rf /var/lib/dnf/history.*
+rm -rf /var/log/{dnf.*,hawkey.log}

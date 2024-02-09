@@ -1,0 +1,13 @@
+---
+# This is the base definition for ansible-builder
+# see README.md
+version: 3
+
+dependencies:
+  ansible_core:
+    package_pip: ansible-core
+  ansible_runner:
+    package_pip: ansible-runner
+  python:
+    - six
+    - psutil
