@@ -48,7 +48,7 @@ jobs:
       with:
         ref: ${{ github.event.pull_request.head.sha }}
     - name: Run the tests
-      uses: sclorg/testing-farm-as-github-action@v1
+      uses: sclorg/testing-farm-as-github-action@v2
       with:
         compose: Fedora-39
         api_key: ${{ secrets.TF_API_KEY }}
