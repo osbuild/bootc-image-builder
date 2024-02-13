@@ -12,13 +12,21 @@ import (
 
 // EnsureEnvironment mutates external filesystem state as necessary
 // to run in a container environment.  This function is idempotent.
-func EnsureEnvironment() error {
+func EnsureEnvironment(storePath string) error {
 	osbuildPath := "/usr/bin/osbuild"
 	if util.IsMountpoint(osbuildPath) {
 		return nil
 	}
 
-	// A hardcoded security label from Fedora derivatives
+	// Forcibly label the store to ensure we're not grabbing container labels
+	rootType := "system_u:object_r:root_t:s0"
+	// This papers over the lack of ensuring correct labels for the /ostree root
+	// in the existing pipeline
+	if err := util.RunCmdSync("chcon", rootType, storePath); err != nil {
+		return err
+	}
+
+	// A hardcoded security label from Fedora derivatives for osbuild
 	// TODO: Avoid hardcoding this by using either host policy lookup
 	// Or eventually depend on privileged containers just having this capability.
 	//
