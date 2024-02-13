@@ -54,6 +54,9 @@ jobs:
         api_key: ${{ secrets.TF_API_KEY }}
         git_url: ${{ github.event.pull_request.head.repo.clone_url }}
         git_ref: ${{ github.event.pull_request.head.ref }}
+        # workaround for failure when tmt_plan_regex is not set, can be
+        # removed once the tmt GH action is fixed
+        tmt_plan_regex: ".*"
         pull_request_status_name: "Testing farm"
         tf_scope: private
         secrets: "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }};AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
