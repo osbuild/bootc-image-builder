@@ -237,7 +237,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	if err := setup.Validate(); err != nil {
 		return err
 	}
-	if err := setup.EnsureEnvironment(); err != nil {
+	if err := setup.EnsureEnvironment(osbuildStore); err != nil {
 		return err
 	}
 
