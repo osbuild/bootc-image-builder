@@ -9,6 +9,11 @@ import (
 const (
 	MebiByte = 1024 * 1024        // MiB
 	GibiByte = 1024 * 1024 * 1024 // GiB
+	// BootOptions defines the mountpoint options for /boot
+	// See https://github.com/containers/bootc/pull/341 for the rationale for
+	// using `ro` by default.  Briefly it protects against corruption
+	// by non-ostree aware tools.
+	BootOptions = "ro"
 )
 
 var partitionTables = distro.BasePartitionTableMap{
@@ -44,7 +49,7 @@ var partitionTables = distro.BasePartitionTableMap{
 					Type:         "ext4",
 					Mountpoint:   "/boot",
 					Label:        "boot",
-					FSTabOptions: "defaults",
+					FSTabOptions: BootOptions,
 					FSTabFreq:    1,
 					FSTabPassNo:  2,
 				},
@@ -89,7 +94,7 @@ var partitionTables = distro.BasePartitionTableMap{
 					Type:         "ext4",
 					Mountpoint:   "/boot",
 					Label:        "boot",
-					FSTabOptions: "defaults",
+					FSTabOptions: BootOptions,
 					FSTabFreq:    1,
 					FSTabPassNo:  2,
 				},
