@@ -105,18 +105,20 @@ Usage:
     <imgref>
 
 Flags:
-      --config string   build config file
-      --tls-verify      require HTTPS and verify certificates when contacting registries (default true)
-      --type string     image type to build [qcow2, ami] (default "qcow2")
+      --config string          build config file
+      --tls-verify             require HTTPS and verify certificates when contacting registries (default true)
+      --type string            image type to build [qcow2, ami] (default "qcow2")
+      --target-arch string     architecture to build image for (default is the native architecture)
 ```
 
 ### Detailed description of optional flags
 
-| Argument     | Description                                                      | Default Value |
-|--------------|------------------------------------------------------------------|:-------------:|
-| **--config** | Path to a [build config](#-build-config)                         |       ❌      |
-| --tls-verify | Require HTTPS and verify certificates when contacting registries |    `true`     |
-| **--type**   | [Image type](#-image-types) to build                             |    `qcow2`    |
+| Argument            | Description                                                      | Default Value |
+|---------------------|------------------------------------------------------------------|:-------------:|
+| **--config**        | Path to a [build config](#-build-config)                         |       ❌      |
+| --tls-verify        | Require HTTPS and verify certificates when contacting registries |    `true`     |
+| **--type**          | [Image type](#-image-types) to build                             |    `qcow2`    |
+| **--target-arch**   | [Target arch](#-target-architecture) to build                    |       ❌      |
 
 *💡 Tip: Flags in **bold** are the most important ones.*
 
@@ -129,6 +131,17 @@ The following image types are currently available via the `--type` argument:
 | `ami`                 | [Amazon Machine Image](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) |
 | `qcow2` **(default)** | [QEMU](https://www.qemu.org/)                                                         |
 | `iso`                 | An unattended Anaconda installer that installs to the first disk found.               |
+
+## 💾 Target architecture
+
+Specify the target architecture of the system on which the disk image will be installed on. By default,
+`bootc-image-builder` will build for the native host architecture. The target architecture
+must match an available architecture of the `bootc-image-builder` image you are using to build the disk image.
+Currently, `amd64` and `arm64` are included in `quay.io/centos-bootc/bootc-image-builder` manifest list.
+The architecture of the bootc OCI image and the bootc-image-builder image must match. For example, when building
+a non-native architecture bootc OCI image, say, building for x86_64 from an arm-based Mac, it is possible to run
+`podman build` with the `--platform linux/amd64` flag. In this case, to then build a disk image from the same arm-based Mac,
+you should provide `--target-arch amd64` when running the `bootc-image-builder` command. 
 
 ## ☁️ Cloud uploaders
 
