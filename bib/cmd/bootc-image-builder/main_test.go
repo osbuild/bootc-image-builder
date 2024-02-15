@@ -67,7 +67,6 @@ func getBaseConfig() *main.ManifestConfig {
 
 func getUserConfig() *main.ManifestConfig {
 	// add a user
-	pass := "super-secret-password-42"
 	key := "ssh-ed25519 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 	return &main.ManifestConfig{
 		Imgref:    "testuser",
@@ -77,9 +76,8 @@ func getUserConfig() *main.ManifestConfig {
 				Customizations: &blueprint.Customizations{
 					User: []blueprint.UserCustomization{
 						{
-							Name:     "tester",
-							Password: &pass,
-							Key:      &key,
+							Name: "root",
+							Key:  &key,
 						},
 					},
 				},
@@ -173,7 +171,7 @@ func TestManifestSerialization(t *testing.T) {
 		"build": {
 			containerSpec,
 		},
-		"ostree-deployment": {
+		"image": {
 			containerSpec,
 		},
 	}
@@ -230,15 +228,12 @@ func TestManifestSerialization(t *testing.T) {
 			containers: diskContainers,
 			expStages: map[string][]string{
 				"build": {"org.osbuild.container-deploy"},
-				"ostree-deployment": {
-					"org.osbuild.ostree.deploy.container",
+				"image": {
+					"org.osbuild.bootc.install-to-filesystem",
 				},
 			},
 			nexpStages: map[string][]string{
 				"build": {"org.osbuild.rpm"},
-				"ostree-deployment": {
-					"org.osbuild.users",
-				},
 			},
 		},
 		"raw-base": {
@@ -247,15 +242,12 @@ func TestManifestSerialization(t *testing.T) {
 			containers: diskContainers,
 			expStages: map[string][]string{
 				"build": {"org.osbuild.container-deploy"},
-				"ostree-deployment": {
-					"org.osbuild.ostree.deploy.container",
+				"image": {
+					"org.osbuild.bootc.install-to-filesystem",
 				},
 			},
 			nexpStages: map[string][]string{
 				"build": {"org.osbuild.rpm"},
-				"ostree-deployment": {
-					"org.osbuild.users",
-				},
 			},
 		},
 		"qcow2-base": {
@@ -264,15 +256,12 @@ func TestManifestSerialization(t *testing.T) {
 			containers: diskContainers,
 			expStages: map[string][]string{
 				"build": {"org.osbuild.container-deploy"},
-				"ostree-deployment": {
-					"org.osbuild.ostree.deploy.container",
+				"image": {
+					"org.osbuild.bootc.install-to-filesystem",
 				},
 			},
 			nexpStages: map[string][]string{
 				"build": {"org.osbuild.rpm"},
-				"ostree-deployment": {
-					"org.osbuild.users",
-				},
 			},
 		},
 		"ami-user": {
@@ -281,9 +270,8 @@ func TestManifestSerialization(t *testing.T) {
 			containers: diskContainers,
 			expStages: map[string][]string{
 				"build": {"org.osbuild.container-deploy"},
-				"ostree-deployment": {
-					"org.osbuild.users",
-					"org.osbuild.ostree.deploy.container",
+				"image": {
+					"org.osbuild.bootc.install-to-filesystem",
 				},
 			},
 			nexpStages: map[string][]string{
@@ -296,9 +284,8 @@ func TestManifestSerialization(t *testing.T) {
 			containers: diskContainers,
 			expStages: map[string][]string{
 				"build": {"org.osbuild.container-deploy"},
-				"ostree-deployment": {
-					"org.osbuild.users", // user creation stage when we add users
-					"org.osbuild.ostree.deploy.container",
+				"image": {
+					"org.osbuild.bootc.install-to-filesystem",
 				},
 			},
 			nexpStages: map[string][]string{
@@ -311,9 +298,8 @@ func TestManifestSerialization(t *testing.T) {
 			containers: diskContainers,
 			expStages: map[string][]string{
 				"build": {"org.osbuild.container-deploy"},
-				"ostree-deployment": {
-					"org.osbuild.users", // user creation stage when we add users
-					"org.osbuild.ostree.deploy.container",
+				"image": {
+					"org.osbuild.bootc.install-to-filesystem",
 				},
 			},
 			nexpStages: map[string][]string{
@@ -343,20 +329,23 @@ func TestManifestSerialization(t *testing.T) {
 			packages:   isoPackages,
 			err:        "missing ostree, container, or ospipeline parameters in ISO tree pipeline",
 		},
+		// the errors here when the containers are misisng are
+		// confusing, we should probably not test for them at
+		// this level
 		"ami-nocontainer": {
 			config:     userConfig,
 			imageTypes: []string{"ami"},
-			err:        "pipeline ostree-deployment requires exactly one ostree commit or one container (have commits: []; containers: [])",
+			err:        "serialization not started",
 		},
 		"raw-nocontainer": {
 			config:     userConfig,
 			imageTypes: []string{"raw"},
-			err:        "pipeline ostree-deployment requires exactly one ostree commit or one container (have commits: []; containers: [])",
+			err:        "serialization not started",
 		},
 		"qcow2-nocontainer": {
 			config:     userConfig,
 			imageTypes: []string{"qcow2"},
-			err:        "pipeline ostree-deployment requires exactly one ostree commit or one container (have commits: []; containers: [])",
+			err:        "serialization not started",
 		},
 	}
 

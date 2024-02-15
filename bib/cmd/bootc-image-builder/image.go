@@ -78,8 +78,6 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 
 	img := image.NewBootcDiskImage(containerSource)
 	img.Users = users.UsersFromBP(customizations.GetUsers())
-	img.Groups = users.GroupsFromBP(customizations.GetGroups())
-
 	img.KernelOptionsAppend = []string{
 		"rw",
 		// TODO: Drop this as we expect kargs to come from the container image,
@@ -87,8 +85,6 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		"console=tty0",
 		"console=ttyS0",
 	}
-
-	img.SysrootReadOnly = true
 
 	switch c.Architecture {
 	case arch.ARCH_X86_64:
