@@ -42,6 +42,9 @@ type ManifestConfig struct {
 
 	// TLSVerify specifies whether HTTPS and a valid TLS certificate are required
 	TLSVerify bool
+
+	// Use a local container from the host rather than a repository
+	Local bool
 }
 
 func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
@@ -65,6 +68,7 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		Source:    c.Imgref,
 		Name:      c.Imgref,
 		TLSVerify: &c.TLSVerify,
+		Local:     c.Local,
 	}
 
 	var customizations *blueprint.Customizations
@@ -142,6 +146,7 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 			Source:    c.Imgref,
 			Name:      c.Imgref,
 			TLSVerify: &c.TLSVerify,
+			Local:     c.Local,
 		},
 	}
 	_, err = img.InstantiateManifestFromContainers(&mf, containerSources, runner, rng)
@@ -158,6 +163,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		Source:    c.Imgref,
 		Name:      c.Imgref,
 		TLSVerify: &c.TLSVerify,
+		Local:     c.Local,
 	}
 
 	// The ref is not needed and will be removed from the ctor later

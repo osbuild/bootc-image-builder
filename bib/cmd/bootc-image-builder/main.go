@@ -187,6 +187,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	rpmCacheRoot, _ := cmd.Flags().GetString("rpmmd")
 	targetArch, _ := cmd.Flags().GetString("target-arch")
 	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
+	localStorage, _ := cmd.Flags().GetBool("local")
 
 	// translate anaconda-iso to iso to avoid multiple image type checks
 	for idx := range imgTypes {
@@ -240,6 +241,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 		Imgref:       imgref,
 		Repos:        repos,
 		TLSVerify:    tlsVerify,
+		Local:        localStorage,
 	}
 	return makeManifest(manifestConfig, rpmCacheRoot)
 }
@@ -422,6 +424,7 @@ func run() error {
 	manifestCmd.Flags().String("rpmmd", "/rpmmd", "rpm metadata cache directory")
 	manifestCmd.Flags().String("target-arch", "", "build for the given target architecture (experimental)")
 	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, "image types to build [qcow2, ami, iso, raw]")
+	manifestCmd.Flags().Bool("local", false, "use a local container rather than a container from a registry")
 
 	logrus.SetLevel(logrus.ErrorLevel)
 	buildCmd.Flags().AddFlagSet(manifestCmd.Flags())
