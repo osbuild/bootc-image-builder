@@ -43,6 +43,8 @@ def gen_testcases(what):
             CONTAINERS_TO_TEST["fedora"] + "," + DIRECT_BOOT_IMAGE_TYPES[1],
             CONTAINERS_TO_TEST["centos"] + "," + DIRECT_BOOT_IMAGE_TYPES[2],
             CONTAINERS_TO_TEST["fedora"] + "," + DIRECT_BOOT_IMAGE_TYPES[0],
+            # test for https://github.com/osbuild/bootc-image-builder/issues/207
+            "quay.io/rhel-edge/centos-bootc-test:v7vu,raw",
         ]
         # do a cross arch test too
         if platform.machine() == "x86_64":

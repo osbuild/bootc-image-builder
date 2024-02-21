@@ -13,6 +13,17 @@ FROM registry.fedoraproject.org/fedora:39
 # - https://github.com/osbuild/bootc-image-builder/issues/9
 # - https://github.com/osbuild/osbuild/pull/1468
 COPY ./group_osbuild-osbuild-fedora-39.repo /etc/yum.repos.d/
+
+# XXX: remove once qemu is fixed in fedora,
+# see https://github.com/osbuild/bootc-image-builder/issues/207
+COPY ./michaelvogt-qemu-fix-bib-207-fedora-39.repo /etc/yum.repos.d/
+RUN if [ "$(uname -m)" = "x86_64" ]; then \
+       dnf install -y qemu-user-static-aarch64; \
+    elif [ "$(uname -m)" = "arm64" ]; then \
+       dnf install -y qemu-user-static-x86; \
+    fi
+# -----------------------------
+
 COPY ./package-requires.txt .
 RUN grep -vE '^#' package-requires.txt | xargs dnf install -y && rm -f package-requires.txt && dnf clean all
 COPY --from=builder /build/bin/bootc-image-builder /usr/bin/bootc-image-builder

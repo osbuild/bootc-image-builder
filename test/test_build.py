@@ -134,6 +134,8 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
             "podman", "run", "--rm",
             "--privileged",
             "--security-opt", "label=type:unconfined_t",
+            # HACK
+            "-e", "BIB_FORCE_INTERNAL_QEMU=1",
             "-v", f"{output_path}:/output",
             "-v", "/store",  # share the cache between builds
             *creds_args,
