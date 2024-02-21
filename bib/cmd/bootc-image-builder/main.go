@@ -232,6 +232,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	outputDir, _ := cmd.Flags().GetString("output")
 	osbuildStore, _ := cmd.Flags().GetString("store")
 	imgType, _ := cmd.Flags().GetString("type")
+	targetArch, _ := cmd.Flags().GetString("target-arch")
 
 	if err := setup.Validate(); err != nil {
 		return err
@@ -309,7 +310,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		switch imgType {
 		case "ami":
 			diskpath := filepath.Join(outputDir, exports[0], "disk.raw")
-			if err := uploadAMI(diskpath, cmd.Flags()); err != nil {
+			if err := uploadAMI(diskpath, targetArch, cmd.Flags()); err != nil {
 				return err
 			}
 		default:

@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/pflag"
 )
 
-func uploadAMI(path string, flags *pflag.FlagSet) error {
+func uploadAMI(path, targetArch string, flags *pflag.FlagSet) error {
 	region, err := flags.GetString("aws-region")
 	if err != nil {
 		return err
@@ -24,5 +24,5 @@ func uploadAMI(path string, flags *pflag.FlagSet) error {
 	if err != nil {
 		return err
 	}
-	return uploader.UploadAndRegister(client, path, bucketName, imageName)
+	return uploader.UploadAndRegister(client, path, bucketName, imageName, targetArch)
 }
