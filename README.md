@@ -344,7 +344,7 @@ The contents of the file `$(pwd)/wheel-passwordless-sudo` should be
 
 ### Contributing
 
-Please refer to the [developer guide](https://www.osbuild.org/guides/developer-guide/index.html) to learn about our
+Please refer to the [developer guide](https://www.osbuild.org/docs/developer-guide/index) to learn about our
 workflow, code style and more.
 
 ## 🗄️ Repository
