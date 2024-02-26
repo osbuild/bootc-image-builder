@@ -178,7 +178,6 @@ def test_image_is_generated(image_type):
         f"content: {os.listdir(os.fspath(image_type.img_path))}"
 
 
-@pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
 @pytest.mark.parametrize("image_type", gen_testcases("direct-boot"), indirect=["image_type"])
 def test_image_boots(image_type):
     with QEMU(image_type.img_path, arch=image_type.img_arch) as test_vm:

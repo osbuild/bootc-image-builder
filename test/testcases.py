@@ -46,12 +46,12 @@ def gen_testcases(what):
         ]
         # do a cross arch test too
         if platform.machine() == "x86_64":
-            # todo: add fedora:eln
+            # todo: add fedora:eln(?)
             test_cases.append(
                 f'{CONTAINERS_TO_TEST["centos"]},raw,arm64')
         elif platform.machine() == "arm64":
-            # TODO: add arm64->x86_64 cross build test too
-            pass
+            test_cases.append(
+                f'{CONTAINERS_TO_TEST["centos"]},raw,amd64')
         return test_cases
     elif what == "all":
         test_cases = []

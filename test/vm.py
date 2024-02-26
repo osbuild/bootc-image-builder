@@ -1,4 +1,5 @@
 import abc
+import glob
 import os
 import pathlib
 import platform
@@ -83,12 +84,18 @@ class VM(abc.ABC):
 
 # needed as each distro puts the OVMF.fd in a different location
 def find_ovmf():
+    # linux
     for p in [
             "/usr/share/ovmf/OVMF.fd",       # Debian
             "/usr/share/OVMF/OVMF_CODE.fd",  # Fedora
     ]:
         if os.path.exists(p):
             return p
+    # macos
+    p = "/opt/homebrew/Cellar/qemu/*/share/qemu/edk2-aarch64-code.fd"
+    m = glob.glob(p)
+    if len(m) > 0:
+        return m[0]
     raise ValueError("cannot find a OVMF bios")
 
 
@@ -122,10 +129,18 @@ class QEMU(VM):
         elif self._arch in ("amd64", "x86_64"):
             qemu_cmdline = [
                 "qemu-system-x86_64",
-                "-M", "accel=kvm",
-                # get "illegal instruction" inside the VM otherwise
-                "-cpu", "host",
             ]
+            if platform.machine() == "x86_64":
+                qemu_cmdline.extend([
+                    "-M", "accel=kvm",
+                    # get "illegal instruction" inside the VM otherwise
+                    "-cpu", "host",
+                ])
+            elif platform.machine() == "arm64":
+                qemu_cmdline.extend([
+                    "-machine", "q35",
+                    "-cpu", "SkyLake",
+                ])
             if use_ovmf:
                 qemu_cmdline.extend(["-bios", find_ovmf()])
         else:
