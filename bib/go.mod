@@ -3,9 +3,9 @@ module github.com/osbuild/bootc-image-builder/bib
 go 1.19
 
 require (
-	github.com/aws/aws-sdk-go v1.50.23
+	github.com/aws/aws-sdk-go v1.50.25
 	github.com/google/uuid v1.6.0
-	github.com/osbuild/images v0.38.0
+	github.com/osbuild/images v0.40.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
@@ -110,8 +110,8 @@ require (
 	golang.org/x/term v0.17.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.14.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240205150955-31a09d347014 // indirect
-	google.golang.org/grpc v1.61.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240213162025-012b6fc9bca9 // indirect
+	google.golang.org/grpc v1.61.1 // indirect
 	google.golang.org/protobuf v1.32.0 // indirect
 	gopkg.in/go-jose/go-jose.v2 v2.6.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
