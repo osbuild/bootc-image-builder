@@ -1,0 +1,82 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: bootc-image-builder integration tests
+spec:
+  description: Initiate testing-farm test given a list of container images
+  params:
+    - name: SNAPSHOT
+      description: A list of container images that should undergo testing
+    - name: GIT_URL
+      description: URL of the GIT repository that contains the tests.
+    - name: GIT_REF
+      default: "main"
+      description: Branch of the git repository used containing the tests
+    - name: COMPOSE
+      default: "Fedora-Rawhide"
+      description: Compose to use for the system-under-test.
+    - name: ARCH
+      default: "x86_64"
+      description: Comma-separated list of architectures to run against.
+    - name: TIMEOUT
+      default: "720"
+      description: Set the timeout for the request in minutes. If the test takes longer than this, it will be terminated.
+    - name: TESTING_FARM_API_URL
+      default: https://api.dev.testing-farm.io/v0.1
+      description: The testing-farm instance API to use
+  volumes:
+    - name: testing-farm-secret
+      secret:
+        secretName: testing-farm-secret
+  steps:
+    - image: quay.io/testing-farm/cli:latest
+      volumeMounts:
+        - name: testing-farm-secret
+          mountPath: "/etc/secrets"
+          readOnly: true
+      env:
+        - name: SNAPSHOT
+          value: $(params.SNAPSHOT)
+        - name: GIT_URL
+          value: $(params.GIT_URL)
+        - name: GIT_REF
+          value: $(params.GIT_REF)
+        - name: COMPOSE
+          value: $(params.COMPOSE)
+        - name: ARCH
+          value: $(params.ARCH)
+        - name: TIMEOUT
+          value: $(params.TIMEOUT)
+        - name: TESTING_FARM_API_URL
+          value: $(params.TESTING_FARM_API_URL)
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: "bootc-image-builder-secret"
+              key: "AWS_ACCESS_KEY_ID"
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: "bootc-image-builder-secret"
+              key: "AWS_SECRET_ACCESS_KEY"
+      script: |
+        #!/usr/bin/env bash
+
+        export TESTING_FARM_API_TOKEN=$(cat /etc/secrets/testing-farm-token)
+
+        apk add jq
+
+        GIT_URL=$(echo "${SNAPSHOT}" | jq -r '.components[0].source.git.url')
+        GIT_REF=$(echo "${SNAPSHOT}" | jq -r '.components[0].source.git.revision')
+        BIB_TEST_BUILD_CONTAINER_TAG=$(echo "${SNAPSHOT}" | jq -r '.components[0].containerImage')
+
+        testing-farm request \
+          --environment SNAPSHOT="$(echo ${SNAPSHOT} | base64 -w 0)" \
+          --environment BIB_TEST_BUILD_CONTAINER_TAG="${BIB_TEST_BUILD_CONTAINER_TAG}" \
+          --secret AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
+          --secret AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
+          --git-url "${GIT_URL}" \
+          --git-ref "${GIT_REF}" \
+          --compose "${COMPOSE}" \
+          --arch "${ARCH}" \
+          --timeout "${TIMEOUT}"
