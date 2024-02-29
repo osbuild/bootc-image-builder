@@ -3,6 +3,7 @@
 If your container image fails to build using bootc-image-builder, or if it builds successfully but fails to boot, it's often not clear if the problem lies with bootc-image-builder or the container itself.
 
 To test building an image without bootc-image-builder, try the [bootc-install](devel/bootc-install) script in this repository.
+A more detailed guide for building a disk image using `bootc install` can be found [in the bootc docs](https://github.com/containers/bootc/blob/main/docs/install.md#executing-bootc-install)
 
 **IMPORTANT**
 Before running the script, note that it creates a file called `disk.raw` in the working directory. Make sure this action doesn't overwrite any existing files.
