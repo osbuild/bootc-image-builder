@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+#
+# This is a minimal test script that installs the centos-bootc container to a
+# disk image without using bootc-image-builder. It's meant for investigating
+# build or boot issues when it's not clear if the source of the issue is BIB,
+# or something in the bootable container itself.
+
+set -euo pipefail
+
+container="$1"
+
+echo "Creating disk"
+truncate disk.raw --size 20G
+
+echo "Running bootc install"
+sudo podman run \
+    --rm \
+    -it \
+    --privileged \
+    --pull=newer \
+    --security-opt label=type:unconfined_t \
+    -v ./disk.raw:/disk.raw \
+    --pid=host \
+    "${container}" \
+    bootc install to-disk --via-loopback "/disk.raw"
