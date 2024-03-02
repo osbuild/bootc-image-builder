@@ -32,15 +32,9 @@ by adding a volume-mount for the local file as well as the `--config` flag to th
 The following command will create a QCOW2 disk image. First, create `./config.json` as described above to configure user access.
 
 ```bash
-sudo podman run \
-    --rm \
-    -it \
-    --privileged \
-    --pull=newer \
-    --security-opt label=type:unconfined_t \
+sudo ./bootc-image-builder.sh \
     -v $(pwd)/config.json:/config.json \
     -v $(pwd)/output:/output \
-    quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
     --config /config.json \
     quay.io/centos-bootc/fedora-bootc:eln
@@ -94,14 +88,8 @@ qemu-system-aarch64 \
 
 ```bash
 Usage:
-  sudo podman run \
-    --rm \
-    -it \
-    --privileged \
-    --pull=newer \
-    --security-opt label=type:unconfined_t \
+  sudo ./bootc-image-builder.sh \
     -v $(pwd)/output:/output \
-    quay.io/centos-bootc/bootc-image-builder:latest \
     <imgref>
 
 Flags:
@@ -162,15 +150,9 @@ directory to the container
 For example:
 
 ```bash
- $ sudo podman run \
-  --rm \
-  -it \
-  --privileged \
-  --pull=newer \
-  --security-opt label=type:unconfined_t \
+ $ sudo ./bootc-image-builder.sh \
   -v $HOME/.aws:/root/.aws:ro \
   --env AWS_PROFILE=default \
-  quay.io/centos-bootc/bootc-image-builder:latest \
   --type ami \
   --aws-ami-name fedora-bootc-ami \
   --aws-bucket fedora-bootc-bucket \
@@ -193,7 +175,7 @@ AWS credentials can be specified through two environment variables:
 | AWS_SECRET_ACCESS_KEY | Specifies the secret key associated with the access key. This is essentially the "password" for the access key.     |
 
 Those **should not** be specified with `--env` as plain value, but you can silently hand them over with `--env AWS_*` or
-save these variables in a file and pass them using the `--env-file` flag for `podman run`.
+save these variables in a file and pass them using the `--env-file` flag for `podman run` or `./bootc-image-builder.sh`.
 
 For example:
 
@@ -202,14 +184,8 @@ $ cat aws.secrets
 AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
 AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 
-$ sudo podman run \
-  --rm \
-  -it \
-  --privileged \
-  --pull=newer \
-  --security-opt label=type:unconfined_t \
+$ sudo ./bootc-image-builder.sh \
   --env-file=aws.secrets \
-  quay.io/centos-bootc/bootc-image-builder:latest \
   --type ami \
   --aws-ami-name fedora-bootc-ami \
   --aws-bucket fedora-bootc-bucket \
@@ -257,15 +233,9 @@ Firstly create a file `./config.json` and put the following content into it:
 Then, run `bootc-image-builder` with the following arguments:
 
 ```bash
-sudo podman run \
-    --rm \
-    -it \
-    --privileged \
-    --pull=newer \
-    --security-opt label=type:unconfined_t \
+sudo ./bootc-image-builder.sh \
     -v $(pwd)/config.json:/config.json \
     -v $(pwd)/output:/output \
-    quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
     --config /config.json \
     quay.io/centos-bootc/fedora-bootc:eln
