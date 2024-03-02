@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/setup"
 	"github.com/osbuild/images/pkg/arch"
@@ -233,6 +235,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	osbuildStore, _ := cmd.Flags().GetString("store")
 	imgType, _ := cmd.Flags().GetString("type")
 	targetArch, _ := cmd.Flags().GetString("target-arch")
+	chown, _ := cmd.Flags().GetString("chown")
 
 	if err := setup.Validate(); err != nil {
 		return err
@@ -266,6 +269,9 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	canChown, err := canChownInPath(outputDir)
 	if err != nil {
 		return err
+	}
+	if !canChown && chown != "" {
+		return fmt.Errorf("chowning is not allowed in output directory")
 	}
 
 	manifest_fname := fmt.Sprintf("manifest-%s.json", imgType)
@@ -319,7 +325,40 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	} else {
 		fmt.Printf("Results saved in\n%s\n", outputDir)
 	}
+
+	if err := chownR(outputDir, chown); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func chownR(path string, chown string) error {
+	if chown == "" {
+		return nil
+	}
+
+	var gid int
+	uidS, gidS, _ := strings.Cut(chown, ":")
+	uid, err := strconv.Atoi(uidS)
+	if err != nil {
+		return err
+	}
+	if gidS != "" {
+		gid, err = strconv.Atoi(gidS)
+		if err != nil {
+			return err
+		}
+	} else {
+		gid = osGetgid()
+	}
+
+	return filepath.Walk(path, func(name string, info os.FileInfo, err error) error {
+		if err == nil {
+			err = os.Chown(name, uid, gid)
+		}
+		return err
+	})
 }
 
 func run() error {
@@ -360,6 +399,7 @@ func run() error {
 	buildCmd.Flags().String("aws-bucket", "", "target S3 bucket name for intermediate storage when creating AMI (only for type=ami)")
 	buildCmd.Flags().String("aws-ami-name", "", "name for the AMI in AWS (only for type=ami)")
 	buildCmd.Flags().String("progress", "text", "type of progress bar to use")
+	buildCmd.Flags().String("chown", "", "chown the ouput directory to match the specified UID:GID")
 
 	// flag rules
 	for _, dname := range []string{"output", "store", "rpmmd"} {

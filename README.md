@@ -105,6 +105,7 @@ Usage:
     <imgref>
 
 Flags:
+      --chown string    chown the ouput directory to match the specified UID:GID
       --config string   build config file
       --tls-verify      require HTTPS and verify certificates when contacting registries (default true)
       --type string     image type to build [qcow2, ami] (default "qcow2")
@@ -112,11 +113,12 @@ Flags:
 
 ### Detailed description of optional flags
 
-| Argument     | Description                                                      | Default Value |
-|--------------|------------------------------------------------------------------|:-------------:|
-| **--config** | Path to a [build config](#-build-config)                         |       ❌      |
-| --tls-verify | Require HTTPS and verify certificates when contacting registries |    `true`     |
-| **--type**   | [Image type](#-image-types) to build                             |    `qcow2`    |
+| Argument         | Description                                                      | Default Value |
+|------------------|------------------------------------------------------------------|:-------------:|
+| **--chown**      | chown the ouput directory to match the specified UID:GID         |       ❌      |
+| **--config**     | Path to a [build config](#-build-config)                         |       ❌      |
+| **--tls-verify** | Require HTTPS and verify certificates when contacting registries |    `true`     |
+| **--type**       | [Image type](#-image-types) to build                             |    `qcow2`    |
 
 *💡 Tip: Flags in **bold** are the most important ones.*
 
