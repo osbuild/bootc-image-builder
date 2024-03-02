@@ -181,11 +181,11 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	}
 
 	imgref := args[0]
-	rpmCacheRoot, _ := cmd.Flags().GetString("rpmmd")
 	configFile, _ := cmd.Flags().GetString("config")
-	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
 	imgType, _ := cmd.Flags().GetString("type")
+	rpmCacheRoot, _ := cmd.Flags().GetString("rpmmd")
 	targetArch, _ := cmd.Flags().GetString("target-arch")
+	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
 	if targetArch != "" {
 		// TODO: detect if binfmt_misc for target arch is
 		// available, e.g. by mounting the binfmt_misc fs into
@@ -211,11 +211,11 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	}
 
 	manifestConfig := &ManifestConfig{
-		Imgref:       imgref,
-		ImgType:      imgType,
-		Config:       config,
-		Repos:        repos,
 		Architecture: buildArch,
+		Config:       config,
+		ImgType:      imgType,
+		Imgref:       imgref,
+		Repos:        repos,
 		TLSVerify:    tlsVerify,
 	}
 	return makeManifest(manifestConfig, rpmCacheRoot)
@@ -231,11 +231,11 @@ func cmdManifest(cmd *cobra.Command, args []string) error {
 }
 
 func cmdBuild(cmd *cobra.Command, args []string) error {
-	outputDir, _ := cmd.Flags().GetString("output")
-	osbuildStore, _ := cmd.Flags().GetString("store")
-	imgType, _ := cmd.Flags().GetString("type")
-	targetArch, _ := cmd.Flags().GetString("target-arch")
 	chown, _ := cmd.Flags().GetString("chown")
+	imgType, _ := cmd.Flags().GetString("type")
+	osbuildStore, _ := cmd.Flags().GetString("store")
+	outputDir, _ := cmd.Flags().GetString("output")
+	targetArch, _ := cmd.Flags().GetString("target-arch")
 
 	if err := setup.Validate(); err != nil {
 		return err
@@ -385,21 +385,21 @@ func run() error {
 		SilenceUsage:          true,
 	}
 	rootCmd.AddCommand(manifestCmd)
-	manifestCmd.Flags().String("rpmmd", "/rpmmd", "rpm metadata cache directory")
-	manifestCmd.Flags().String("config", "", "build config file")
-	manifestCmd.Flags().String("type", "qcow2", "image type to build [qcow2, ami]")
 	manifestCmd.Flags().Bool("tls-verify", true, "require HTTPS and verify certificates when contacting registries")
+	manifestCmd.Flags().String("config", "", "build config file")
+	manifestCmd.Flags().String("rpmmd", "/rpmmd", "rpm metadata cache directory")
 	manifestCmd.Flags().String("target-arch", "", "build for the given target architecture (experimental)")
+	manifestCmd.Flags().String("type", "qcow2", "image type to build [qcow2, ami]")
 
 	logrus.SetLevel(logrus.ErrorLevel)
 	buildCmd.Flags().AddFlagSet(manifestCmd.Flags())
-	buildCmd.Flags().String("output", ".", "artifact output directory")
-	buildCmd.Flags().String("store", "/store", "osbuild store for intermediate pipeline trees")
-	buildCmd.Flags().String("aws-region", "", "target region for AWS uploads (only for type=ami)")
-	buildCmd.Flags().String("aws-bucket", "", "target S3 bucket name for intermediate storage when creating AMI (only for type=ami)")
 	buildCmd.Flags().String("aws-ami-name", "", "name for the AMI in AWS (only for type=ami)")
-	buildCmd.Flags().String("progress", "text", "type of progress bar to use")
+	buildCmd.Flags().String("aws-bucket", "", "target S3 bucket name for intermediate storage when creating AMI (only for type=ami)")
+	buildCmd.Flags().String("aws-region", "", "target region for AWS uploads (only for type=ami)")
 	buildCmd.Flags().String("chown", "", "chown the ouput directory to match the specified UID:GID")
+	buildCmd.Flags().String("output", ".", "artifact output directory")
+	buildCmd.Flags().String("progress", "text", "type of progress bar to use")
+	buildCmd.Flags().String("store", "/store", "osbuild store for intermediate pipeline trees")
 
 	// flag rules
 	for _, dname := range []string{"output", "store", "rpmmd"} {
