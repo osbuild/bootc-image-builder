@@ -14,3 +14,18 @@ qemu-img convert -O qcow disk.raw disk.qcow2
 ```
 
 You can then follow the [instructions in the README](README.md#running-the-resulting-qcow2-file-on-linux-x86_64) to test that the image boots successfully.
+
+## Live debugging
+
+First, run bootc-image-builder with `--entrypoint bash` to ensure you have persistent state.
+
+Inside a shell inside the container, use `bootc-image-builder manifest quay.io/exampleos/someimage:latest > /tmp/manifest.json`
+to get a manifest.
+
+Then you can invoke osbuild directly, like this:
+
+```shell
+osbuild --cache-max-size unlimited --export qcow2 --store /store --output-directory /output /tmp/manifest.json
+```
+
+This can further be useful in combination with osbuild options like `--break` to stop at a particular stage.
