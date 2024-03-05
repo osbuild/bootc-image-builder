@@ -6,9 +6,7 @@ def gen_testcases(what):
     # supported images that can be directly booted
     DIRECT_BOOT_IMAGE_TYPES = ("qcow2", "ami", "raw")
     # supported images that require an install
-    # 2024-03-05: disabled because of https://github.com/osbuild/bootc-image-builder/issues/233
-    #INSTALLER_IMAGE_TYPES = ("anaconda-iso",)
-    INSTALLER_IMAGE_TYPES = []
+    INSTALLER_IMAGE_TYPES = ("anaconda-iso",)
 
     # bootc containers that are tested by default
     CONTAINERS_TO_TEST = {
