@@ -53,6 +53,14 @@ func EnsureEnvironment() error {
 	if err := util.RunCmdSync("mount", "--bind", destPath, osbuildPath); err != nil {
 		return err
 	}
+
+	// Ensure we have devfs inside the container to get dynamic loop
+	// loop devices inside the container.
+	devMnt := "/dev/"
+	if err := util.RunCmdSync("mount", "-t", "devtmpfs", "devtmpfs", devMnt); err != nil {
+		return err
+	}
+
 	return nil
 }
 
