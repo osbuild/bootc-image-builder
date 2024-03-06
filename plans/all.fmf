@@ -26,7 +26,7 @@ execute:
   how: tmt
   script: |
     pip install --user -r test/requirements.txt
-    pytest -s -vv --force-aws-upload
+    pytest --force-aws-upload
   duration: 2h
 finish:
   how: shell
