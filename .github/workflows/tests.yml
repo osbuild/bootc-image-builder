@@ -96,7 +96,7 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       run: |
-        sudo -E XDG_RUNTIME_DIR= pytest-3 -s -vv --basetemp=/mnt/var/tmp/bib-tests
+        sudo -E XDG_RUNTIME_DIR= pytest-3 --basetemp=/mnt/var/tmp/bib-tests
     - name: Diskspace (after)
       if: ${{ always() }}
       run: |
@@ -133,4 +133,4 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       run: |
-        pytest -rs -s -vv --basetemp="${TMPDIR}/tmp"
+        pytest -rs --basetemp="${TMPDIR}/tmp"
