@@ -130,6 +130,7 @@ The following image types are currently available via the `--type` argument:
 |-----------------------|---------------------------------------------------------------------------------------|
 | `ami`                 | [Amazon Machine Image](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) |
 | `qcow2` **(default)** | [QEMU](https://www.qemu.org/)                                                         |
+| `vmdk`                | [VMDK](https://en.wikipedia.org/wiki/VMDK) usable in vSphere, among others            |
 | `anaconda-iso`        | An unattended Anaconda installer that installs to the first disk found.               |
 
 ## ☁️ Cloud uploaders
