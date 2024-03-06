@@ -48,18 +48,19 @@ func EnsureEnvironment() error {
 	if err := util.RunCmdSync("chcon", installType, destPath); err != nil {
 		return err
 	}
+
+	// Ensure we have devfs inside the container to get dynamic loop
+	// loop devices inside the container.
+	if err := util.RunCmdSync("mount", "-t", "devtmpfs", "devtmpfs", "/dev"); err != nil {
+		return err
+	}
+
 	// Create a bind mount into our target location; we can't copy it because
 	// again we have to perserve the SELinux label.
 	if err := util.RunCmdSync("mount", "--bind", destPath, osbuildPath); err != nil {
 		return err
 	}
-
-	// Ensure we have devfs inside the container to get dynamic loop
-	// loop devices inside the container.
-	devMnt := "/dev/"
-	if err := util.RunCmdSync("mount", "-t", "devtmpfs", "devtmpfs", devMnt); err != nil {
-		return err
-	}
+	// NOTE: Don't add new code here, do it before the bind mount which acts as the final success indicator
 
 	return nil
 }
