@@ -48,7 +48,7 @@ func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
 	rng := createRand()
 
 	switch c.ImgType {
-	case "ami", "qcow2", "raw":
+	case "ami", "qcow2", "raw", "vmdk":
 		return manifestForDiskImage(c, rng)
 	case "anaconda-iso", "iso":
 		return manifestForISO(c, rng)
@@ -95,6 +95,9 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 	case "ami", "raw":
 		imageFormat = platform.FORMAT_RAW
 		filename = "disk.raw"
+	case "vmdk":
+		imageFormat = platform.FORMAT_VMDK
+		filename = "disk.vmdk"
 	}
 
 	switch c.Architecture {

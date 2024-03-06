@@ -288,10 +288,12 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		exports = []string{"qcow2"}
 	case "ami", "raw":
 		exports = []string{"image"}
+	case "vmdk":
+		exports = []string{"vmdk"}
 	case "anaconda-iso", "iso":
 		exports = []string{"bootiso"}
 	default:
-		return fmt.Errorf("valid types are 'qcow2', 'ami', 'raw', 'anaconda-iso', not: '%s'", imgType)
+		return fmt.Errorf("valid types are 'qcow2', 'ami', 'raw', 'vmdk', 'anaconda-iso', not: '%s'", imgType)
 	}
 
 	manifestPath := filepath.Join(outputDir, manifest_fname)
