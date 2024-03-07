@@ -342,10 +342,10 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 
 	fmt.Println("Build complete!")
 	if upload {
-		for _, imgType := range imgTypes {
+		for idx, imgType := range imgTypes {
 			switch imgType {
 			case "ami":
-				diskpath := filepath.Join(outputDir, imgType, "disk.raw")
+				diskpath := filepath.Join(outputDir, exports[idx], "disk.raw")
 				if err := uploadAMI(diskpath, targetArch, cmd.Flags()); err != nil {
 					return err
 				}
