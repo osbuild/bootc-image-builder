@@ -337,17 +337,18 @@ func chownR(path string, chown string) error {
 	if chown == "" {
 		return nil
 	}
+	errFmt := "cannot parse chown: %v"
 
 	var gid int
 	uidS, gidS, _ := strings.Cut(chown, ":")
 	uid, err := strconv.Atoi(uidS)
 	if err != nil {
-		return err
+		return fmt.Errorf(errFmt, err)
 	}
 	if gidS != "" {
 		gid, err = strconv.Atoi(gidS)
 		if err != nil {
-			return err
+			return fmt.Errorf(errFmt, err)
 		}
 	} else {
 		gid = osGetgid()
