@@ -279,7 +279,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		},
 	}
 
-	img.ISOLabelTempl = "Container-Installer-%s"
+	img.ISOLabelTmpl = "Container-Installer-%s"
 
 	var customizations *blueprint.Customizations
 	if c.Config != nil && c.Config.Blueprint != nil {
