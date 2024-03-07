@@ -305,20 +305,24 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Print("DONE\n")
 
+	// collect pipeline exports for each image type
 	var exports []string
-	switch imgType {
-	case "qcow2":
-		exports = []string{"qcow2"}
-	case "ami", "raw":
-		exports = []string{"image"}
-	case "vmdk":
-		exports = []string{"vmdk"}
-	case "anaconda-iso", "iso":
-		exports = []string{"bootiso"}
-	default:
-		return fmt.Errorf("valid types are 'qcow2', 'ami', 'raw', 'vmdk', 'anaconda-iso', not: '%s'", imgType)
-	}
+	for _, imgType := range imgTypes {
+		switch imgType {
+		case "qcow2":
+			exports = append(exports, "qcow2")
+		case "ami", "raw":
+			// this might be appended more than once, but that's okay
+			exports = append(exports, "image")
+		case "vmdk":
+			exports = []string{"vmdk"}
 
+		case "anaconda-iso", "iso":
+			exports = append(exports, "bootiso")
+		default:
+			return fmt.Errorf("valid types are 'qcow2', 'ami', 'raw', 'vdmk', 'anaconda-iso', not: '%s'", imgType)
+		}
+	}
 	manifestPath := filepath.Join(outputDir, manifest_fname)
 	if err := saveManifest(mf, manifestPath); err != nil {
 		return err
@@ -331,7 +335,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		// set export options for osbuild
 		osbuildEnv = []string{"OSBUILD_EXPORT_FORCE_NO_PRESERVE_OWNER=1"}
 	}
-	_, err = osbuild.RunOSBuild(mf, osbuildStore, outputDir, imgTypes, nil, osbuildEnv, false, os.Stderr)
+	_, err = osbuild.RunOSBuild(mf, osbuildStore, outputDir, exports, nil, osbuildEnv, false, os.Stderr)
 	if err != nil {
 		return err
 	}
