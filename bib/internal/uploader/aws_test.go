@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/cheggaaa/pb"
+	"github.com/cheggaaa/pb/v3"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/uploader"
 )
@@ -81,6 +81,6 @@ func TestUploadAndRegisterProgressBar(t *testing.T) {
 	assert.Equal(t, fakeUploader.registerCalled, 1)
 
 	assert.Contains(t, fakeStdout.String(), "Uploading ")
-	assert.Regexp(t, `10.00 MiB / 10.00 MiB \[=+\] 100.00%`, fakeStdout.String())
+	assert.Regexp(t, `10.00 MiB / 10.00 MiB \[-+\] 100.00%`, fakeStdout.String())
 	assert.Contains(t, fakeStdout.String(), "Registering AMI ")
 }

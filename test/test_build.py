@@ -334,12 +334,8 @@ def test_ami_boots_in_aws(image_type, force_aws_upload):
         pytest.skip("AWS credentials not available (upload not forced)")
 
     # check that upload progress is in the output log. Uploads looks like:
-    #
-    # Uploading /output/image/disk.raw to bootc-image-builder-ci:aac64b64-6e57-47df-9730-54763061d84b-disk.raw
-    #  0 B / 10.00 GiB    0.00%
-    # In the tests with no pty no progress bar is shown in the output just
-    # xx / yy zz%
-    assert " 100.00%\n" in image_type.bib_output
+    # 4.30 GiB / 10.00 GiB [------------>____________] 43.02% 58.04 MiB p/s
+    assert "] 100.00%" in image_type.bib_output
     with AWS(image_type.metadata["ami_id"]) as test_vm:
         exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
         assert exit_status == 0

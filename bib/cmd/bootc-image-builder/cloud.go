@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/cheggaaa/pb"
+	"github.com/cheggaaa/pb/v3"
 	"github.com/osbuild/bootc-image-builder/bib/internal/uploader"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 	"github.com/spf13/pflag"
