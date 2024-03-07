@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/cheggaaa/pb"
+	"github.com/cheggaaa/pb/v3"
 	"github.com/google/uuid"
 
 	"github.com/osbuild/images/pkg/arch"
@@ -32,9 +32,9 @@ func doUpload(a AwsUploader, file *os.File, bucketName, keyName string, pbar *pb
 		if err != nil {
 			return nil, fmt.Errorf("cannot stat upload: %v", err)
 		}
-		pbar.Total = st.Size()
-		pbar.Units = pb.U_BYTES
-		pbar.Output = osStdout
+		pbar.SetTotal(st.Size())
+		pbar.Set(pb.Bytes, true)
+		pbar.SetWriter(osStdout)
 		r = pbar.NewProxyReader(file)
 		pbar.Start()
 		defer pbar.Finish()
