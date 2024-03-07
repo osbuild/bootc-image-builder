@@ -77,10 +77,7 @@ jobs:
       run: |
         df -h
         sudo du -sh * /var/tmp /tmp /var/lib/containers | sort -sh
-    - name: Run tests
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    - name: Install test deps
       run: |
         # make sure test deps are available for root
         sudo -E pip install --user -r test/requirements.txt
@@ -90,6 +87,11 @@ jobs:
         # use custom basetemp here because /var/tmp is on a smaller disk
         # than /mnt
         sudo mkdir -p /mnt/var/tmp/bib-tests
+    - name: Run tests
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      run: |
         sudo -E XDG_RUNTIME_DIR= pytest-3 -s -vv --basetemp=/mnt/var/tmp/bib-tests
     - name: Diskspace (after)
       if: ${{ always() }}
