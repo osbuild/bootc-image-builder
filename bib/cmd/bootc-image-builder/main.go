@@ -187,6 +187,14 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	rpmCacheRoot, _ := cmd.Flags().GetString("rpmmd")
 	targetArch, _ := cmd.Flags().GetString("target-arch")
 	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
+
+	// translate anaconda-iso to iso to avoid multiple image type checks
+	for idx := range imgTypes {
+		if imgTypes[idx] == "anaconda-iso" {
+			imgTypes[idx] = "iso"
+		}
+	}
+
 	if targetArch != "" {
 		// TODO: detect if binfmt_misc for target arch is
 		// available, e.g. by mounting the binfmt_misc fs into
