@@ -297,7 +297,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("chowning is not allowed in output directory")
 	}
 
-	manifest_fname := fmt.Sprintf("manifest-%s.json", imgTypes[0])
+	manifest_fname := fmt.Sprintf("manifest-%s.json", strings.Join(imgTypes, "-"))
 	fmt.Printf("Generating %s ... ", manifest_fname)
 	mf, err := manifestFromCobra(cmd, args)
 	if err != nil {
