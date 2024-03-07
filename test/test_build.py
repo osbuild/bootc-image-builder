@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tempfile
 import uuid
+from contextlib import contextmanager
 from typing import NamedTuple
 
 import pytest
@@ -14,7 +15,8 @@ import pytest
 # local test utils
 import testutil
 from containerbuild import build_container_fixture  # noqa: F401
-from testcases import gen_testcases
+from testcases import (DIRECT_BOOT_IMAGE_TYPES, INSTALLER_IMAGE_TYPES,
+                       gen_testcases)
 from vm import AWS, QEMU
 
 if not testutil.has_executable("podman"):
@@ -52,23 +54,47 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
     Build an image inside the passed build_container and return an
     ImageBuildResult with the resulting image path and user/password
     """
+    with build_images(shared_tmpdir, build_container, request, force_aws_upload) as build_results:
+        yield build_results[0]
+
+
+@pytest.fixture(name="images", scope="session")
+def images_fixture(shared_tmpdir, build_container, request, force_aws_upload):
+    """
+    Build one or more images inside the passed build_container and return an
+    ImageBuildResult array with the resulting image path and user/password
+    """
+    with build_images(shared_tmpdir, build_container, request, force_aws_upload) as build_results:
+        yield build_results
+
+
+@contextmanager
+def build_images(shared_tmpdir, build_container, request, force_aws_upload):
+    """
+    Build all available image types if necessary and return the results for the image types that were requested.
+    Will return cached results of previous build requests.
+    """
     # image_type is passed via special pytest parameter fixture
     if request.param.count(",") == 2:
-        container_ref, image_type, target_arch = request.param.split(",")
+        container_ref, images, target_arch = request.param.split(",")
     elif request.param.count(",") == 1:
-        container_ref, image_type = request.param.split(",")
+        container_ref, images = request.param.split(",")
         target_arch = None
     else:
         raise ValueError(f"cannot parse {request.param.count}")
 
+    # images might be multiple --type args
+    # split and check each one
+    image_types = images.split("+")
+
     username = "test"
     password = "password"
 
-    # image_type can be long and the qmp socket (that has a limit of 100ish
-    # AF_UNIX) is derrived from the path
-    # so hash the image_type instead of just using it
-    for_image_type = request.param
-    output_path = shared_tmpdir / format(abs(hash(for_image_type)), "x")
+    # params can be long and the qmp socket (that has a limit of 100ish
+    # AF_UNIX) is derived from the path
+    # hash the container_ref+target_arch, but exclude the image_type so that the output path is shared between calls to
+    # different image type combinations
+    output_path = shared_tmpdir / format(abs(hash(container_ref+str(target_arch))), "x")
     output_path.mkdir(exist_ok=True)
 
     journal_log_path = output_path / "journal.log"
@@ -81,17 +107,31 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
     }
     assert len(artifact) == len(set(t.split(",")[1] for t in gen_testcases("all"))), \
         "please keep artifact mapping and supported images in sync"
-    generated_img = artifact[image_type]
 
-    if generated_img.exists():
-        print(f"NOTE: reusing cached image {generated_img}")
-        journal_output = journal_log_path.read_text(encoding="utf8")
-        bib_output = bib_output_path.read_text(encoding="utf8")
-        yield ImageBuildResult(image_type, generated_img, target_arch, username, password, bib_output, journal_output)
+    results = []
+    for image_type in image_types:
+        generated_img = artifact[image_type]
+        print(f"Checking for cached image {image_type} -> {generated_img}")
+        if generated_img.exists():
+            print(f"NOTE: reusing cached image {generated_img}")
+            journal_output = journal_log_path.read_text(encoding="utf8")
+            bib_output = bib_output_path.read_text(encoding="utf8")
+            results.append(ImageBuildResult(image_type, generated_img, target_arch, username, password,
+                                            bib_output, journal_output))
+
+    # Because we always build all image types, regardless of what was requested, we should either have 0 results or all
+    # should be available, so if we found at least one result but not all of them, this is a problem with our setup
+    assert not results or len(results) == len(image_types), \
+        f"unexpected number of results found: requested {len(image_types)} but got {len(results)}"
+
+    if results:
+        yield results
         return
 
-    # no image yet, build it
-    CFG = {
+    print(f"Requested {len(image_types)} images but found {len(results)} cached images. Building...")
+
+    # not all requested image types are available - build them
+    cfg = {
         "blueprint": {
             "customizations": {
                 "user": [
@@ -106,7 +146,7 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
     }
 
     config_json_path = output_path / "config.json"
-    config_json_path.write_text(json.dumps(CFG), encoding="utf-8")
+    config_json_path.write_text(json.dumps(cfg), encoding="utf-8")
 
     cursor = testutil.journal_cursor()
 
@@ -117,7 +157,7 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
         target_arch_args = ["--target-arch", target_arch]
 
     with tempfile.TemporaryDirectory() as tempdir:
-        if image_type == "ami":
+        if "ami" in image_types:
             creds_file = pathlib.Path(tempdir) / "aws.creds"
             if testutil.write_aws_creds(creds_file):
                 creds_args = ["-v", f"{creds_file}:/root/.aws/credentials:ro",
@@ -132,8 +172,14 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
                 # upload forced but credentials aren't set
                 raise RuntimeError("AWS credentials not available (upload forced)")
 
+        # we're either building an iso or all the disk image types
+        if image_types[0] in INSTALLER_IMAGE_TYPES:
+            types_arg = [f"--type={image_types[0]}"]
+        else:
+            types_arg = [f"--type={it}" for it in DIRECT_BOOT_IMAGE_TYPES]
+
         # run container to deploy an image into a bootable disk and upload to a cloud service if applicable
-        p = subprocess.Popen([
+        cmd = [
             "podman", "run", "--rm",
             "--privileged",
             "--security-opt", "label=type:unconfined_t",
@@ -143,10 +189,13 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
             build_container,
             container_ref,
             "--config", "/output/config.json",
-            "--type", image_type,
+            *types_arg,
             *upload_args,
             *target_arch_args,
-        ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        ]
+        # print the build command for easier tracing
+        print(" ".join(cmd))
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         # not using subprocss.check_output() to ensure we get live output
         # during the text
         bib_output = ""
@@ -160,7 +209,7 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
 
     journal_output = testutil.journal_after_cursor(cursor)
     metadata = {}
-    if image_type == "ami" and upload_args:
+    if "ami" in image_types and upload_args:
         metadata["ami_id"] = parse_ami_id_from_log(journal_output)
 
         def del_ami():
@@ -170,15 +219,25 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
     journal_log_path.write_text(journal_output, encoding="utf8")
     bib_output_path.write_text(bib_output, encoding="utf8")
 
-    yield ImageBuildResult(
-        image_type, generated_img, target_arch, username, password,
-        bib_output, journal_output, metadata)
+    results = []
+    for image_type in image_types:
+        results.append(ImageBuildResult(image_type, artifact[image_type], target_arch,
+                                        username, password, bib_output, journal_output, metadata))
+    yield results
+
     # Try to cache as much as possible
-    disk_usage = shutil.disk_usage(generated_img)
-    print(f"NOTE: disk usage after {generated_img}: {disk_usage.free / 1_000_000} / {disk_usage.total / 1_000_000}")
-    if disk_usage.free < 1_000_000_000:
-        print(f"WARNING: running low on disk space, removing {generated_img}")
-        generated_img.unlink()
+    for image_type in image_types:
+        img = artifact[image_type]
+        print(f"Checking disk usage for {img}")
+        if os.path.exists(img):
+            # might already be removed if we're deleting 'raw' and 'ami'
+            disk_usage = shutil.disk_usage(img)
+            print(f"NOTE: disk usage after {img}: {disk_usage.free / 1_000_000} / {disk_usage.total / 1_000_000}")
+            if disk_usage.free < 1_000_000_000:
+                print(f"WARNING: running low on disk space, removing {img}")
+                img.unlink()
+        else:
+            print("does not exist")
     subprocess.run(["podman", "rmi", container_ref], check=False)
     return
 
@@ -288,3 +347,14 @@ def test_iso_installs(image_type):
         vm.start(use_ovmf=True)
         exit_status, _ = vm.run("true", user=image_type.username, password=image_type.password)
         assert exit_status == 0
+
+
+@pytest.mark.parametrize("images", gen_testcases("multidisk"), indirect=["images"])
+def test_multi_build_request(images):
+    artifacts = set()
+    expected = {"disk.qcow2", "disk.raw"}
+    for result in images:
+        filename = os.path.basename(result.img_path)
+        assert result.img_path.exists()
+        artifacts.add(filename)
+    assert artifacts == expected

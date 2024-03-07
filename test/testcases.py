@@ -1,13 +1,14 @@
-import platform
 import os
+import platform
+
+# supported images that can be directly booted
+DIRECT_BOOT_IMAGE_TYPES = ("qcow2", "ami", "raw")
+
+# supported images that require an install
+INSTALLER_IMAGE_TYPES = ("anaconda-iso",)
 
 
 def gen_testcases(what):
-    # supported images that can be directly booted
-    DIRECT_BOOT_IMAGE_TYPES = ("qcow2", "ami", "raw")
-    # supported images that require an install
-    INSTALLER_IMAGE_TYPES = ("anaconda-iso",)
-
     # bootc containers that are tested by default
     CONTAINERS_TO_TEST = {
         "fedora": "quay.io/centos-bootc/fedora-bootc:eln",
@@ -58,5 +59,12 @@ def gen_testcases(what):
         for cnt in CONTAINERS_TO_TEST.values():
             for img_type in DIRECT_BOOT_IMAGE_TYPES + INSTALLER_IMAGE_TYPES:
                 test_cases.append(f"{cnt},{img_type}")
+        return test_cases
+    elif what == "multidisk":
+        # single test that specifies all image types
+        test_cases = []
+        for cnt in CONTAINERS_TO_TEST.values():
+            img_type = "+".join(DIRECT_BOOT_IMAGE_TYPES)
+            test_cases.append(f"{cnt},{img_type}")
         return test_cases
     raise ValueError(f"unknown test-case type {what}")
