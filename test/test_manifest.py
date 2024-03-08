@@ -12,9 +12,10 @@ from containerbuild import build_container_fixture  # noqa: F401
 from testcases import gen_testcases
 
 
-@pytest.mark.parametrize("images", gen_testcases("manifest"))
-def test_manifest_smoke(build_container, images):
-    container_ref = images.split(",")[0]
+@pytest.mark.parametrize("testcase_ref", gen_testcases("manifest"))
+def test_manifest_smoke(build_container, testcase_ref):
+    # testcases_ref has the form "container_url,img_type1+img_type2,arch"
+    container_ref = testcase_ref.split(",")[0]
 
     output = subprocess.check_output([
         "podman", "run", "--rm",
