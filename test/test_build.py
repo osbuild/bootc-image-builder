@@ -71,17 +71,22 @@ def images_fixture(shared_tmpdir, build_container, request, force_aws_upload):
 @contextmanager
 def build_images(shared_tmpdir, build_container, request, force_aws_upload):
     """
-    Build all available image types if necessary and return the results for the image types that were requested.
+    Build all available image types if necessary and return the results for
+    the image types that were requested via :request:.
+
     Will return cached results of previous build requests.
+
+    :request.parm: has the form "container_url,img_type1+img_type2,arch"
     """
     # image_type is passed via special pytest parameter fixture
-    if request.param.count(",") == 2:
-        container_ref, images, target_arch = request.param.split(",")
-    elif request.param.count(",") == 1:
-        container_ref, images = request.param.split(",")
+    testcase_ref = request.param
+    if testcase_ref.count(",") == 2:
+        container_ref, images, target_arch = testcase_ref.split(",")
+    elif testcase_ref.count(",") == 1:
+        container_ref, images = testcase_ref.split(",")
         target_arch = None
     else:
-        raise ValueError(f"cannot parse {request.param.count}")
+        raise ValueError(f"cannot parse {testcase_ref.count}")
 
     # images might be multiple --type args
     # split and check each one
@@ -94,7 +99,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
     # AF_UNIX) is derived from the path
     # hash the container_ref+target_arch, but exclude the image_type so that the output path is shared between calls to
     # different image type combinations
-    output_path = shared_tmpdir / format(abs(hash(container_ref+str(target_arch))), "x")
+    output_path = shared_tmpdir / format(abs(hash(container_ref + str(target_arch))), "x")
     output_path.mkdir(exist_ok=True)
 
     journal_log_path = output_path / "journal.log"
@@ -116,13 +121,14 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             print(f"NOTE: reusing cached image {generated_img}")
             journal_output = journal_log_path.read_text(encoding="utf8")
             bib_output = bib_output_path.read_text(encoding="utf8")
-            results.append(ImageBuildResult(image_type, generated_img, target_arch, username, password,
-                                            bib_output, journal_output))
+            results.append(ImageBuildResult(
+                image_type, generated_img, target_arch, username, password,
+                bib_output, journal_output))
 
     # Because we always build all image types, regardless of what was requested, we should either have 0 results or all
     # should be available, so if we found at least one result but not all of them, this is a problem with our setup
     assert not results or len(results) == len(image_types), \
-        f"unexpected number of results found: requested {len(image_types)} but got {len(results)}"
+        f"unexpected number of results found: requested {image_types} but got {results}"
 
     if results:
         yield results
