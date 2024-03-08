@@ -17,7 +17,7 @@ import pytest
 # local test utils
 import testutil
 from containerbuild import build_container_fixture  # noqa: F401
-from testcases import (DIRECT_BOOT_IMAGE_TYPES, INSTALLER_IMAGE_TYPES,
+from testcases import (QEMU_BOOT_IMAGE_TYPES, INSTALLER_IMAGE_TYPES,
                        gen_testcases)
 from vm import AWS, QEMU
 
@@ -140,6 +140,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
         "qcow2": pathlib.Path(output_path) / "qcow2/disk.qcow2",
         "ami": pathlib.Path(output_path) / "image/disk.raw",
         "raw": pathlib.Path(output_path) / "image/disk.raw",
+        "vmdk": pathlib.Path(output_path) / "vmdk/disk.vmdk",
         "anaconda-iso": pathlib.Path(output_path) / "bootiso/install.iso",
     }
     assert len(artifact) == len(set(t.split(",")[1] for t in gen_testcases("all"))), \
@@ -228,7 +229,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
         if image_types[0] in INSTALLER_IMAGE_TYPES:
             types_arg = [f"--type={image_types[0]}"]
         else:
-            types_arg = [f"--type={it}" for it in DIRECT_BOOT_IMAGE_TYPES]
+            types_arg = [f"--type={it}" for it in QEMU_BOOT_IMAGE_TYPES]
 
         # run container to deploy an image into a bootable disk and upload to a cloud service if applicable
         cmd = [
@@ -309,14 +310,14 @@ def test_container_builds(build_container):
     assert build_container in output
 
 
-@pytest.mark.parametrize("image_type", gen_testcases("direct-boot"), indirect=["image_type"])
+@pytest.mark.parametrize("image_type", gen_testcases("all"), indirect=["image_type"])
 def test_image_is_generated(image_type):
     assert image_type.img_path.exists(), "output file missing, dir "\
         f"content: {os.listdir(os.fspath(image_type.img_path))}"
 
 
 @pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
-@pytest.mark.parametrize("image_type", gen_testcases("direct-boot"), indirect=["image_type"])
+@pytest.mark.parametrize("image_type", gen_testcases("qemu-boot"), indirect=["image_type"])
 def test_image_boots(image_type):
     with QEMU(image_type.img_path, arch=image_type.img_arch) as test_vm:
         exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
@@ -383,7 +384,7 @@ def has_selinux():
 
 
 @pytest.mark.skipif(not has_selinux(), reason="selinux not enabled")
-@pytest.mark.parametrize("image_type", gen_testcases("direct-boot"), indirect=["image_type"])
+@pytest.mark.parametrize("image_type", gen_testcases("qemu-boot"), indirect=["image_type"])
 def test_image_build_without_se_linux_denials(image_type):
     # the journal always contains logs from the image building
     assert image_type.journal_output != ""
