@@ -120,6 +120,9 @@ Flags:
 | **--tls-verify** | Require HTTPS and verify certificates when contacting registries |    `true`     |
 | **--type**       | [Image type](#-image-types) to build                             |    `qcow2`    |
 
+The `--type` parameter can be given multiple times and multiple outputs will
+be produced.
+
 *💡 Tip: Flags in **bold** are the most important ones.*
 
 ## 💾 Image types
