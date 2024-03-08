@@ -2,7 +2,13 @@ import os
 import platform
 
 # supported images that can be directly booted
-DIRECT_BOOT_IMAGE_TYPES = ("qcow2", "ami", "raw")
+QEMU_BOOT_IMAGE_TYPES = ("qcow2", "raw")
+
+# images that can *not* be booted directly from qemu
+NON_QEMU_BOOT_IMAGE_TYPES = ("vmdk",)
+
+# images that can *not* be booted directly from qemu
+NON_QEMU_BOOT_IMAGE_TYPES = ("vmdk",)
 
 # supported images that require an install
 INSTALLER_IMAGE_TYPES = ("anaconda-iso",)
@@ -35,19 +41,11 @@ def gen_testcases(what):
         for img_type in INSTALLER_IMAGE_TYPES:
             test_cases.append(f"{cnt},{img_type}")
         return test_cases
-    elif what == "direct-boot":
-        # Do not do any AMI tests here, just test the raw image (which is
-        # identical to ami right now). The AMI needs to also get uploaded
-        # so they really need their own dedicated AMI test via the "ami-boot"
-        # test-cases
-        test_cases = [
-            CONTAINERS_TO_TEST["centos"] + "," + DIRECT_BOOT_IMAGE_TYPES[0],
-            CONTAINERS_TO_TEST["fedora"] + "," + DIRECT_BOOT_IMAGE_TYPES[2],
-            CONTAINERS_TO_TEST["centos"] + "," + DIRECT_BOOT_IMAGE_TYPES[2],
-            CONTAINERS_TO_TEST["fedora"] + "," + DIRECT_BOOT_IMAGE_TYPES[0],
-            CONTAINERS_TO_TEST["centos"] + "," + DIRECT_BOOT_IMAGE_TYPES[0] + ",,true",
-            CONTAINERS_TO_TEST["fedora"] + "," + DIRECT_BOOT_IMAGE_TYPES[2] + ",,true",
-        ]
+    elif what == "qemu-boot":
+        test_cases = []
+        for cnt in CONTAINERS_TO_TEST.values():
+            for img_type in QEMU_BOOT_IMAGE_TYPES:
+                test_cases.append(f"{cnt},{img_type}")
         # do a cross arch test too
         if platform.machine() == "x86_64":
             # todo: add fedora:eln
@@ -60,14 +58,17 @@ def gen_testcases(what):
     elif what == "all":
         test_cases = []
         for cnt in CONTAINERS_TO_TEST.values():
-            for img_type in DIRECT_BOOT_IMAGE_TYPES + INSTALLER_IMAGE_TYPES:
+            for img_type in QEMU_BOOT_IMAGE_TYPES + NON_QEMU_BOOT_IMAGE_TYPES + INSTALLER_IMAGE_TYPES:
                 test_cases.append(f"{cnt},{img_type}")
         return test_cases
+    # TODO: make images generate a superdisk manifest with pipelines for
+    #       qcow2+vmdk+raw so that we can just generate them all via a
+    #       single build
     elif what == "multidisk":
         # single test that specifies all image types
         test_cases = []
         for cnt in CONTAINERS_TO_TEST.values():
-            img_type = "+".join(DIRECT_BOOT_IMAGE_TYPES)
+            img_type = "+".join(QEMU_BOOT_IMAGE_TYPES)
             test_cases.append(f"{cnt},{img_type}")
         return test_cases
     raise ValueError(f"unknown test-case type {what}")
