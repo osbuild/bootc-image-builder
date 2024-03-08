@@ -36,12 +36,13 @@ def gen_testcases(what):
             test_cases.append(f"{cnt},{img_type}")
         return test_cases
     elif what == "direct-boot":
-        # skip some raw/ami tests (they are identical right now) to
-        # avoid overlong test runs but revisit this later and maybe just
-        # do more in parallel?
+        # Do not do any AMI tests here, just test the raw image (which is
+        # identical to ami right now). The AMI needs to also get uploaded
+        # so they really need their own dedicated AMI test via the "ami-boot"
+        # test-cases
         test_cases = [
             CONTAINERS_TO_TEST["centos"] + "," + DIRECT_BOOT_IMAGE_TYPES[0],
-            CONTAINERS_TO_TEST["fedora"] + "," + DIRECT_BOOT_IMAGE_TYPES[1],
+            CONTAINERS_TO_TEST["fedora"] + "," + DIRECT_BOOT_IMAGE_TYPES[2],
             CONTAINERS_TO_TEST["centos"] + "," + DIRECT_BOOT_IMAGE_TYPES[2],
             CONTAINERS_TO_TEST["fedora"] + "," + DIRECT_BOOT_IMAGE_TYPES[0],
         ]
