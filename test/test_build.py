@@ -113,8 +113,20 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
     assert len(artifact) == len(set(t.split(",")[1] for t in gen_testcases("all"))), \
         "please keep artifact mapping and supported images in sync"
 
+    # this helper checks the cache
     results = []
     for image_type in image_types:
+        # TODO: properly cache amis here. The issue right now is that
+        # ami and raw are the same image on disk which means that if a test
+        # like "boots_in_aws" requests an ami it will get the raw file on
+        # disk. However that is not sufficient because part of the ami test
+        # is the upload to AWS and the generated metadata. The fix could be
+        # to make the boot-in-aws a new image type like "ami-aws" where we
+        # cache the metadata instead of the disk image. Alternatively we
+        # could stop testing ami locally at all and just skip any ami tests
+        # if there are no AWS credentials.
+        if image_type == "ami":
+            continue
         generated_img = artifact[image_type]
         print(f"Checking for cached image {image_type} -> {generated_img}")
         if generated_img.exists():
