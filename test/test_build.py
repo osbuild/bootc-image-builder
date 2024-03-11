@@ -2,9 +2,11 @@ import json
 import os
 import pathlib
 import platform
+import random
 import re
 import shutil
 import subprocess
+import string
 import tempfile
 import uuid
 from contextlib import contextmanager
@@ -45,14 +47,19 @@ class ImageBuildResult(NamedTuple):
 def parse_request_params(request):
     # image_type is passed via special pytest parameter fixture
     testcase_ref = request.param
-    if testcase_ref.count(",") == 2:
+    if testcase_ref.count(",") == 3:
         container_ref, images, target_arch, local = testcase_ref.split(",")
+        local = local is not None
+    elif testcase_ref.count(",") == 2:
+        container_ref, images, target_arch = testcase_ref.split(",")
+        local = False
     elif testcase_ref.count(",") == 1:
         container_ref, images = testcase_ref.split(",")
         target_arch = None
+        local = False
     else:
         raise ValueError(f"cannot parse {testcase_ref.count}")
-    return container_ref, images, target_arch
+    return container_ref, images, target_arch, local
 
 
 @pytest.fixture(scope='session')
@@ -66,9 +73,29 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
     """
     Build an image inside the passed build_container and return an
     ImageBuildResult with the resulting image path and user/password
+    In the case an image is being built from a local container, the
+    function will build the required local container for the test.
     """
-    with build_images(shared_tmpdir, build_container, request, force_aws_upload) as build_results:
-        yield build_results[0]
+    container_ref, images, target_arch, local = parse_request_params(request)
+
+    if not local:
+        with build_images(shared_tmpdir, build_container, request, force_aws_upload) as build_results:
+            yield build_results[0]
+    else:
+        cont_tag = "localhost/cont-base-" + "".join(random.choices(string.digits, k=12))
+
+        # we are not cross-building local images (for now)
+        request.param = ",".join([cont_tag, images, "", "true"])
+
+        # copy the container into containers-storage
+        subprocess.check_call([
+            "skopeo", "copy",
+            f"docker://{container_ref}",
+            f"containers-storage:[overlay@/var/lib/containers/storage+/run/containers/storage]{cont_tag}"
+        ])
+
+        with build_images(shared_tmpdir, build_container, request, force_aws_upload) as build_results:
+            yield build_results[0]
 
 
 @pytest.fixture(name="images", scope="session")
@@ -89,9 +116,9 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
 
     Will return cached results of previous build requests.
 
-    :request.parm: has the form "container_url,img_type1+img_type2,arch"
+    :request.param: has the form "container_url,img_type1+img_type2,arch,local"
     """
-    container_ref, images, target_arch = parse_request_params(request)
+    container_ref, images, target_arch, local = parse_request_params(request)
 
     # images might be multiple --type args
     # split and check each one
