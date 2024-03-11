@@ -42,6 +42,19 @@ class ImageBuildResult(NamedTuple):
     metadata: dict = {}
 
 
+def parse_request_params(request):
+    # image_type is passed via special pytest parameter fixture
+    testcase_ref = request.param
+    if testcase_ref.count(",") == 2:
+        container_ref, images, target_arch, local = testcase_ref.split(",")
+    elif testcase_ref.count(",") == 1:
+        container_ref, images = testcase_ref.split(",")
+        target_arch = None
+    else:
+        raise ValueError(f"cannot parse {testcase_ref.count}")
+    return container_ref, images, target_arch
+
+
 @pytest.fixture(scope='session')
 def shared_tmpdir(tmpdir_factory):
     tmp_path = pathlib.Path(tmpdir_factory.mktemp("shared"))
@@ -78,15 +91,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
 
     :request.parm: has the form "container_url,img_type1+img_type2,arch"
     """
-    # image_type is passed via special pytest parameter fixture
-    testcase_ref = request.param
-    if testcase_ref.count(",") == 2:
-        container_ref, images, target_arch = testcase_ref.split(",")
-    elif testcase_ref.count(",") == 1:
-        container_ref, images = testcase_ref.split(",")
-        target_arch = None
-    else:
-        raise ValueError(f"cannot parse {testcase_ref.count}")
+    container_ref, images, target_arch = parse_request_params(request)
 
     # images might be multiple --type args
     # split and check each one
