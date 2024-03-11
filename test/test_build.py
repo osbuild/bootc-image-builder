@@ -17,8 +17,7 @@ import pytest
 # local test utils
 import testutil
 from containerbuild import build_container_fixture  # noqa: F401
-from testcases import (QEMU_BOOT_IMAGE_TYPES, INSTALLER_IMAGE_TYPES,
-                       gen_testcases)
+from testcases import CLOUD_BOOT_IMAGE_TYPES, QEMU_BOOT_IMAGE_TYPES, gen_testcases
 from vm import AWS, QEMU
 
 if not testutil.has_executable("podman"):
@@ -158,7 +157,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
         # cache the metadata instead of the disk image. Alternatively we
         # could stop testing ami locally at all and just skip any ami tests
         # if there are no AWS credentials.
-        if image_type == "ami":
+        if image_type in CLOUD_BOOT_IMAGE_TYPES:
             continue
         generated_img = artifact[image_type]
         print(f"Checking for cached image {image_type} -> {generated_img}")
@@ -223,11 +222,13 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
                 # upload forced but credentials aren't set
                 raise RuntimeError("AWS credentials not available (upload forced)")
 
-        # we're either building an iso or all the disk image types
-        if image_types[0] in INSTALLER_IMAGE_TYPES:
-            types_arg = [f"--type={image_types[0]}"]
-        else:
+        # qemu boot images can be build with a single invocation
+        # TODO: ensure that *all* images can be built with the same call, to
+        # do this we need the "superimage" support in images first
+        if image_types[0] in QEMU_BOOT_IMAGE_TYPES:
             types_arg = [f"--type={it}" for it in QEMU_BOOT_IMAGE_TYPES]
+        else:
+            types_arg = [f"--type={image_types[0]}"]
 
         # run container to deploy an image into a bootable disk and upload to a cloud service if applicable
         cmd = [
