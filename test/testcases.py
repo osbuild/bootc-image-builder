@@ -45,6 +45,8 @@ def gen_testcases(what):
             CONTAINERS_TO_TEST["fedora"] + "," + DIRECT_BOOT_IMAGE_TYPES[2],
             CONTAINERS_TO_TEST["centos"] + "," + DIRECT_BOOT_IMAGE_TYPES[2],
             CONTAINERS_TO_TEST["fedora"] + "," + DIRECT_BOOT_IMAGE_TYPES[0],
+            CONTAINERS_TO_TEST["centos"] + "," + DIRECT_BOOT_IMAGE_TYPES[0] + ",,true",
+            CONTAINERS_TO_TEST["fedora"] + "," + DIRECT_BOOT_IMAGE_TYPES[2] + ",,true",
         ]
         # do a cross arch test too
         if platform.machine() == "x86_64":
