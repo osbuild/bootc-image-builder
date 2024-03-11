@@ -170,14 +170,12 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
                 image_type, generated_img, target_arch, username, password,
                 bib_output, journal_output))
 
-    # return cached results only if we have exactly the amount of images
-    # requested. the reason is that for multi-images we cannot just return
-    # partial results. And because tests run in random order it maybe that
-    # a multi-image test runs after a single image test that already generated
-    # one of the types the multi images requested.
-    # TODO: rework the whole helper and extract the cache check and the build
-    # into their (tested) functions
-    if len(results) == len(image_types):
+    # Because we always build all image types, regardless of what was requested, we should either have 0 results or all
+    # should be available, so if we found at least one result but not all of them, this is a problem with our setup
+    assert not results or len(results) == len(image_types), \
+        f"unexpected number of results found: requested {image_types} but got {results}"
+
+    if results:
         yield results
         return
 
