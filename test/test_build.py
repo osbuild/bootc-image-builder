@@ -210,6 +210,13 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             "--security-opt", "label=type:unconfined_t",
             "-v", f"{output_path}:/output",
             "-v", "/store",  # share the cache between builds
+        ]
+
+        # we need to mount the host's container store
+        if local:
+            cmd.extend(["-v", "/var/lib/containers/storage:/var/lib/containers/storage"])
+
+        cmd.extend([
             *creds_args,
             build_container,
             container_ref,
@@ -217,7 +224,9 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             *types_arg,
             *upload_args,
             *target_arch_args,
-        ]
+            "--local" if local else "--local=false",
+        ])
+
         # print the build command for easier tracing
         print(" ".join(cmd))
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
