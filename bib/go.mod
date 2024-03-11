@@ -3,7 +3,7 @@ module github.com/osbuild/bootc-image-builder/bib
 go 1.19
 
 require (
-	github.com/aws/aws-sdk-go v1.50.34
+	github.com/aws/aws-sdk-go v1.50.35
 	github.com/cheggaaa/pb v1.0.29
 	github.com/google/uuid v1.6.0
 	github.com/osbuild/images v0.43.1-0.20240308082947-6b51d800c869
