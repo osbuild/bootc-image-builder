@@ -19,6 +19,7 @@ prepare:
     - python3-flake8
     - python3-paramiko
     - python3-pip
+    - skopeo
     - qemu-kvm
     - qemu-system-aarch64
     - qemu-user-static
