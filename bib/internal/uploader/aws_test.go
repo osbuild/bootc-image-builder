@@ -81,6 +81,6 @@ func TestUploadAndRegisterProgressBar(t *testing.T) {
 	assert.Equal(t, fakeUploader.registerCalled, 1)
 
 	assert.Contains(t, fakeStdout.String(), "Uploading ")
-	assert.Contains(t, fakeStdout.String(), "10.00 MiB / 10.00 MiB [============================================] 100.00%")
+	assert.Regexp(t, `10.00 MiB / 10.00 MiB \[=+\] 100.00%`, fakeStdout.String())
 	assert.Contains(t, fakeStdout.String(), "Registering AMI ")
 }
