@@ -223,17 +223,10 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 		config = &BuildConfig{}
 	}
 
-	// Disk image types should all share mostly the same manifest but with
-	// different export pipelines.
-	// Right now the qcow2 contains all the pipelines required for ami and raw,
-	// so if one of the image types is qcow2, build that and export pipelines
-	// accordingly if needed.
-	// NOTE: THIS WILL CHANGE WITH THE INTRODUCTION OF NEW IMAGE TYPES
+	// Disk image types all share the same manifest but with different export pipelines.
+	// ISO images can't be built alongside other image types.
+	// Therefore, the first element is enough.
 	imgType := imgTypes[0]
-	if slices.Contains(imgTypes, "qcow2") {
-		imgType = "qcow2"
-	}
-
 	manifestConfig := &ManifestConfig{
 		Architecture: buildArch,
 		Config:       config,
