@@ -90,33 +90,16 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 
 	img.SysrootReadOnly = true
 
-	var imageFormat platform.ImageFormat
-	var filename string
-	switch c.ImgType {
-	case "qcow2":
-		imageFormat = platform.FORMAT_QCOW2
-		filename = "disk.qcow2"
-	case "ami", "raw":
-		imageFormat = platform.FORMAT_RAW
-		filename = "disk.raw"
-	case "vmdk":
-		imageFormat = platform.FORMAT_VMDK
-		filename = "disk.vmdk"
-	}
-
 	switch c.Architecture {
 	case arch.ARCH_X86_64:
 		img.Platform = &platform.X86{
-			BasePlatform: platform.BasePlatform{
-				ImageFormat: imageFormat,
-			},
-			BIOS: true,
+			BasePlatform: platform.BasePlatform{},
+			BIOS:         true,
 		}
 	case arch.ARCH_AARCH64:
 		img.Platform = &platform.Aarch64{
 			UEFIVendor: "fedora",
 			BasePlatform: platform.BasePlatform{
-				ImageFormat: imageFormat,
 				QCOW2Compat: "1.1",
 			},
 		}
@@ -136,7 +119,9 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 	}
 	img.PartitionTable = pt
 
-	img.Filename = filename
+	// For the bootc-disk image, the filename is the basename and the extension
+	// is added automatically for each disk format
+	img.Filename = "disk"
 
 	mf := manifest.New()
 	mf.Distro = manifest.DISTRO_FEDORA
