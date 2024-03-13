@@ -149,7 +149,7 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 			Local:     c.Local,
 		},
 	}
-	_, err = img.InstantiateManifestFromContainers(&mf, containerSources, runner, rng)
+	err = img.InstantiateManifestFromContainers(&mf, containerSources, runner, rng)
 
 	return &mf, err
 }
