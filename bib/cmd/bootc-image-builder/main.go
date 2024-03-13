@@ -20,11 +20,11 @@ import (
 	"github.com/osbuild/images/pkg/container"
 	"github.com/osbuild/images/pkg/dnfjson"
 	"github.com/osbuild/images/pkg/manifest"
-	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/rpmmd"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
 	podman_container "github.com/osbuild/bootc-image-builder/bib/internal/container"
+	"github.com/osbuild/bootc-image-builder/bib/internal/osbuildprogress"
 	"github.com/osbuild/bootc-image-builder/bib/internal/setup"
 	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 	"github.com/osbuild/bootc-image-builder/bib/internal/util"
@@ -444,9 +444,8 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		osbuildEnv = append(osbuildEnv, envVars...)
 	}
 
-	_, err = osbuild.RunOSBuild(mf, osbuildStore, outputDir, exports, nil, osbuildEnv, false, os.Stderr)
-	if err != nil {
-		return fmt.Errorf("cannot run osbuild: %w", err)
+	if err = osbuildprogress.RunOSBuild(mf, osbuildStore, outputDir, exports, osbuildEnv); err != nil {
+		return err
 	}
 
 	fmt.Println("Build complete!")
