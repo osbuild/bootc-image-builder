@@ -26,10 +26,7 @@ type ManifestConfig struct {
 	// OCI image path (without the transport, that is always docker://)
 	Imgref string
 
-	// Image type to build (currently: qcow2, ami)
-	//
-	// TODO: Make this an enum.
-	ImgType string
+	BuildType BuildType
 
 	// Build config
 	Config *BuildConfig
@@ -50,13 +47,13 @@ type ManifestConfig struct {
 func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
 	rng := createRand()
 
-	switch c.ImgType {
-	case "ami", "qcow2", "raw", "vmdk":
+	switch c.BuildType {
+	case BuildTypeDisk:
 		return manifestForDiskImage(c, rng)
-	case "anaconda-iso", "iso":
+	case BuildTypeISO:
 		return manifestForISO(c, rng)
 	default:
-		return nil, fmt.Errorf("Manifest(): unsupported image type %q", c.ImgType)
+		return nil, fmt.Errorf("Manifest(): unknown build type %d", c.BuildType)
 	}
 }
 
