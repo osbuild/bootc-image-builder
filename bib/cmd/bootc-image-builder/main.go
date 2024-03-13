@@ -317,7 +317,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 			// this might be appended more than once, but that's okay
 			exports = append(exports, "image")
 		case "vmdk":
-			exports = []string{"vmdk"}
+			exports = append(exports, "vmdk")
 
 		case "anaconda-iso", "iso":
 			exports = append(exports, "bootiso")
