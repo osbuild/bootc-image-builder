@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 )
 
 type BuildType int
@@ -17,7 +18,11 @@ var supportedImageTypes = map[string]BuildType{
 	"raw":          BuildTypeDisk,
 	"vmdk":         BuildTypeDisk,
 	"anaconda-iso": BuildTypeISO,
-	"iso":          BuildTypeISO,
+}
+
+// imageTypeAliases contains aliases for our images
+var imageTypeAliases = map[string]string{
+	"iso": "anaconda-iso", // deprecated
 }
 
 func NewBuildType(imageTypes []string) (BuildType, error) {
@@ -38,4 +43,22 @@ func NewBuildType(imageTypes []string) (BuildType, error) {
 	}
 
 	return supportedImageTypes[imageTypes[0]], nil
+}
+
+// allImageTypesString returns a comma-separated list of supported types
+func allImageTypesString() string {
+	keys := make([]string, 0, len(supportedImageTypes))
+	for k := range supportedImageTypes {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	r := ""
+	for i, k := range keys {
+		if i > 0 {
+			r += ", "
+		}
+		r += k
+	}
+	return r
 }
