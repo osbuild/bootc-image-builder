@@ -123,15 +123,7 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 	mf := manifest.New()
 	mf.Distro = manifest.DISTRO_FEDORA
 	runner := &runner.Linux{}
-	containerSources := []container.SourceSpec{
-		{
-			Source:    c.Imgref,
-			Name:      c.Imgref,
-			TLSVerify: &c.TLSVerify,
-			Local:     true,
-		},
-	}
-	err = img.InstantiateManifestFromContainers(&mf, containerSources, runner, rng)
+	err = img.InstantiateManifestFromContainers(&mf, []container.SourceSpec{containerSource}, runner, rng)
 
 	return &mf, err
 }
