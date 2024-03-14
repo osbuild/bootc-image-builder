@@ -298,7 +298,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	}
 
 	manifest_fname := fmt.Sprintf("manifest-%s.json", strings.Join(imgTypes, "-"))
-	fmt.Printf("Generating %s ... ", manifest_fname)
+	fmt.Printf("Generating manifest %s\n", manifest_fname)
 	mf, err := manifestFromCobra(cmd, args)
 	if err != nil {
 		panic(err)
