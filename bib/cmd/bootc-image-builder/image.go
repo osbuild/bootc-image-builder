@@ -65,7 +65,7 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		Source:    c.Imgref,
 		Name:      c.Imgref,
 		TLSVerify: &c.TLSVerify,
-		Local:     c.Local,
+		Local:     true,
 	}
 
 	var customizations *blueprint.Customizations
@@ -128,7 +128,7 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 			Source:    c.Imgref,
 			Name:      c.Imgref,
 			TLSVerify: &c.TLSVerify,
-			Local:     c.Local,
+			Local:     true,
 		},
 	}
 	err = img.InstantiateManifestFromContainers(&mf, containerSources, runner, rng)
@@ -145,7 +145,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		Source:    c.Imgref,
 		Name:      c.Imgref,
 		TLSVerify: &c.TLSVerify,
-		Local:     c.Local,
+		Local:     true,
 	}
 
 	// The ref is not needed and will be removed from the ctor later
