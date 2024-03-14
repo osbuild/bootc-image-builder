@@ -84,16 +84,20 @@ jobs:
         sudo -E pip install --user -r test/requirements.txt
         # podman needs (parts of) the environment but will break when
         # XDG_RUNTIME_DIR is set.
-        # TODO: figure out what exactly podman needs
-        # use custom basetemp here because /var/tmp is on a smaller disk
-        # than /mnt
+        # GH runners have 60G free space on /mnt but only 15G on /
+        # so bind mount a bunch of dirs into /mnt to have space
+        sudo install -d -m 1777 /mnt/var/tmp
         sudo mkdir -p /mnt/var/tmp/bib-tests
+        for d in /var/tmp /tmp /var/lib/containers/storage; do
+            sudo mkdir -p /mnt/"$d"
+            sudo mount -o bind /mnt/"$d" "$d"
+        done
     - name: Run tests
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       run: |
-        sudo -E XDG_RUNTIME_DIR= pytest-3 --basetemp=/mnt/var/tmp/bib-tests
+        sudo -E XDG_RUNTIME_DIR= pytest-3
     - name: Diskspace (after)
       if: ${{ always() }}
       run: |

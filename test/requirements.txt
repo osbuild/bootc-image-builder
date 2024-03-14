@@ -1,4 +1,5 @@
 pytest==7.4.3
+pytest-xdist==3.5.0
 flake8==6.1.0
 paramiko==2.12.0
 boto3==1.33.13
