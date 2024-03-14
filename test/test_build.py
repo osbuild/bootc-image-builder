@@ -4,10 +4,10 @@ import pathlib
 import platform
 import random
 import re
-import shutil
 import subprocess
 import string
 import tempfile
+import time
 import uuid
 from contextlib import contextmanager
 from typing import NamedTuple
@@ -107,6 +107,12 @@ def images_fixture(shared_tmpdir, build_container, request, force_aws_upload):
         yield build_results
 
 
+def wait_for_build_to_finish(build_finished_marker):
+    while not build_finished_marker.exists():
+        print(f"WAITING for {build_finished_marker}")
+        time.sleep(5)
+
+
 @contextmanager
 def build_images(shared_tmpdir, build_container, request, force_aws_upload):
     """
@@ -131,7 +137,12 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
     # hash the container_ref+target_arch, but exclude the image_type so that the output path is shared between calls to
     # different image type combinations
     output_path = shared_tmpdir / format(abs(hash(container_ref + str(target_arch))), "x")
-    output_path.mkdir(exist_ok=True)
+    build_finished_marker = output_path / "finished"
+    try:
+        output_path.mkdir()
+    except FileExistsError:
+        # we are already building so potentially wait for build to finish
+        wait_for_build_to_finish(build_finished_marker)
 
     journal_log_path = output_path / "journal.log"
     bib_output_path = output_path / "bib-output.log"
@@ -277,6 +288,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
 
     journal_log_path.write_text(journal_output, encoding="utf8")
     bib_output_path.write_text(bib_output, encoding="utf8")
+    build_finished_marker.write_bytes(b"")
 
     results = []
     for image_type in image_types:
@@ -284,19 +296,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
                                         username, password, bib_output, journal_output, metadata))
     yield results
 
-    # Try to cache as much as possible
-    for image_type in image_types:
-        img = artifact[image_type]
-        print(f"Checking disk usage for {img}")
-        if os.path.exists(img):
-            # might already be removed if we're deleting 'raw' and 'ami'
-            disk_usage = shutil.disk_usage(img)
-            print(f"NOTE: disk usage after {img}: {disk_usage.free / 1_000_000} / {disk_usage.total / 1_000_000}")
-            if disk_usage.free < 1_000_000_000:
-                print(f"WARNING: running low on disk space, removing {img}")
-                img.unlink()
-        else:
-            print("does not exist")
+    # cleanup
     subprocess.run(["podman", "rmi", container_ref], check=False)
     return
 
