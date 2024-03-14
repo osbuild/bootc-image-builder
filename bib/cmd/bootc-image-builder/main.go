@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -101,6 +102,19 @@ func loadConfig(path string) (*BuildConfig, error) {
 }
 
 func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest, error) {
+	// If --local wasn't given, always pull the container.
+	// If the user mount a container storage inside bib (without --local), the code will try to pull
+	// a newer version of the container even if an older one is already present. This doesn't match
+	// how `podman run`` behaves by default, but it matches the bib's behaviour before the switch
+	// to using containers storage in all code paths happened.
+	// We might want to change this behaviour in the future to match podman.
+	if !c.Local {
+		pullCmd := exec.Command("podman", "pull", "--arch", c.Architecture.String(), c.Imgref)
+		if err := pullCmd.Run(); err != nil {
+			return nil, fmt.Errorf("failed to pull container image: %w", err)
+		}
+	}
+
 	manifest, err := Manifest(c)
 	if err != nil {
 		return nil, err
