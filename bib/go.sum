@@ -19,8 +19,8 @@ github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d/go.mod h1:asat6
 github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 h1:DklsrG3dyBCFEj5IhUbnKptjxatkF07cF2ak3yi77so=
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
-github.com/aws/aws-sdk-go v1.50.36 h1:PjWXHwZPuTLMR1NIb8nEjLucZBMzmf84TLoLbD8BZqk=
-github.com/aws/aws-sdk-go v1.50.36/go.mod h1:LF8svs817+Nz+DmiMQKTO3ubZ/6IaTpq3TjupRn3Eqk=
+github.com/aws/aws-sdk-go v1.50.38 h1:h8wxaLin7sFGK4sKassc1VpNcDbgAAEQJ5PHjqLAvXQ=
+github.com/aws/aws-sdk-go v1.50.38/go.mod h1:LF8svs817+Nz+DmiMQKTO3ubZ/6IaTpq3TjupRn3Eqk=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
@@ -278,8 +278,8 @@ github.com/opencontainers/runtime-spec v1.1.0 h1:HHUyrt9mwHUjtasSbXSMvs4cyFxh+Bl
 github.com/opencontainers/runtime-spec v1.1.0/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
 github.com/opencontainers/selinux v1.11.0 h1:+5Zbo97w3Lbmb3PeqQtpmTkMwsW5nRI3YaLpt7tQ7oU=
 github.com/opencontainers/selinux v1.11.0/go.mod h1:E5dMC3VPuVvVHDYmi78qvhJp8+M586T4DlDRYpFkyec=
-github.com/osbuild/images v0.44.0 h1:Hg/n2PeWOWPx9naVDPao6TC4B/9LAy58L+EmR2yj/TE=
-github.com/osbuild/images v0.44.0/go.mod h1:eM/J8+hEUH0jrwcy3DtE6SDg+bRMWFZIf5d+YDyhoDY=
+github.com/osbuild/images v0.46.0 h1:SfUGmVwXNinhT+19OAuDXOf9VRG+F9G6R4yctIIwLTs=
+github.com/osbuild/images v0.46.0/go.mod h1:eM/J8+hEUH0jrwcy3DtE6SDg+bRMWFZIf5d+YDyhoDY=
 github.com/ostreedev/ostree-go v0.0.0-20210805093236-719684c64e4f h1:/UDgs8FGMqwnHagNDPGOlts35QkhAZ8by3DR7nMih7M=
 github.com/ostreedev/ostree-go v0.0.0-20210805093236-719684c64e4f/go.mod h1:J6OG6YJVEWopen4avK3VNQSnALmmjvniMmni/YFYAwc=
 github.com/otiai10/copy v1.14.0 h1:dCI/t1iTdYGtkvCuBG2BgR6KZa83PTclw4U5n2wAllU=
