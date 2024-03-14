@@ -4,11 +4,14 @@ import platform
 # supported images that can be directly booted
 QEMU_BOOT_IMAGE_TYPES = ("qcow2", "raw")
 
-# supported images that can be booted in a cloud
-CLOUD_BOOT_IMAGE_TYPES = ("ami",)
-
 # images that can *not* be booted directly from qemu
 NON_QEMU_BOOT_IMAGE_TYPES = ("vmdk",)
+
+# disk image types can be build from a single manifest
+DISK_IMAGE_TYPES = QEMU_BOOT_IMAGE_TYPES + NON_QEMU_BOOT_IMAGE_TYPES
+
+# supported images that can be booted in a cloud
+CLOUD_BOOT_IMAGE_TYPES = ("ami",)
 
 # supported images that require an install
 INSTALLER_IMAGE_TYPES = ("anaconda-iso",)
@@ -64,14 +67,11 @@ def gen_testcases(what):
                     INSTALLER_IMAGE_TYPES:
                 test_cases.append(f"{cnt},{img_type}")
         return test_cases
-    # TODO: make images generate a superdisk manifest with pipelines for
-    #       qcow2+vmdk+raw so that we can just generate them all via a
-    #       single build
     elif what == "multidisk":
         # single test that specifies all image types
         test_cases = []
         for cnt in CONTAINERS_TO_TEST.values():
-            img_type = "+".join(QEMU_BOOT_IMAGE_TYPES)
+            img_type = "+".join(DISK_IMAGE_TYPES)
             test_cases.append(f"{cnt},{img_type}")
         return test_cases
     raise ValueError(f"unknown test-case type {what}")
