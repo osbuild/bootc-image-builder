@@ -17,7 +17,7 @@ import pytest
 # local test utils
 import testutil
 from containerbuild import build_container_fixture  # noqa: F401
-from testcases import CLOUD_BOOT_IMAGE_TYPES, QEMU_BOOT_IMAGE_TYPES, gen_testcases
+from testcases import CLOUD_BOOT_IMAGE_TYPES, DISK_IMAGE_TYPES, gen_testcases
 from vm import AWS, QEMU
 
 if not testutil.has_executable("podman"):
@@ -222,11 +222,9 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
                 # upload forced but credentials aren't set
                 raise RuntimeError("AWS credentials not available (upload forced)")
 
-        # qemu boot images can be build with a single invocation
-        # TODO: ensure that *all* images can be built with the same call, to
-        # do this we need the "superimage" support in images first
-        if image_types[0] in QEMU_BOOT_IMAGE_TYPES:
-            types_arg = [f"--type={it}" for it in QEMU_BOOT_IMAGE_TYPES]
+        # all disk-image types can be generated via a single build
+        if image_types[0] in DISK_IMAGE_TYPES:
+            types_arg = [f"--type={it}" for it in DISK_IMAGE_TYPES]
         else:
             types_arg = [f"--type={image_types[0]}"]
 
@@ -309,7 +307,7 @@ def test_container_builds(build_container):
     assert build_container in output
 
 
-@pytest.mark.parametrize("image_type", gen_testcases("all"), indirect=["image_type"])
+@pytest.mark.parametrize("image_type", gen_testcases("multidisk"), indirect=["image_type"])
 def test_image_is_generated(image_type):
     assert image_type.img_path.exists(), "output file missing, dir "\
         f"content: {os.listdir(os.fspath(image_type.img_path))}"
@@ -413,7 +411,7 @@ def test_iso_installs(image_type):
 @pytest.mark.parametrize("images", gen_testcases("multidisk"), indirect=["images"])
 def test_multi_build_request(images):
     artifacts = set()
-    expected = {"disk.qcow2", "disk.raw"}
+    expected = {"disk.qcow2", "disk.raw", "disk.vmdk"}
     for result in images:
         filename = os.path.basename(result.img_path)
         assert result.img_path.exists()
