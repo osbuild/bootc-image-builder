@@ -162,6 +162,7 @@ The following image types are currently available via the `--type` argument:
 | `qcow2` **(default)** | [QEMU](https://www.qemu.org/)                                                         |
 | `vmdk`                | [VMDK](https://en.wikipedia.org/wiki/VMDK) usable in vSphere, among others            |
 | `anaconda-iso`        | An unattended Anaconda installer that installs to the first disk found.               |
+| `raw`                 | Unformatted [raw disk](https://en.wikipedia.org/wiki/Rawdisk).                        |
 
 ## ☁️ Cloud uploaders
 

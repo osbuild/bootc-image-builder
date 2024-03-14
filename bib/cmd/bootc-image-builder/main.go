@@ -320,7 +320,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		case "anaconda-iso", "iso":
 			exports = append(exports, "bootiso")
 		default:
-			return fmt.Errorf("valid types are 'qcow2', 'ami', 'raw', 'vdmk', 'anaconda-iso', not: '%s'", imgType)
+			return fmt.Errorf("valid types are %s, not: '%s'", allImageTypesString(), imgType)
 		}
 	}
 	manifestPath := filepath.Join(outputDir, manifest_fname)
@@ -421,7 +421,7 @@ func run() error {
 	manifestCmd.Flags().String("config", "", "build config file")
 	manifestCmd.Flags().String("rpmmd", "/rpmmd", "rpm metadata cache directory")
 	manifestCmd.Flags().String("target-arch", "", "build for the given target architecture (experimental)")
-	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, "image types to build [qcow2, ami, iso, raw]")
+	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, fmt.Sprintf("image types to build [%s]", allImageTypesString()))
 	manifestCmd.Flags().Bool("local", false, "use a local container rather than a container from a registry")
 
 	logrus.SetLevel(logrus.ErrorLevel)
