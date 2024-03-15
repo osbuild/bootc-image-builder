@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	_ "embed"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -100,7 +102,59 @@ func loadConfig(path string) (*BuildConfig, error) {
 	return &conf, nil
 }
 
+func getRootFSType(imgref string) (string, error) {
+	var buffer bytes.Buffer
+	configCmd := exec.Command("podman", "run", "--rm", imgref, "bootc", "install", "print-configuration")
+	configCmd.Stdout = &buffer
+
+	if err := configCmd.Run(); err != nil {
+		return "", fmt.Errorf("failed to run bootc install print-configuration: %w", err)
+	}
+
+	var bootcConfig struct {
+		Filesystem struct {
+			Root struct {
+				Type string `json:"type"`
+			} `json:"root"`
+		} `json:"filesystem"`
+	}
+
+	if err := json.Unmarshal(buffer.Bytes(), &bootcConfig); err != nil {
+		return "", fmt.Errorf("failed to unmarshal bootc configuration: %w", err)
+	}
+
+	// filesystem.root.type is the preferred way instead of the old root-fs-type top-level key.
+	// See https://github.com/containers/bootc/commit/558cd4b1d242467e0ffec77fb02b35166469dcc7
+	fsType := bootcConfig.Filesystem.Root.Type
+	supportedFS := []string{"ext4", "xfs"}
+
+	if !slices.Contains(supportedFS, fsType) {
+		return "", fmt.Errorf("unsupported root filesystem type: %s, supported: %s", fsType, strings.Join(supportedFS, ", "))
+	}
+
+	return fsType, nil
+}
+
 func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest, error) {
+	// If --local wasn't given, always pull the container.
+	// If the user mount a container storage inside bib (without --local), the code will try to pull
+	// a newer version of the container even if an older one is already present. This doesn't match
+	// how `podman run`` behaves by default, but it matches the bib's behaviour before the switch
+	// to using containers storage in all code paths happened.
+	// We might want to change this behaviour in the future to match podman.
+	if !c.Local {
+		pullCmd := exec.Command("podman", "pull", "--arch", c.Architecture.String(), c.Imgref)
+		if err := pullCmd.Run(); err != nil {
+			return nil, fmt.Errorf("failed to pull container image: %w", err)
+		}
+	}
+
+	rootFileSystemType, err := getRootFSType(c.Imgref)
+	if err != nil {
+		return nil, err
+	}
+	c.RootFSType = rootFileSystemType
+
 	manifest, err := Manifest(c)
 	if err != nil {
 		return nil, err
@@ -284,7 +338,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	}
 
 	manifest_fname := fmt.Sprintf("manifest-%s.json", strings.Join(imgTypes, "-"))
-	fmt.Printf("Generating %s ... ", manifest_fname)
+	fmt.Printf("Generating manifest %s\n", manifest_fname)
 	mf, err := manifestFromCobra(cmd, args)
 	if err != nil {
 		panic(err)

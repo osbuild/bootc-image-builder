@@ -264,7 +264,8 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
                 break
             print(line, end="")
             bib_output += line
-        p.wait(timeout=10)
+        rc = p.wait(timeout=10)
+        assert rc == 0, f"bootc-image-builder failed with return code {rc}"
 
     journal_output = testutil.journal_after_cursor(cursor)
     metadata = {}
