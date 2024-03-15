@@ -132,6 +132,8 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
     username = "test"
     password = "password"
 
+    # XXX: shared_tmpdir would have to be stable accross procsses
+    
     # params can be long and the qmp socket (that has a limit of 100ish
     # AF_UNIX) is derived from the path
     # hash the container_ref+target_arch, but exclude the image_type so that the output path is shared between calls to
@@ -142,6 +144,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
         output_path.mkdir()
     except FileExistsError:
         # we are already building so potentially wait for build to finish
+        # cannot use a context manager here
         wait_for_build_to_finish(build_finished_marker)
 
     journal_log_path = output_path / "journal.log"

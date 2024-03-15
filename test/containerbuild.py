@@ -4,7 +4,10 @@ import textwrap
 
 import pytest
 
+import testutil
 
+
+@testutil.spinlock
 @pytest.fixture(name="build_container", scope="session")
 def build_container_fixture():
     """Build a container from the Containerfile and returns the name"""

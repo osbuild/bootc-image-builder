@@ -1,10 +1,14 @@
+import functools
+import hashlib
 import os
 import pathlib
 import platform
 import shutil
 import socket
 import subprocess
+import tempfile
 import time
+import types
 
 import boto3
 from botocore.exceptions import ClientError
@@ -108,3 +112,42 @@ def deregister_ami(ami_id):
         err_msg = err.response["Error"]["Message"]
         print(f"Couldn't deregister image {ami_id}.")
         print(f"Error {err_code}: {err_msg}")
+
+
+def wait_for_file_to_go(fname):
+    while fname.exists():
+        print(f"WAITING for {fname} to finish")
+        time.sleep(5)
+
+
+def spinlock(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        # XXX: this only works if the args/kwargs provide a meaningful
+        # string representation, i.e. if they don't hide details from the
+        # caller
+        fsig = f"{func.__module__}.{func.__name__}:{args}:{kwargs}"
+        mhash = hashlib.md5(fsig.encode("utf8"))
+        # XXX: this is tricky, we need a shared tempdir to place our lock
+        # files accrosss processes maybe a env var with a shared random
+        # seed to generate the dir?
+        #shared_tmpdir = tempfile.gettempdir()
+        shared_tmpdir = "/tmp"
+        lckname = pathlib.Path(f"{shared_tmpdir}/spinlock-{mhash.hexdigest()}")
+        try:
+            with open(lckname, "x", encoding="utf8") as fp:
+                fp.write(f"spinlock for {func,args,kwargs}\n")
+        except FileExistsError:
+            wait_for_file_to_go(lckname)
+
+        try:
+            # run the function and return results either a value or generator
+            result = func(*args, **kwargs)
+            if isinstance(result, types.GeneratorType):
+                for value in result:
+                    yield value
+            else:
+                return result
+        finally:
+            lckname.unlink(missing_ok=True)
+    return wrapper
