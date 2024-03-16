@@ -11,5 +11,6 @@
 #
 # make && podman build --no-cache -t localhost/bib -v $(pwd)/bin:/srcbin -f devel/Containerfile.hack .
 #
+# (The use of the explicit bind mount here is to bypass .dockerignore)
 FROM quay.io/centos-bootc/bootc-image-builder:latest
 RUN install /srcbin/bootc-image-builder /usr/bin
