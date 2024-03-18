@@ -10,11 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	main "github.com/osbuild/bootc-image-builder/bib/cmd/bootc-image-builder"
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/container"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/rpmmd"
+
+	main "github.com/osbuild/bootc-image-builder/bib/cmd/bootc-image-builder"
 )
 
 func TestCanChownInPathHappy(t *testing.T) {
@@ -525,5 +526,28 @@ func TestBuildType(t *testing.T) {
 			assert.Equal(t, err, tc.err)
 			assert.Equal(t, bt, tc.buildType)
 		})
+	}
+}
+
+func TestFilesystemSizeFromCmdlineHappy(t *testing.T) {
+	mps, err := main.NewFilesystemCustomizationFromString("/:20G")
+	assert.NoError(t, err)
+	assert.Equal(t, mps, []blueprint.FilesystemCustomization{
+		{Mountpoint: "/", MinSize: 20 * 1024 * 1024 * 1024},
+	})
+}
+
+func TestFilesystemSizeFromCmdlineSad(t *testing.T) {
+	for _, tc := range []struct {
+		fsSpec      string
+		expectedErr string
+	}{
+		{"x", `cannot parse "x": need a mountpoint and a size`},
+		{"x:y:z", `cannot parse "x:y:z": need a mountpoint and a size`},
+		{"/:not-size", `cannot parse size in: "/:not-size": byte quantity must be a positive integer with a unit of measurement like M, MB, MiB, G, GiB, or GB`},
+		{"/opt:10G", `cannot customize "/opt": only '/' is supported right now`},
+	} {
+		_, err := main.NewFilesystemCustomizationFromString(tc.fsSpec)
+		assert.Equal(t, tc.expectedErr, err.Error())
 	}
 }

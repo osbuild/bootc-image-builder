@@ -1,6 +1,9 @@
 package main
 
-var CanChownInPath = canChownInPath
+var (
+	CanChownInPath                       = canChownInPath
+	NewFilesystemCustomizationFromString = newFilesystemCustomizationFromString
+)
 
 func MockOsGetuid(new func() int) (restore func()) {
 	saved := osGetuid

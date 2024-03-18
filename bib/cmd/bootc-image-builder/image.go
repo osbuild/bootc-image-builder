@@ -42,6 +42,10 @@ type ManifestConfig struct {
 
 	// Use a local container from the host rather than a repository
 	Local bool
+
+	// The default filesystem size
+	// TODO: support type as well
+	Filesystems []blueprint.FilesystemCustomization
 }
 
 func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
@@ -110,7 +114,7 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 	if !ok {
 		return nil, fmt.Errorf("pipelines: no partition tables defined for %s", c.Architecture)
 	}
-	pt, err := disk.NewPartitionTable(&basept, nil, DEFAULT_SIZE, disk.RawPartitioningMode, nil, rng)
+	pt, err := disk.NewPartitionTable(&basept, c.Filesystems, DEFAULT_SIZE, disk.RawPartitioningMode, nil, rng)
 	if err != nil {
 		return nil, err
 	}

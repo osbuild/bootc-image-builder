@@ -10,7 +10,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/osbuild/bootc-image-builder/bib/internal/setup"
+	"code.cloudfoundry.org/bytefmt"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
+
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
@@ -19,9 +23,8 @@ import (
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/rpmmd"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
+
+	"github.com/osbuild/bootc-image-builder/bib/internal/setup"
 )
 
 //go:embed fedora-eln.json
@@ -174,6 +177,39 @@ func saveManifest(ms manifest.OSBuildManifest, fpath string) error {
 	return nil
 }
 
+func newFilesystemCustomizationFromString(s string) ([]blueprint.FilesystemCustomization, error) {
+	var fses []blueprint.FilesystemCustomization
+
+	// a fsSpec has the form: '<mountpoint>:<size>[:<fs-type>]'
+	for _, fsSpec := range strings.Split(s, ",") {
+		l := strings.Split(fsSpec, ":")
+		if len(l) != 2 {
+			return nil, fmt.Errorf("cannot parse %q: need a mountpoint and a size", fsSpec)
+		}
+		mountPoint := l[0]
+		sizeStr := l[1]
+		size, err := bytefmt.ToBytes(sizeStr)
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse size in: %q: %v", fsSpec, err)
+		}
+		// only "/" supported today
+		if mountPoint != "/" {
+			return nil, fmt.Errorf("cannot customize %q: only '/' is supported right now", mountPoint)
+		}
+		// TODO: cross check that the size of the FS is not too small
+		// for the image, maybe a bootc print-configuration could
+		// provide an optional minimal size (even auto-calculated
+		// from the rootfs size and some buffer?)
+
+		fses = append(fses, blueprint.FilesystemCustomization{
+			Mountpoint: mountPoint,
+			MinSize:    size,
+		})
+	}
+
+	return fses, nil
+}
+
 func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	buildArch := arch.Current()
 	repos, err := loadRepos(buildArch.String())
@@ -188,6 +224,8 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	targetArch, _ := cmd.Flags().GetString("target-arch")
 	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
 	localStorage, _ := cmd.Flags().GetBool("local")
+	filesystems, _ := cmd.Flags().GetString("filesystems")
+	fses, _ := newFilesystemCustomizationFromString(filesystems)
 
 	if targetArch != "" {
 		// TODO: detect if binfmt_misc for target arch is
@@ -226,6 +264,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 		Repos:        repos,
 		TLSVerify:    tlsVerify,
 		Local:        localStorage,
+		Filesystems:  fses,
 	}
 	return makeManifest(manifestConfig, rpmCacheRoot)
 }
@@ -409,6 +448,7 @@ func run() error {
 	manifestCmd.Flags().String("target-arch", "", "build for the given target architecture (experimental)")
 	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, "image types to build [qcow2, ami, iso, raw]")
 	manifestCmd.Flags().Bool("local", false, "use a local container rather than a container from a registry")
+	manifestCmd.Flags().String("filesystems", "", "Specify filesystem sizes, e.g. '/:20G'")
 
 	logrus.SetLevel(logrus.ErrorLevel)
 	buildCmd.Flags().AddFlagSet(manifestCmd.Flags())

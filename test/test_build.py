@@ -247,6 +247,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             *creds_args,
             build_container,
             container_ref,
+            "--filesystems", "/:12G",
             "--config", "/output/config.json",
             *types_arg,
             *upload_args,
@@ -324,6 +325,7 @@ def test_image_boots(image_type):
         exit_status, output = test_vm.run("echo hello", user=image_type.username, password=image_type.password)
         assert exit_status == 0
         assert "hello" in output
+        # TODO: check the root FS size here to see that we really got 12G
 
 
 @pytest.mark.parametrize("image_type", gen_testcases("ami-boot"), indirect=["image_type"])
