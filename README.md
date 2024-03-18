@@ -75,7 +75,7 @@ When using the --local flag, we need to mount the storage path as a volume. With
 
 ### Running the resulting QCOW2 file on Linux (x86_64)
 
-A virtual machine can be launched using `qemu-system-x86_64` or with `virt-install` as shown below.
+A virtual machine can be launched with various virtualization tools; for example `qemu-system-x86_64` or with `virt-install` as shown below.
 
 #### qemu-system-x86_64
 
