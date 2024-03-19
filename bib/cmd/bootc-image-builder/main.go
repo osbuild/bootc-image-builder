@@ -101,6 +101,23 @@ func loadConfig(path string) (*BuildConfig, error) {
 	return &conf, nil
 }
 
+func getContainerSize(imgref string) (uint64, error) {
+	var stdout, stderr strings.Builder
+
+	cmd := exec.Command("podman", "image", "inspect", imgref, "--format", "{{.Size}}")
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return 0, fmt.Errorf("failed inspect image: %w:\n%s", err, stderr.String())
+	}
+	size, err := strconv.ParseUint(strings.TrimSpace(stdout.String()), 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("cannot parse image size: %w", err)
+	}
+
+	return size, nil
+}
+
 func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest, error) {
 	// If --local wasn't given, always pull the container.
 	// If the user mount a container storage inside bib (without --local), the code will try to pull
@@ -113,6 +130,13 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 		if err := pullCmd.Run(); err != nil {
 			return nil, fmt.Errorf("failed to pull container image: %w", err)
 		}
+	}
+	cntSize, err := getContainerSize(c.Imgref)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get container size: %w", err)
+	}
+	c.Filesystems = []blueprint.FilesystemCustomization{
+		{Mountpoint: "/", MinSize: cntSize * 2},
 	}
 
 	manifest, err := Manifest(c)
