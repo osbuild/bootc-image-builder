@@ -25,3 +25,4 @@ VOLUME /output
 WORKDIR /output
 VOLUME /store
 VOLUME /rpmmd
+VOLUME /var/lib/containers/storage
