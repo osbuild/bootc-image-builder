@@ -144,6 +144,13 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 	// We might want to change this behaviour in the future to match podman.
 	if !c.Local {
 		pullCmd := exec.Command("podman", "pull", "--arch", c.Architecture.String(), c.Imgref)
+		// This is a bit of a hack, we cannot use "stdout"
+		// when the "manifest" subcommand is used as stdout must be
+		// pure json then. So it's this or we just move the code
+		// into manifestFromCobra and only connect stdout if
+		// `cmd.Use != "manifest"`. This is simpler.
+		pullCmd.Stdout = os.Stderr
+		pullCmd.Stderr = os.Stderr
 		if err := pullCmd.Run(); err != nil {
 			return nil, fmt.Errorf("failed to pull container image: %w", err)
 		}
