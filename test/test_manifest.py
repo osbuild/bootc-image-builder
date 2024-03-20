@@ -75,3 +75,37 @@ def test_manifest_disksize(tmp_path, build_container, testcase_ref):
         # ensure disk size is bigger than the default 10G
         disk_size = find_image_size_from(manifest_str)
         assert int(disk_size) > 11_000_000_000
+
+
+def test_manifest_local_checks_containers_storage_errors(build_container):
+    # note that the
+    #   "-v /var/lib/containers/storage:/var/lib/containers/storage"
+    # is missing here
+    res = subprocess.run([
+        "podman", "run", "--rm",
+        "--privileged",
+        "--security-opt", "label=type:unconfined_t",
+        '--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--local", "arg-not-used"]',
+        build_container,
+    ], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf8")
+    assert res.returncode == 1
+    err = 'Error: local storage not working, did you forget -v /var/lib/containers/storage:/var/lib/containers/storage?'
+    assert err in res.stderr
+
+
+@pytest.mark.parametrize("testcase_ref", gen_testcases("manifest"))
+def test_manifest_local_checks_containers_storage_works(tmp_path, build_container, testcase_ref):
+    cntf_path = tmp_path / "Containerfile"
+    cntf_path.write_text(textwrap.dedent(f"""\n
+    FROM {testcase_ref}
+    """), encoding="utf8")
+
+    with make_container(tmp_path) as container_tag:
+        subprocess.run([
+            "podman", "run", "--rm",
+            "--privileged",
+            "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
+            "--security-opt", "label=type:unconfined_t",
+            f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--local", "localhost/{container_tag}"]',
+            build_container,
+        ], check=True, encoding="utf8")

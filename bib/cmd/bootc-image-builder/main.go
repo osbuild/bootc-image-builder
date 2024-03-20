@@ -126,6 +126,12 @@ func getContainerSize(imgref string) (uint64, error) {
 }
 
 func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest, error) {
+	if c.Local {
+		if err := setup.ValidateHasContainerStorageMounted(); err != nil {
+			return nil, fmt.Errorf("local storage not working, did you forget -v /var/lib/containers/storage:/var/lib/containers/storage? (%w)", err)
+		}
+	}
+
 	// If --local wasn't given, always pull the container.
 	// If the user mount a container storage inside bib (without --local), the code will try to pull
 	// a newer version of the container even if an older one is already present. This doesn't match
