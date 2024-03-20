@@ -40,19 +40,20 @@ sudo podman run \
     --security-opt label=type:unconfined_t \
     -v $(pwd)/config.json:/config.json \
     -v $(pwd)/output:/output \
+    -v /var/lib/containers/storage:/var/lib/containers/storage \
     quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
     --config /config.json \
     quay.io/centos-bootc/fedora-bootc:eln
 ```
 
+NOTE: local storage is being used by default. If the `--local` flag is not provided, as in the above example,
+the latest image will be pulled into the local storage.
+
 ### Using local containers
 
-To use containers from local container's storage rather than a registry, we need to ensure two things:
-- the container exists in local storage
-- mount the local container storage
-
-Since the container is run in `rootful` only root container storage paths are allowed.
+To skip pulling an image into local storage and use an existing container image, the `--local` flag can be used,
+as below:
 
 ```bash
 sudo podman run \
@@ -70,8 +71,6 @@ sudo podman run \
     --local \
     localhost/bootc:eln
 ```
-
-When using the --local flag, we need to mount the storage path as a volume. With this enabled, it is assumed that the target container is in the container storage.
 
 ### Running the resulting QCOW2 file on Linux (x86_64)
 
