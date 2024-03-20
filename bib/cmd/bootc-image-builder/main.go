@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/setup"
+	"github.com/osbuild/bootc-image-builder/bib/internal/util"
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
@@ -29,9 +30,10 @@ import (
 var reposStr string
 
 const (
-	distroName       = "fedora-39"
-	modulePlatformID = "platform:f39"
-	releaseVersion   = "39"
+	distroName            = "fedora-39"
+	modulePlatformID      = "platform:f39"
+	releaseVersion        = "39"
+	containersStoragePath = "/var/lib/containers/storage"
 )
 
 type BuildConfig struct {
@@ -102,6 +104,12 @@ func loadConfig(path string) (*BuildConfig, error) {
 }
 
 func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest, error) {
+	// if "/var/lib/containers/storage" hasn't been mounted and the `--local` flag has been provided,
+	// we should return an error. If it's not mounted, it can cause some undefined behaviour.
+	if c.Local && !util.IsMountpoint(containersStoragePath) {
+		return nil, fmt.Errorf("%s has not been mounted, but `--local` flag has been used", containersStoragePath)
+	}
+
 	// If --local wasn't given, always pull the container.
 	// If the user mount a container storage inside bib (without --local), the code will try to pull
 	// a newer version of the container even if an older one is already present. This doesn't match
