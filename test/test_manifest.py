@@ -1,5 +1,6 @@
 import json
 import subprocess
+import textwrap
 
 import pytest
 
@@ -10,8 +11,18 @@ if not testutil.has_executable("podman"):
 if not testutil.can_start_rootful_containers():
     pytest.skip("tests require to be able to run rootful containers (try: sudo)", allow_module_level=True)
 
-from containerbuild import build_container_fixture  # noqa: F401
+from containerbuild import build_container_fixture, make_container  # noqa: F401
 from testcases import gen_testcases
+
+
+def find_image_size_from(manifest_str):
+    manifest = json.loads(manifest_str)
+    for pipl in manifest["pipelines"]:
+        if pipl["name"] == "image":
+            for st in pipl["stages"]:
+                if st["type"] == "org.osbuild.truncate":
+                    return st["options"]["size"]
+    raise ValueError(f"cannot find disk size in manifest:\n{manifest_str}")
 
 
 @pytest.mark.parametrize("testcase_ref", gen_testcases("manifest"))
@@ -30,3 +41,37 @@ def test_manifest_smoke(build_container, testcase_ref):
     # just some basic validation
     assert manifest["version"] == "2"
     assert manifest["pipelines"][0]["name"] == "build"
+    # default disk size is 10G
+    disk_size = find_image_size_from(output)
+    # default image size is 10G
+    assert int(disk_size) == 10 * 1024 * 1024 * 1024
+
+
+@pytest.mark.parametrize("testcase_ref", gen_testcases("manifest"))
+def test_manifest_disksize(tmp_path, build_container, testcase_ref):
+    # create derrived container with 6G silly file to ensure that
+    # bib doubles the size to 12G+
+    cntf_path = tmp_path / "Containerfile"
+    cntf_path.write_text(textwrap.dedent(f"""\n
+    FROM {testcase_ref}
+    RUN truncate -s 2G /big-file1
+    RUN truncate -s 2G /big-file2
+    RUN truncate -s 2G /big-file3
+    """), encoding="utf8")
+
+    print(f"building big size container from {testcase_ref}")
+    with make_container(tmp_path) as container_tag:
+        print(f"using {container_tag}")
+        manifest_str = subprocess.check_output([
+            "podman", "run", "--rm",
+            "--privileged",
+            "--security-opt", "label=type:unconfined_t",
+            # ensure local storage is here
+            "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
+            # need different entry point
+            f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--local", "localhost/{container_tag}"]',
+            build_container,
+        ], encoding="utf8")
+        # ensure disk size is bigger than the default 10G
+        disk_size = find_image_size_from(manifest_str)
+        assert int(disk_size) > 11_000_000_000
