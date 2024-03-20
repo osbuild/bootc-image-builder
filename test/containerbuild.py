@@ -1,8 +1,23 @@
 import os
+import random
+import string
 import subprocess
 import textwrap
+from contextlib import contextmanager
 
 import pytest
+
+
+@contextmanager
+def make_container(container_path):
+    # BIB only supports container tags, not hashes
+    container_tag = "bib-test-" + "".join(random.choices(string.digits, k=12))
+    subprocess.check_call([
+        "podman", "build",
+        "-t", container_tag,
+        container_path], encoding="utf8")
+    yield container_tag
+    subprocess.check_call(["podman", "rmi", container_tag])
 
 
 @pytest.fixture(name="build_container", scope="session")
