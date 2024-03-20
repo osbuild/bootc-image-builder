@@ -3,8 +3,10 @@ package setup
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
+	"github.com/moby/sys/mountinfo"
 	"golang.org/x/sys/unix"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/podmanutil"
@@ -93,6 +95,42 @@ func Validate() error {
 	}
 	if (stvfsbuf.Flags & unix.ST_RDONLY) > 0 {
 		return fmt.Errorf("this command requires a privileged container")
+	}
+
+	return nil
+}
+
+// ValidateHasContainerStorageMounted checks that the container storage
+// is mounted inside the container
+func ValidateHasContainerStorageMounted() error {
+	if err := exec.Command("systemd-detect-virt", "-c").Run(); err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			// not running in a container, just exit
+			if exitErr.ExitCode() == 1 {
+				return nil
+			}
+		}
+		return err
+	}
+
+	containersStorage := "/var/lib/containers/storage"
+	containerStorageMountFound := false
+
+	mnts, err := mountinfo.GetMounts(nil)
+	if err != nil {
+		return err
+	}
+	for _, mnt := range mnts {
+		if mnt.Mountpoint != containersStorage {
+			continue
+		}
+		containerStorageMountFound = true
+		if mnt.Root != containersStorage {
+			return fmt.Errorf("not the host /var/lib/storage/containers but %q", mnt.Root)
+		}
+	}
+	if !containerStorageMountFound {
+		return fmt.Errorf("cannot find mount for %q", containersStorage)
 	}
 
 	return nil
