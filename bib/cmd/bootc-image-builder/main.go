@@ -32,6 +32,12 @@ const (
 	distroName       = "fedora-39"
 	modulePlatformID = "platform:f39"
 	releaseVersion   = "39"
+
+	// As a baseline heuristic we double the size of
+	// the input container to support in-place updates.
+	// This is planned to be more configurable in the
+	// future.
+	containerSizeToDiskSizeMultiplier = 2
 )
 
 type BuildConfig struct {
@@ -101,6 +107,7 @@ func loadConfig(path string) (*BuildConfig, error) {
 	return &conf, nil
 }
 
+// getContainerSize returns the size of an already pulled container image in bytes
 func getContainerSize(imgref string) (uint64, error) {
 	var stdout, stderr strings.Builder
 
@@ -136,7 +143,7 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 		return nil, fmt.Errorf("cannot get container size: %w", err)
 	}
 	c.Filesystems = []blueprint.FilesystemCustomization{
-		{Mountpoint: "/", MinSize: cntSize * 2},
+		{Mountpoint: "/", MinSize: cntSize * containerSizeToDiskSizeMultiplier},
 	}
 
 	manifest, err := Manifest(c)
