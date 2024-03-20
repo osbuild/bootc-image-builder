@@ -5,9 +5,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/osbuild/bootc-image-builder/bib/internal/podmanutil"
 	"github.com/osbuild/bootc-image-builder/bib/internal/util"
-	"golang.org/x/sys/unix"
 )
 
 // EnsureEnvironment mutates external filesystem state as necessary
