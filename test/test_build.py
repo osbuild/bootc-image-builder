@@ -236,6 +236,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             "podman", "run", "--rm",
             "--privileged",
             "--security-opt", "label=type:unconfined_t",
+            "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
             "-v", f"{output_path}:/output",
             "-v", "/store",  # share the cache between builds
         ]
