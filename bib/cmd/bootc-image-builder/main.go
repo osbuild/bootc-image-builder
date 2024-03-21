@@ -313,16 +313,42 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		if !slices.Contains(imgTypes, "ami") {
 			return fmt.Errorf("aws flags set for non-ami image type (type is set to %s)", strings.Join(imgTypes, ","))
 		}
-		// initialise the client to check if the env vars exist before building the image
+
+		// check as many permission prerequisites as possible before starting
 		client, err := awscloud.NewDefault(region)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("Checking AWS permission by listing regions...\n")
-		if _, err := client.Regions(); err != nil {
+		fmt.Println("Checking AWS region access...")
+		regions, err := client.Regions()
+		if err != nil {
+			return fmt.Errorf("retrieving AWS regions for '%s' failed: %w", region, err)
+		}
+
+		if !slices.Contains(regions, region) {
+			return fmt.Errorf("given AWS region '%s' not found", region)
+		}
+
+		fmt.Println("Checking AWS bucket...")
+		bucketName, _ := cmd.Flags().GetString("aws-bucket")
+		buckets, err := client.Buckets()
+		if err != nil {
+			return fmt.Errorf("retrieving AWS list of buckets failed: %w", err)
+		}
+		if !slices.Contains(buckets, bucketName) {
+			return fmt.Errorf("bucket '%s' not found in the given AWS account", bucketName)
+		}
+
+		fmt.Println("Checking AWS bucket permissions...")
+		writePermission, err := client.CheckBucketPermission(bucketName, awscloud.S3PermissionWrite)
+		if err != nil {
 			return err
 		}
+		if !writePermission {
+			return fmt.Errorf("you don't have write permissions to bucket '%s' with the given AWS account", bucketName)
+		}
+		fmt.Println("Upload conditions met.")
 		upload = true
 	}
 
