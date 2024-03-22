@@ -1,5 +1,6 @@
 import abc
 import os
+import paramiko
 import pathlib
 import platform
 import subprocess
@@ -43,7 +44,7 @@ class VM(abc.ABC):
         Stop the VM and clean up any resources that were created when setting up and starting the machine.
         """
 
-    def run(self, cmd, user, password):
+    def run(self, cmd, user, password="", keyfile=None):
         """
         Run a command on the VM via SSH using the provided credentials.
         """
@@ -51,8 +52,13 @@ class VM(abc.ABC):
             self.start()
         client = SSHClient()
         client.set_missing_host_key_policy(AutoAddPolicy)
+        # workaround, see https://github.com/paramiko/paramiko/issues/2048
+        pkey = None
+        if keyfile:
+            pkey = paramiko.RSAKey.from_private_key_file(keyfile)
         client.connect(
-            self._address, self._ssh_port, user, password,
+            self._address, self._ssh_port,
+            user, password, pkey=pkey,
             allow_agent=False, look_for_keys=False)
         chan = client.get_transport().open_session()
         chan.get_pty()
