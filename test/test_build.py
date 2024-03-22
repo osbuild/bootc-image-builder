@@ -38,6 +38,7 @@ class ImageBuildResult(NamedTuple):
     img_arch: str
     username: str
     password: str
+    ssh_keyfile_private_path: str
     bib_output: str
     journal_output: str
     metadata: dict = {}
@@ -135,6 +136,10 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
 
     journal_log_path = output_path / "journal.log"
     bib_output_path = output_path / "bib-output.log"
+
+    ssh_keyfile_private_path = output_path / "ssh-keyfile"
+    ssh_keyfile_public_path = ssh_keyfile_private_path.with_suffix(".pub")
+
     artifact = {
         "qcow2": pathlib.Path(output_path) / "qcow2/disk.qcow2",
         "ami": pathlib.Path(output_path) / "image/disk.raw",
@@ -166,8 +171,21 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             journal_output = journal_log_path.read_text(encoding="utf8")
             bib_output = bib_output_path.read_text(encoding="utf8")
             results.append(ImageBuildResult(
-                image_type, generated_img, target_arch, username, password,
+                image_type, generated_img, target_arch,
+                username, password, ssh_keyfile_private_path,
                 bib_output, journal_output))
+
+    # generate new keyfile
+    if not ssh_keyfile_private_path.exists():
+        subprocess.run([
+            "ssh-keygen",
+            "-N", "",
+            # be very conservative with keys for paramiko
+            "-b", "2048",
+            "-t", "rsa",
+            "-f", os.fspath(ssh_keyfile_private_path),
+        ], check=True)
+    ssh_pubkey = ssh_keyfile_public_path.read_text(encoding="utf8")
 
     # Because we always build all image types, regardless of what was requested, we should either have 0 results or all
     # should be available, so if we found at least one result but not all of them, this is a problem with our setup
@@ -186,8 +204,14 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             "customizations": {
                 "user": [
                     {
+                        "name": "root",
+                        "key": ssh_pubkey,
+                        # cannot use default /root as is on a read-only place
+                        "home": "/var/roothome",
+                    }, {
                         "name": username,
                         "password": password,
+                        "key": ssh_pubkey,
                         "groups": ["wheel"],
                     },
                 ],
@@ -285,8 +309,10 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
 
     results = []
     for image_type in image_types:
-        results.append(ImageBuildResult(image_type, artifact[image_type], target_arch,
-                                        username, password, bib_output, journal_output, metadata))
+        results.append(ImageBuildResult(
+            image_type, artifact[image_type], target_arch,
+            username, password, ssh_keyfile_private_path,
+            bib_output, journal_output, metadata))
     yield results
 
     # Try to cache as much as possible
@@ -322,11 +348,13 @@ def test_image_is_generated(image_type):
 @pytest.mark.parametrize("image_type", gen_testcases("qemu-boot"), indirect=["image_type"])
 def test_image_boots(image_type):
     with QEMU(image_type.img_path, arch=image_type.img_arch) as test_vm:
-        exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
+        # user/password login works
+        exit_status, _ = test_vm.run("true", user=image_type.username, keyfile=image_type.ssh_keyfile_private_path)
         assert exit_status == 0
-        exit_status, output = test_vm.run("echo hello", user=image_type.username, password=image_type.password)
+        # ssh login also works
+        exit_status, output = test_vm.run("id", user="root", keyfile=image_type.ssh_keyfile_private_path)
         assert exit_status == 0
-        assert "hello" in output
+        assert "uid=0" in output
 
 
 @pytest.mark.parametrize("image_type", gen_testcases("ami-boot"), indirect=["image_type"])
@@ -341,9 +369,10 @@ def test_ami_boots_in_aws(image_type, force_aws_upload):
     # 4.30 GiB / 10.00 GiB [------------>____________] 43.02% 58.04 MiB p/s
     assert "] 100.00%" in image_type.bib_output
     with AWS(image_type.metadata["ami_id"]) as test_vm:
-        exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
+        exit_status, _ = test_vm.run("true", user=image_type.username, keyfile=image_type.ssh_keyfile_private_path)
         assert exit_status == 0
-        exit_status, output = test_vm.run("echo hello", user=image_type.username, password=image_type.password)
+        exit_status, output = test_vm.run(
+            "echo hello", user=image_type.username, keyfile=image_type.ssh_keyfile_private_path)
         assert exit_status == 0
         assert "hello" in output
 
@@ -405,7 +434,7 @@ def test_iso_installs(image_type):
     # boot test disk and do extremly simple check
     with QEMU(test_disk_path) as vm:
         vm.start(use_ovmf=True)
-        exit_status, _ = vm.run("true", user=image_type.username, password=image_type.password)
+        exit_status, _ = vm.run("true", user=image_type.username, keyfile=image_type.ssh_keyfile_private_path)
         assert exit_status == 0
 
 
