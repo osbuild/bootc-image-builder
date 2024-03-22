@@ -79,10 +79,7 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
     """
     container_ref, images, target_arch, local = parse_request_params(request)
 
-    if not local:
-        with build_images(shared_tmpdir, build_container, request, force_aws_upload) as build_results:
-            yield build_results[0]
-    else:
+    if local:
         cont_tag = "localhost/cont-base-" + "".join(random.choices(string.digits, k=12))
 
         # we are not cross-building local images (for now)
@@ -95,8 +92,8 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
             f"containers-storage:[overlay@/var/lib/containers/storage+/run/containers/storage]{cont_tag}"
         ])
 
-        with build_images(shared_tmpdir, build_container, request, force_aws_upload) as build_results:
-            yield build_results[0]
+    with build_images(shared_tmpdir, build_container, request, force_aws_upload) as build_results:
+        yield build_results[0]
 
 
 @pytest.fixture(name="images", scope="session")
