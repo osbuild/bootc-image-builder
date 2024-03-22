@@ -23,32 +23,35 @@ $ podman machine start
 
 ## 🚀 Examples
 
-The following example builds a [Fedora ELN](https://docs.fedoraproject.org/en-US/eln/) bootable container into a QCOW2 image for the architecture you're running
-the command on.
-
-The `fedora-bootc:eln` base image does not include a default user. This example injects a [user configuration file](#-build-config)
-by adding a volume-mount for the local file as well as the `--config` flag to the bootc-image-builder container.
-
-The following command will create a QCOW2 disk image. First, create `./config.json` as described above to configure user access.
+The following example builds a derrived [Fedora ELN](https://docs.fedoraproject.org/en-US/eln/) bootable container into a QCOW2 image for the architecture you're running the command on.
 
 ```bash
+cat > Containerfile <<'EOF'
+FROM quay.io/centos-bootc/fedora-bootc:eln
+RUN useradd alice --password "$(openssl passwd -6 "bob")" --groups wheel
+EOF
+sudo podman build -f Containerfile -t my-bootc
 sudo podman run \
     --rm \
     -it \
     --privileged \
     --pull=newer \
     --security-opt label=type:unconfined_t \
-    -v $(pwd)/config.json:/config.json \
     -v $(pwd)/output:/output \
+    -v /var/lib/containers/storage:/var/lib/containers/storage \
     quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
-    --config /config.json \
-    quay.io/centos-bootc/fedora-bootc:eln
+	--local \
+    localhost/my-bootc
 ```
+
+There is more in-depth discussion how to customize the image and the users in the [bootc documentation](https://bootc-org.gitlab.io/documentation/guide/building.html#logins-and-users).
 
 ### Using local containers
 
-To use containers from local container's storage rather than a registry, we need to ensure two things:
+By default (without the `--local` flag) bootc-image-builder will use
+the podman registry. To use containers from local container's storage,
+we need to ensure two things:
 - the container exists in local storage
 - mount the local container storage
 
@@ -61,12 +64,10 @@ sudo podman run \
     --privileged \
     --pull=newer \
     --security-opt label=type:unconfined_t \
-    -v $(pwd)/config.json:/config.json \
     -v $(pwd)/output:/output \
     -v /var/lib/containers/storage:/var/lib/containers/storage \
     quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
-    --config /config.json \
     --local \
     localhost/bootc:eln
 ```
@@ -134,7 +135,6 @@ Usage:
 
 Flags:
       --chown string    chown the ouput directory to match the specified UID:GID
-      --config string   build config file
       --tls-verify      require HTTPS and verify certificates when contacting registries (default true)
       --type string     image type to build [qcow2, ami] (default "qcow2")
 ```
@@ -144,7 +144,6 @@ Flags:
 | Argument         | Description                                                      | Default Value |
 |------------------|------------------------------------------------------------------|:-------------:|
 | **--chown**      | chown the ouput directory to match the specified UID:GID         |       ❌      |
-| **--config**     | Path to a [build config](#-build-config)                         |       ❌      |
 | **--tls-verify** | Require HTTPS and verify certificates when contacting registries |    `true`     |
 | **--type**       | [Image type](#-image-types) to build                             |    `qcow2`    |
 
@@ -261,79 +260,6 @@ The following volumes can be mounted inside the container:
 | `/output` | Used for storing the resulting artifacts               |    ✅     |
 | `/store`  | Used for the [osbuild store](https://www.osbuild.org/) |    No    |
 | `/rpmmd`  | Used for the DNF cache                                 |    No    |
-
-## 📝 Build config
-
-A build config is a JSON file with customizations for the resulting image. A path to the file is passed via  the `--config` argument. The customizations are specified under a `blueprint.customizations` object.
-
-As an example, let's show how you can add a user to the image:
-
-Firstly create a file `./config.json` and put the following content into it:
-
-```json
-{
-  "blueprint": {
-    "customizations": {
-      "user": [
-        {
-          "name": "alice",
-          "password": "bob",
-          "key": "ssh-rsa AAA ... user@email.com",
-          "groups": [
-            "wheel"
-          ]
-        }
-      ]
-    }
-  }
-}
-```
-
-Then, run `bootc-image-builder` with the following arguments:
-
-```bash
-sudo podman run \
-    --rm \
-    -it \
-    --privileged \
-    --pull=newer \
-    --security-opt label=type:unconfined_t \
-    -v $(pwd)/config.json:/config.json \
-    -v $(pwd)/output:/output \
-    quay.io/centos-bootc/bootc-image-builder:latest \
-    --type qcow2 \
-    --config /config.json \
-    quay.io/centos-bootc/fedora-bootc:eln
-```
-
-### Users (`user`, array)
-
-Possible fields:
-
-| Field      | Use                                        | Required |
-|------------|--------------------------------------------|:--------:|
-| `name`     | Name of the user                           |    ✅    |
-| `password` | Unencrypted password                       |    No    |
-| `key`      | Public SSH key contents                    |    No    |
-| `groups`   | An array of secondary to put the user into |    No    |
-
-Example:
-
-```json
-{
-  "user": [
-    {
-      "name": "alice",
-      "password": "bob",
-      "key": "ssh-rsa AAA ... user@email.com",
-      "groups": [
-        "wheel",
-        "admins"
-      ]
-    }
-  ]
-}
-```
 
 ## Building
 
