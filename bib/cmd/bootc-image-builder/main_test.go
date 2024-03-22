@@ -52,13 +52,13 @@ func TestCanChownInPathCannotChange(t *testing.T) {
 }
 
 type manifestTestCase struct {
-	config     *main.ManifestConfig
-	imageTypes []string
-	packages   map[string][]rpmmd.PackageSpec
-	containers map[string][]container.Spec
-	expStages  map[string][]string
-	nexpStages map[string][]string
-	err        interface{}
+	config            *main.ManifestConfig
+	imageTypes        []string
+	packages          map[string][]rpmmd.PackageSpec
+	containers        map[string][]container.Spec
+	expStages         map[string][]string
+	notExpectedStages map[string][]string
+	err               interface{}
 }
 
 func getBaseConfig() *main.ManifestConfig {
@@ -234,7 +234,7 @@ func TestManifestSerialization(t *testing.T) {
 					"org.osbuild.ostree.deploy.container",
 				},
 			},
-			nexpStages: map[string][]string{
+			notExpectedStages: map[string][]string{
 				"build": {"org.osbuild.rpm"},
 				"ostree-deployment": {
 					"org.osbuild.users",
@@ -251,7 +251,7 @@ func TestManifestSerialization(t *testing.T) {
 					"org.osbuild.ostree.deploy.container",
 				},
 			},
-			nexpStages: map[string][]string{
+			notExpectedStages: map[string][]string{
 				"build": {"org.osbuild.rpm"},
 				"ostree-deployment": {
 					"org.osbuild.users",
@@ -268,7 +268,7 @@ func TestManifestSerialization(t *testing.T) {
 					"org.osbuild.ostree.deploy.container",
 				},
 			},
-			nexpStages: map[string][]string{
+			notExpectedStages: map[string][]string{
 				"build": {"org.osbuild.rpm"},
 				"ostree-deployment": {
 					"org.osbuild.users",
@@ -286,7 +286,7 @@ func TestManifestSerialization(t *testing.T) {
 					"org.osbuild.ostree.deploy.container",
 				},
 			},
-			nexpStages: map[string][]string{
+			notExpectedStages: map[string][]string{
 				"build": {"org.osbuild.rpm"},
 			},
 		},
@@ -301,7 +301,7 @@ func TestManifestSerialization(t *testing.T) {
 					"org.osbuild.ostree.deploy.container",
 				},
 			},
-			nexpStages: map[string][]string{
+			notExpectedStages: map[string][]string{
 				"build": {"org.osbuild.rpm"},
 			},
 		},
@@ -316,7 +316,7 @@ func TestManifestSerialization(t *testing.T) {
 					"org.osbuild.ostree.deploy.container",
 				},
 			},
-			nexpStages: map[string][]string{
+			notExpectedStages: map[string][]string{
 				"build": {"org.osbuild.rpm"},
 			},
 		},
@@ -379,7 +379,7 @@ func TestManifestSerialization(t *testing.T) {
 			} else {
 				manifestJson, err := mf.Serialize(tc.packages, tc.containers, nil)
 				assert.NoError(err)
-				assert.NoError(checkStages(manifestJson, tc.expStages, tc.nexpStages))
+				assert.NoError(checkStages(manifestJson, tc.expStages, tc.notExpectedStages))
 			}
 		})
 	}
