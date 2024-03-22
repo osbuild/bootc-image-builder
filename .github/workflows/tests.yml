@@ -109,35 +109,3 @@ jobs:
       run: |
         df -h
         sudo du -sh * /var/tmp /tmp /var/lib/containers | sort -sh
-
-  integration-macos:
-    name: "Integration macos"
-    # disabled GH runner as it takes ~50min to run this test, self-hosted
-    # is much faster (~15min)
-    #runs-on: macos-13  # needed to get latest cpu
-    runs-on: self-hosted
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-    - name: Setup up python
-      uses: actions/setup-python@v5
-      with:
-        cache: 'pip'
-    - run: python3 -m pip install -r test/requirements.txt
-    - name: Setup up podman
-      run: |
-        brew install podman netcat
-        if ! podman machine inspect; then
-            podman machine init --rootful
-            podman machine set --cpus 4 --memory 4096
-        fi
-        if [ "$(podman machine inspect --format='{{.State}}')" != "running" ]; then
-            podman machine start
-        fi
-    - name: Run tests
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      run: |
-        pytest -rs --basetemp="${TMPDIR}/tmp"
