@@ -11,7 +11,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/osbuild/bootc-image-builder/bib/internal/setup"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
+
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
@@ -20,9 +23,8 @@ import (
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/rpmmd"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
+
+	"github.com/osbuild/bootc-image-builder/bib/internal/setup"
 )
 
 //go:embed fedora-eln.json
@@ -239,6 +241,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	targetArch, _ := cmd.Flags().GetString("target-arch")
 	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
 	localStorage, _ := cmd.Flags().GetBool("local")
+	rootSSHKey, _ := cmd.Flags().GetString("experimental-root-ssh-authorized-key")
 
 	if targetArch != "" {
 		// TODO: detect if binfmt_misc for target arch is
@@ -267,6 +270,16 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 		}
 	} else {
 		config = &BuildConfig{}
+	}
+
+	if rootSSHKey != "" {
+		config.Blueprint = &blueprint.Blueprint{
+			Customizations: &blueprint.Customizations{
+				User: []blueprint.UserCustomization{
+					{Name: "root", Key: &rootSSHKey},
+				},
+			},
+		}
 	}
 
 	manifestConfig := &ManifestConfig{
@@ -460,6 +473,8 @@ func run() error {
 	manifestCmd.Flags().String("target-arch", "", "build for the given target architecture (experimental)")
 	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, fmt.Sprintf("image types to build [%s]", allImageTypesString()))
 	manifestCmd.Flags().Bool("local", false, "use a local container rather than a container from a registry")
+	// XXX: hide from help?
+	manifestCmd.Flags().String("experimental-root-ssh-authorized-key", "", "authorized ssh key for root as string")
 
 	logrus.SetLevel(logrus.ErrorLevel)
 	buildCmd.Flags().AddFlagSet(manifestCmd.Flags())
