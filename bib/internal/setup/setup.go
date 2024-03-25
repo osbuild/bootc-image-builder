@@ -2,9 +2,11 @@ package setup
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/moby/sys/mountinfo"
 	"golang.org/x/sys/unix"
@@ -100,23 +102,43 @@ func Validate() error {
 	return nil
 }
 
-// ValidateHasContainerStorageMounted checks that the container storage
-// is mounted inside the container
-func ValidateHasContainerStorageMounted() error {
+var insideContainer = func() (bool, error) {
 	if err := exec.Command("systemd-detect-virt", "-c").Run(); err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			// not running in a container, just exit
 			if exitErr.ExitCode() == 1 {
-				return nil
+				return true, nil
 			}
 		}
+		return false, err
+	}
+	return false, nil
+}
+
+// ValidateHasContainerStorageMounted checks that the container storage
+// is mounted inside the container
+func ValidateHasContainerStorageMounted() error {
+	inside, err := insideContainer()
+	if err != nil {
 		return err
 	}
+	if inside {
+		return nil
+	}
 
+	f, err := os.Open("/proc/self/mountinfo")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return validateHasContainerStorageMountedFromReader(f)
+}
+
+func validateHasContainerStorageMountedFromReader(r io.Reader) error {
 	containersStorage := "/var/lib/containers/storage"
 	containerStorageMountFound := false
 
-	mnts, err := mountinfo.GetMounts(nil)
+	mnts, err := mountinfo.GetMountsFromReader(r, nil)
 	if err != nil {
 		return err
 	}
@@ -125,8 +147,10 @@ func ValidateHasContainerStorageMounted() error {
 			continue
 		}
 		containerStorageMountFound = true
-		if mnt.Root != containersStorage {
-			return fmt.Errorf("not the host /var/lib/storage/containers but %q", mnt.Root)
+		// on btrfs the containers storage might be on a subvolume
+		// so we just compare the final part of the path
+		if !strings.HasSuffix(mnt.Root, containersStorage) {
+			return fmt.Errorf("cannot find suffix %q in mounted %q", containersStorage, mnt.Root)
 		}
 	}
 	if !containerStorageMountFound {
