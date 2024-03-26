@@ -235,7 +235,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	}
 
 	imgref := args[0]
-	configFile, _ := cmd.Flags().GetString("config")
+	isoConfigFile, _ := cmd.Flags().GetString("iso-config")
 	imgTypes, _ := cmd.Flags().GetStringArray("type")
 	rpmCacheRoot, _ := cmd.Flags().GetString("rpmmd")
 	targetArch, _ := cmd.Flags().GetString("target-arch")
@@ -262,11 +262,16 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 		return nil, err
 	}
 
+	// bootc does not yet support arbitray blueprint customizations
+	if buildType != BuildTypeISO && isoConfigFile != "" {
+		return nil, fmt.Errorf("the --iso-config switch is only supported for ISO images")
+	}
+
 	var config *BuildConfig
-	if configFile != "" {
-		config, err = loadConfig(configFile)
+	if isoConfigFile != "" {
+		config, err = loadConfig(isoConfigFile)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("cannot load config: %w", err)
 		}
 	} else {
 		config = &BuildConfig{}
@@ -351,7 +356,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Generating manifest %s\n", manifest_fname)
 	mf, err := manifestFromCobra(cmd, args)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	fmt.Print("DONE\n")
 
@@ -468,7 +473,7 @@ func run() error {
 	}
 	rootCmd.AddCommand(manifestCmd)
 	manifestCmd.Flags().Bool("tls-verify", true, "require HTTPS and verify certificates when contacting registries")
-	manifestCmd.Flags().String("config", "", "build config file")
+	manifestCmd.Flags().String("iso-config", "", "build config file for the iso")
 	manifestCmd.Flags().String("rpmmd", "/rpmmd", "rpm metadata cache directory")
 	manifestCmd.Flags().String("target-arch", "", "build for the given target architecture (experimental)")
 	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, fmt.Sprintf("image types to build [%s]", allImageTypesString()))
@@ -492,7 +497,7 @@ func run() error {
 			return err
 		}
 	}
-	if err := buildCmd.MarkFlagFilename("config"); err != nil {
+	if err := buildCmd.MarkFlagFilename("iso-config"); err != nil {
 		return err
 	}
 	buildCmd.MarkFlagsRequiredTogether("aws-region", "aws-bucket", "aws-ami-name")
