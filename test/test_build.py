@@ -191,6 +191,16 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
                         "groups": ["wheel"],
                     },
                 ],
+                "filesystem": [
+                    {
+                        "mountpoint": "/",
+                        "minsize": "12GiB"
+                    },
+                    {
+                        "mountpoint": "/var/log",
+                        "minsize": "1GiB"
+                    }
+                ]
             },
         },
     }
@@ -323,6 +333,19 @@ def test_image_boots(image_type):
         exit_status, output = test_vm.run("echo hello", user=image_type.username, password=image_type.password)
         assert exit_status == 0
         assert "hello" in output
+        exit_status, output = test_vm.run("df --output=target,size", user=image_type.username,
+                                          password=image_type.password)
+        assert exit_status == 0
+        assert "/var/log" in output
+
+        # Figure out how big / is and make sure it is > 10GiB
+        # Note that df output is in 1k blocks, not bytes
+        for line in output.splitlines():
+            fields = line.split()
+            if fields[0] == "/sysroot":
+                size = int(fields[1])
+                assert size > 10 * 1024 * 1024
+                break
 
 
 @pytest.mark.parametrize("image_type", gen_testcases("ami-boot"), indirect=["image_type"])
