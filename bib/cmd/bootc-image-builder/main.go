@@ -11,18 +11,20 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/osbuild/bootc-image-builder/bib/internal/setup"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
+
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 	"github.com/osbuild/images/pkg/container"
 	"github.com/osbuild/images/pkg/dnfjson"
 	"github.com/osbuild/images/pkg/manifest"
-	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/rpmmd"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
+
+	"github.com/osbuild/bootc-image-builder/bib/internal/osbuildprogress"
+	"github.com/osbuild/bootc-image-builder/bib/internal/setup"
 )
 
 //go:embed fedora-eln.json
@@ -372,8 +374,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		// set export options for osbuild
 		osbuildEnv = []string{"OSBUILD_EXPORT_FORCE_NO_PRESERVE_OWNER=1"}
 	}
-	_, err = osbuild.RunOSBuild(mf, osbuildStore, outputDir, exports, nil, osbuildEnv, false, os.Stderr)
-	if err != nil {
+	if err = osbuildprogress.RunOSBuild(mf, osbuildStore, outputDir, exports, osbuildEnv); err != nil {
 		return err
 	}
 
