@@ -140,6 +140,8 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 	// We might want to change this behaviour in the future to match podman.
 	if !c.Local {
 		pullCmd := exec.Command("podman", "pull", "--arch", c.Architecture.String(), c.Imgref)
+		pullCmd.Stdout = os.Stdout
+		pullCmd.Stderr = os.Stderr
 		if err := pullCmd.Run(); err != nil {
 			return nil, fmt.Errorf("failed to pull container image: %w", err)
 		}
