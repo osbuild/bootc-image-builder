@@ -279,6 +279,8 @@ github.com/opencontainers/selinux v1.11.0 h1:+5Zbo97w3Lbmb3PeqQtpmTkMwsW5nRI3YaL
 github.com/opencontainers/selinux v1.11.0/go.mod h1:E5dMC3VPuVvVHDYmi78qvhJp8+M586T4DlDRYpFkyec=
 github.com/osbuild/images v0.50.0 h1:UONHoTONdgOLBZ6ZNXKLsnMefgq3bccgxBvmlRyEhbk=
 github.com/osbuild/images v0.50.0/go.mod h1:eM/J8+hEUH0jrwcy3DtE6SDg+bRMWFZIf5d+YDyhoDY=
+github.com/osbuild/images v0.51.1-0.20240326154530-58ef1aea0410 h1:93/m6O0nH1sU4TY2Dlh6lFfaS8gHQP8hAb3HnTrCS3E=
+github.com/osbuild/images v0.51.1-0.20240326154530-58ef1aea0410/go.mod h1:eM/J8+hEUH0jrwcy3DtE6SDg+bRMWFZIf5d+YDyhoDY=
 github.com/ostreedev/ostree-go v0.0.0-20210805093236-719684c64e4f h1:/UDgs8FGMqwnHagNDPGOlts35QkhAZ8by3DR7nMih7M=
 github.com/ostreedev/ostree-go v0.0.0-20210805093236-719684c64e4f/go.mod h1:J6OG6YJVEWopen4avK3VNQSnALmmjvniMmni/YFYAwc=
 github.com/otiai10/copy v1.14.0 h1:dCI/t1iTdYGtkvCuBG2BgR6KZa83PTclw4U5n2wAllU=

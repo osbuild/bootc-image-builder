@@ -43,7 +43,7 @@ class VM(abc.ABC):
         Stop the VM and clean up any resources that were created when setting up and starting the machine.
         """
 
-    def run(self, cmd, user, password):
+    def run(self, cmd, user, keyfile):
         """
         Run a command on the VM via SSH using the provided credentials.
         """
@@ -52,7 +52,8 @@ class VM(abc.ABC):
         client = SSHClient()
         client.set_missing_host_key_policy(AutoAddPolicy)
         client.connect(
-            self._address, self._ssh_port, user, password,
+            self._address, self._ssh_port,
+            user, key_filename=os.fspath(keyfile),
             allow_agent=False, look_for_keys=False)
         chan = client.get_transport().open_session()
         chan.get_pty()
