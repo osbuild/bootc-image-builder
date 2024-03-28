@@ -1,0 +1,63 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: testing-farm
+spec:
+  description: >-
+    Expects a list of container images to be provided via the SNAPSHOT parameter.
+    A secret containing the testing-farm API token should be made available via a secret with the name `testing-farm-secret` containing a key `testing-farm-token`.
+  params:
+    - name: SNAPSHOT
+      description: A list of container images that should undergo testing
+      type: string
+    - name: GIT_URL
+      description: URL of the GIT repository that contains the tests.
+      type: string
+    - name: GIT_REF
+      default: "main"
+      description: Branch of the git repository used containing the tests
+      type: string
+    - name: COMPOSE
+      default: "Fedora-Rawhide"
+      description: Compose to use for the system-under-test.
+      type: string
+    - name: ARCH
+      default: "x86_64"
+      description: Comma-separated list of architectures to run against.
+      type: string
+    - name: TIMEOUT
+      default: "720"
+      description: Set the timeout for the request in minutes. If the test takes longer than this, it will be terminated.
+      type: string
+    - name: TESTING_FARM_API_URL
+      default: https://api.dev.testing-farm.io/v0.1
+      description: The testing-farm instance API to use
+      type: string
+  tasks:
+    - name: testing-farm
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/osbuild/bootc-image-builder/
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: .tekton/testing-farm.yaml
+      params:
+        - name: SNAPSHOT
+          value: $(params.SNAPSHOT)
+        - name: GIT_URL
+          value: $(params.GIT_URL)
+        - name: GIT_REF
+          value: $(params.GIT_REF)
+        - name: COMPOSE
+          value: $(params.COMPOSE)
+        - name: ARCH
+          value: $(params.ARCH)
+        - name: TIMEOUT
+          value: $(params.TIMEOUT)
+        - name: TESTING_FARM_API_URL
+          value: $(params.TESTING_FARM_API_URL)
+      # default to 1h, extend to 2h for bib test
+      timeout: "2h"
