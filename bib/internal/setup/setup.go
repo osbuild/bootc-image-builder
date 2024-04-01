@@ -2,13 +2,9 @@ package setup
 
 import (
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 
-	"github.com/moby/sys/mountinfo"
 	"golang.org/x/sys/unix"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/podmanutil"
@@ -102,60 +98,20 @@ func Validate() error {
 	return nil
 }
 
-var insideContainer = func() (bool, error) {
-	if err := exec.Command("systemd-detect-virt", "-c").Run(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			// not running in a container, just exit
-			if exitErr.ExitCode() == 1 {
-				return true, nil
-			}
-		}
-		return false, err
-	}
-	return false, nil
-}
-
-// ValidateHasContainerStorageMounted checks that the container storage
+// ValidateHasContainerStorageMounted checks that the hostcontainer storage
 // is mounted inside the container
 func ValidateHasContainerStorageMounted() error {
-	inside, err := insideContainer()
-	if err != nil {
-		return err
-	}
-	if inside {
-		return nil
-	}
-
-	f, err := os.Open("/proc/self/mountinfo")
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	return validateHasContainerStorageMountedFromReader(f)
-}
-
-func validateHasContainerStorageMountedFromReader(r io.Reader) error {
-	containersStorage := "/var/lib/containers/storage"
-	containerStorageMountFound := false
-
-	mnts, err := mountinfo.GetMountsFromReader(r, nil)
-	if err != nil {
-		return err
-	}
-	for _, mnt := range mnts {
-		if mnt.Mountpoint != containersStorage {
-			continue
+	// Just look for the overlay backend, which we expect by default.
+	// In theory, one could be using a different backend, but we don't
+	// really need to worry about this right now.  If it turns out
+	// we do need to care, then we can probably handle this by
+	// just trying to query the image.
+	overlayPath := "/var/lib/containers/storage/overlay"
+	if _, err := os.Stat(overlayPath); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("cannot find %q (missing -v /var/lib/containers/storage:/var/lib/containers/storage mount?)", overlayPath)
 		}
-		containerStorageMountFound = true
-		// on btrfs the containers storage might be on a subvolume
-		// so we just compare the final part of the path
-		if !strings.HasSuffix(mnt.Root, containersStorage) {
-			return fmt.Errorf("cannot find suffix %q in mounted %q", containersStorage, mnt.Root)
-		}
+		return fmt.Errorf("failed to stat %q: %w", overlayPath, err)
 	}
-	if !containerStorageMountFound {
-		return fmt.Errorf("cannot find mount for %q", containersStorage)
-	}
-
 	return nil
 }
