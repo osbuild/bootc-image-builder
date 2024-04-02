@@ -2,3 +2,5 @@
 /output
 /bin
 __pycache__
+.python-version
+
