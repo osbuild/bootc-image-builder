@@ -308,7 +308,7 @@ func handleAWSFlags(cmd *cobra.Command) (upload bool, err error) {
 		return false, err
 	}
 
-	fmt.Println("Checking AWS region access...")
+	logrus.Info("Checking AWS region access...")
 	regions, err := client.Regions()
 	if err != nil {
 		return false, fmt.Errorf("retrieving AWS regions for '%s' failed: %w", region, err)
@@ -318,7 +318,7 @@ func handleAWSFlags(cmd *cobra.Command) (upload bool, err error) {
 		return false, fmt.Errorf("given AWS region '%s' not found", region)
 	}
 
-	fmt.Println("Checking AWS bucket...")
+	logrus.Info("Checking AWS bucket...")
 	buckets, err := client.Buckets()
 	if err != nil {
 		return false, fmt.Errorf("retrieving AWS list of buckets failed: %w", err)
@@ -327,7 +327,7 @@ func handleAWSFlags(cmd *cobra.Command) (upload bool, err error) {
 		return false, fmt.Errorf("bucket '%s' not found in the given AWS account", bucketName)
 	}
 
-	fmt.Println("Checking AWS bucket permissions...")
+	logrus.Info("Checking AWS bucket permissions...")
 	writePermission, err := client.CheckBucketPermission(bucketName, awscloud.S3PermissionWrite)
 	if err != nil {
 		return false, err
@@ -335,7 +335,7 @@ func handleAWSFlags(cmd *cobra.Command) (upload bool, err error) {
 	if !writePermission {
 		return false, fmt.Errorf("you don't have write permissions to bucket '%s' with the given AWS account", bucketName)
 	}
-	fmt.Println("Upload conditions met.")
+	logrus.Info("Upload conditions met.")
 	return true, nil
 }
 
