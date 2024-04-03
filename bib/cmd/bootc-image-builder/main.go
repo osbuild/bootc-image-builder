@@ -133,6 +133,7 @@ func getContainerSize(imgref string) (uint64, error) {
 		return 0, fmt.Errorf("cannot parse image size: %w", err)
 	}
 
+	logrus.Debugf("container size: %v", size)
 	return size, nil
 }
 
@@ -270,9 +271,12 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	// to using containers storage in all code paths happened.
 	// We might want to change this behaviour in the future to match podman.
 	if !localStorage {
+		logrus.Infof("Pulling image %s (arch=%s)\n", imgref, cntArch)
 		if output, err := exec.Command("podman", "pull", "--arch", cntArch.String(), fmt.Sprintf("--tls-verify=%v", tlsVerify), imgref).CombinedOutput(); err != nil {
 			return nil, nil, fmt.Errorf("failed to pull container image: %w\n%s", err, output)
 		}
+	} else {
+		logrus.Debug("Using local container")
 	}
 
 	// TODO: check arch compat before pulling
@@ -420,9 +424,11 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	outputDir, _ := cmd.Flags().GetString("output")
 	targetArch, _ := cmd.Flags().GetString("target-arch")
 
+	logrus.Debug("Validating environment")
 	if err := setup.Validate(); err != nil {
 		return fmt.Errorf("cannot validate the setup: %w", err)
 	}
+	logrus.Debug("Ensuring environment setup")
 	if err := setup.EnsureEnvironment(osbuildStore); err != nil {
 		return fmt.Errorf("cannot ensure the environment: %w", err)
 	}
@@ -552,11 +558,32 @@ func chownR(path string, chown string) error {
 	})
 }
 
+var rootLogLevel string
+
+func rootPreRunE(cmd *cobra.Command, _ []string) error {
+	if rootLogLevel == "" {
+		logrus.SetLevel(logrus.ErrorLevel)
+		return nil
+	}
+
+	level, err := logrus.ParseLevel(rootLogLevel)
+	if err != nil {
+		return err
+	}
+
+	logrus.SetLevel(level)
+
+	return nil
+}
+
 func run() error {
 	rootCmd := &cobra.Command{
-		Use:  "bootc-image-builder",
-		Long: "create a bootable image from an ostree native container",
+		Use:               "bootc-image-builder",
+		Long:              "create a bootable image from an ostree native container",
+		PersistentPreRunE: rootPreRunE,
 	}
+
+	rootCmd.PersistentFlags().StringVar(&rootLogLevel, "log-level", "", "logging level (debug, info, error); default error")
 
 	buildCmd := &cobra.Command{
 		Use:                   "build",
@@ -583,7 +610,6 @@ func run() error {
 	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, fmt.Sprintf("image types to build [%s]", allImageTypesString()))
 	manifestCmd.Flags().Bool("local", false, "use a local container rather than a container from a registry")
 
-	logrus.SetLevel(logrus.ErrorLevel)
 	buildCmd.Flags().AddFlagSet(manifestCmd.Flags())
 	buildCmd.Flags().String("aws-ami-name", "", "name for the AMI in AWS (only for type=ami)")
 	buildCmd.Flags().String("aws-bucket", "", "target S3 bucket name for intermediate storage when creating AMI (only for type=ami)")
