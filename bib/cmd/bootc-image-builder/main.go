@@ -369,7 +369,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	targetArch, _ := cmd.Flags().GetString("target-arch")
 
 	logrus.Debug("Validating environment")
-	if err := setup.Validate(); err != nil {
+	if err := setup.Validate(targetArch); err != nil {
 		return fmt.Errorf("cannot validate the setup: %w", err)
 	}
 	logrus.Debug("Ensuring environment setup")

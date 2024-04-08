@@ -3,9 +3,13 @@ package setup
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 
 	"golang.org/x/sys/unix"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/podmanutil"
 	"github.com/osbuild/bootc-image-builder/bib/internal/util"
@@ -76,7 +80,7 @@ func EnsureEnvironment(storePath string) error {
 
 // Validate checks that the environment is supported (e.g. caller set up the
 // container correctly)
-func Validate() error {
+func Validate(targetArch string) error {
 	isRootless, err := podmanutil.IsRootless()
 	if err != nil {
 		return fmt.Errorf("checking rootless: %w", err)
@@ -93,6 +97,11 @@ func Validate() error {
 	}
 	if (stvfsbuf.Flags & unix.ST_RDONLY) > 0 {
 		return fmt.Errorf("this command requires a privileged container")
+	}
+
+	// Try to run the cross arch binary
+	if err := validateCanRunTargetArch(targetArch); err != nil {
+		return fmt.Errorf("cannot run binary in target arch: %w", err)
 	}
 
 	return nil
@@ -113,5 +122,29 @@ func ValidateHasContainerStorageMounted() error {
 		}
 		return fmt.Errorf("failed to stat %q: %w", overlayPath, err)
 	}
+	return nil
+}
+
+func validateCanRunTargetArch(targetArch string) error {
+	if targetArch == runtime.GOARCH || targetArch == "" {
+		return nil
+	}
+
+	canaryCmd := fmt.Sprintf("bib-canary-%s", targetArch)
+	if _, err := exec.LookPath(canaryCmd); err != nil {
+		// we could error here but in principle with a working qemu-user
+		// any arch should work so let's just warn. the common case
+		// (arm64/amd64) is covered properly
+		logrus.Warningf("cannot check architecture support for %v: no canary binary found", targetArch)
+		return nil
+	}
+	output, err := exec.Command(canaryCmd).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("cannot run canary binary for %q, do you have 'qemu-user-static' installed?\n%s", targetArch, err)
+	}
+	if string(output) != "ok\n" {
+		return fmt.Errorf("internal error: unexpected output from cross-architecture canary: %q", string(output))
+	}
+
 	return nil
 }
