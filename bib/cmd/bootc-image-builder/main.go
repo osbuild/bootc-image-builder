@@ -170,28 +170,22 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 
 	// Resolve container - the normal case is that host and target
 	// architecture are the same. However it is possible to build
-	// cross-arch images. When this is done the "build" pipeline
-	// will run with the "native" architecture of the target
-	// container and the other pipelines (usually just "image"
-	// will use the target architecture).
+	// cross-arch images by using qemu-user. Just run everything
+	// (including the build-root) with the target arch then, it
+	// is fast enough (given that it's mostly I/O and all I/O is
+	// run naively via syscall translation)
 	hostArch := arch.Current().String()
 	targetArch := c.Architecture.String()
 
-	resolverNative := container.NewResolver(hostArch)
-	resolverTarget := resolverNative
-	if hostArch != targetArch {
-		resolverTarget = container.NewResolver(targetArch)
+	var resolver *container.Resolver
+	if targetArch != "" {
+		resolver = container.NewResolver(targetArch)
+	} else {
+		resolver = container.NewResolver(hostArch)
 	}
 
 	containerSpecs := make(map[string][]container.Spec)
 	for plName, sourceSpecs := range manifest.GetContainerSourceSpecs() {
-		var resolver *container.Resolver
-		if plName == "build" {
-			resolver = resolverNative
-		} else {
-			resolver = resolverTarget
-		}
-
 		for _, c := range sourceSpecs {
 			resolver.Add(c)
 		}
