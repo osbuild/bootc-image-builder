@@ -159,11 +159,19 @@ func TestManifestGenerationUserConfig(t *testing.T) {
 	}
 }
 
+// TODO: this tests at this layer is not ideal, it has too much knowledge
+// over the implementation details of the "images" library and how an
+// image.NewBootcDiskImage() works (i.e. what the pipeline names are and
+// what key piplines to expect). These details should be tested in "images"
+// and here we would just check (somehow) that image.NewBootcDiskImage()
+// (or image.NewAnacondaContainerInstaller()) is called and the right
+// customizations are passed. The existing layout makes this hard so this
+// is fine for now but would be nice to revisit this.
 func TestManifestSerialization(t *testing.T) {
 	// Tests that the manifest is generated without error and is serialized
 	// with expected key stages.
 
-	// Disk images require a container for the build pipeline and the ostree-deployment.
+	// Disk images require a container for the build/image pipelines
 	containerSpec := container.Spec{
 		Source:  "test-container",
 		Digest:  "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
@@ -173,7 +181,7 @@ func TestManifestSerialization(t *testing.T) {
 		"build": {
 			containerSpec,
 		},
-		"ostree-deployment": {
+		"image": {
 			containerSpec,
 		},
 	}
@@ -230,13 +238,13 @@ func TestManifestSerialization(t *testing.T) {
 			containers: diskContainers,
 			expStages: map[string][]string{
 				"build": {"org.osbuild.container-deploy"},
-				"ostree-deployment": {
-					"org.osbuild.ostree.deploy.container",
+				"image": {
+					"org.osbuild.bootc.install-to-filesystem",
 				},
 			},
 			notExpectedStages: map[string][]string{
 				"build": {"org.osbuild.rpm"},
-				"ostree-deployment": {
+				"image": {
 					"org.osbuild.users",
 				},
 			},
@@ -247,13 +255,13 @@ func TestManifestSerialization(t *testing.T) {
 			containers: diskContainers,
 			expStages: map[string][]string{
 				"build": {"org.osbuild.container-deploy"},
-				"ostree-deployment": {
-					"org.osbuild.ostree.deploy.container",
+				"image": {
+					"org.osbuild.bootc.install-to-filesystem",
 				},
 			},
 			notExpectedStages: map[string][]string{
 				"build": {"org.osbuild.rpm"},
-				"ostree-deployment": {
+				"image": {
 					"org.osbuild.users",
 				},
 			},
@@ -264,13 +272,13 @@ func TestManifestSerialization(t *testing.T) {
 			containers: diskContainers,
 			expStages: map[string][]string{
 				"build": {"org.osbuild.container-deploy"},
-				"ostree-deployment": {
-					"org.osbuild.ostree.deploy.container",
+				"image": {
+					"org.osbuild.bootc.install-to-filesystem",
 				},
 			},
 			notExpectedStages: map[string][]string{
 				"build": {"org.osbuild.rpm"},
-				"ostree-deployment": {
+				"image": {
 					"org.osbuild.users",
 				},
 			},
@@ -281,9 +289,9 @@ func TestManifestSerialization(t *testing.T) {
 			containers: diskContainers,
 			expStages: map[string][]string{
 				"build": {"org.osbuild.container-deploy"},
-				"ostree-deployment": {
+				"image": {
 					"org.osbuild.users",
-					"org.osbuild.ostree.deploy.container",
+					"org.osbuild.bootc.install-to-filesystem",
 				},
 			},
 			notExpectedStages: map[string][]string{
@@ -296,9 +304,9 @@ func TestManifestSerialization(t *testing.T) {
 			containers: diskContainers,
 			expStages: map[string][]string{
 				"build": {"org.osbuild.container-deploy"},
-				"ostree-deployment": {
+				"image": {
 					"org.osbuild.users", // user creation stage when we add users
-					"org.osbuild.ostree.deploy.container",
+					"org.osbuild.bootc.install-to-filesystem",
 				},
 			},
 			notExpectedStages: map[string][]string{
@@ -311,9 +319,9 @@ func TestManifestSerialization(t *testing.T) {
 			containers: diskContainers,
 			expStages: map[string][]string{
 				"build": {"org.osbuild.container-deploy"},
-				"ostree-deployment": {
+				"image": {
 					"org.osbuild.users", // user creation stage when we add users
-					"org.osbuild.ostree.deploy.container",
+					"org.osbuild.bootc.install-to-filesystem",
 				},
 			},
 			notExpectedStages: map[string][]string{
@@ -346,17 +354,23 @@ func TestManifestSerialization(t *testing.T) {
 		"ami-nocontainer": {
 			config:     userConfig,
 			imageTypes: []string{"ami"},
-			err:        "pipeline ostree-deployment requires exactly one ostree commit or one container (have commits: []; containers: [])",
+			// errors come from BuildrootFromContainer()
+			// TODO: think about better error and testing here (not the ideal layer or err msg)
+			err: "serialization not started",
 		},
 		"raw-nocontainer": {
 			config:     userConfig,
 			imageTypes: []string{"raw"},
-			err:        "pipeline ostree-deployment requires exactly one ostree commit or one container (have commits: []; containers: [])",
+			// errors come from BuildrootFromContainer()
+			// TODO: think about better error and testing here (not the ideal layer or err msg)
+			err: "serialization not started",
 		},
 		"qcow2-nocontainer": {
 			config:     userConfig,
 			imageTypes: []string{"qcow2"},
-			err:        "pipeline ostree-deployment requires exactly one ostree commit or one container (have commits: []; containers: [])",
+			// errors come from BuildrootFromContainer()
+			// TODO: think about better error and testing here (not the ideal layer or err msg)
+			err: "serialization not started",
 		},
 	}
 
