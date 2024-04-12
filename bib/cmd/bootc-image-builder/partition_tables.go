@@ -14,6 +14,11 @@ const (
 	// using `ro` by default.  Briefly it protects against corruption
 	// by non-ostree aware tools.
 	BootOptions = "ro"
+	// And we default to `ro` for the rootfs too, because we assume the input
+	// container image is using composefs.  For more info, see
+	// https://github.com/containers/bootc/pull/417 and
+	// https://github.com/ostreedev/ostree/issues/3193
+	RootOptions = "ro"
 )
 
 var partitionTables = distro.BasePartitionTableMap{
@@ -62,7 +67,7 @@ var partitionTables = distro.BasePartitionTableMap{
 					Type:         "ext4",
 					Label:        "root",
 					Mountpoint:   "/",
-					FSTabOptions: "defaults",
+					FSTabOptions: RootOptions,
 					FSTabFreq:    1,
 					FSTabPassNo:  1,
 				},
@@ -106,7 +111,7 @@ var partitionTables = distro.BasePartitionTableMap{
 					Type:         "ext4",
 					Label:        "root",
 					Mountpoint:   "/",
-					FSTabOptions: "defaults",
+					FSTabOptions: RootOptions,
 					FSTabFreq:    1,
 					FSTabPassNo:  1,
 				},
