@@ -373,11 +373,11 @@ func TestManifestSerialization(t *testing.T) {
 
 			if tc.err != nil {
 				assert.PanicsWithValue(tc.err, func() {
-					_, err := mf.Serialize(tc.packages, tc.containers, nil)
+					_, err := mf.Serialize(tc.packages, tc.containers, nil, nil)
 					assert.NoError(err)
 				})
 			} else {
-				manifestJson, err := mf.Serialize(tc.packages, tc.containers, nil)
+				manifestJson, err := mf.Serialize(tc.packages, tc.containers, nil, nil)
 				assert.NoError(err)
 				assert.NoError(checkStages(manifestJson, tc.expStages, tc.notExpectedStages))
 			}
@@ -395,7 +395,7 @@ func TestManifestSerialization(t *testing.T) {
 
 			expError := "package \"kernel\" not found in the PackageSpec list"
 			assert.PanicsWithError(expError, func() {
-				_, err := manifest.Serialize(nil, isoContainers, nil)
+				_, err := manifest.Serialize(nil, isoContainers, nil, nil)
 				assert.NoError(err)
 			})
 		})

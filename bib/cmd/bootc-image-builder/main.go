@@ -161,7 +161,7 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 	solver := dnfjson.NewSolver(modulePlatformID, releaseVersion, c.Architecture.String(), distroName, cacheRoot)
 	depsolvedSets := make(map[string][]rpmmd.PackageSpec)
 	for name, pkgSet := range manifest.GetPackageSetChains() {
-		res, err := solver.Depsolve(pkgSet)
+		res, _, err := solver.Depsolve(pkgSet)
 		if err != nil {
 			return nil, err
 		}
@@ -195,7 +195,7 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 		}
 	}
 
-	mf, err := manifest.Serialize(depsolvedSets, containerSpecs, nil)
+	mf, err := manifest.Serialize(depsolvedSets, containerSpecs, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("[ERROR] manifest serialization failed: %s", err.Error())
 	}
