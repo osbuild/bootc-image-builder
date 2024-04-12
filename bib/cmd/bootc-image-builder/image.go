@@ -79,6 +79,8 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 	img := image.NewBootcDiskImage(containerSource)
 	img.Users = users.UsersFromBP(customizations.GetUsers())
 	img.Groups = users.GroupsFromBP(customizations.GetGroups())
+	// TODO: get from the bootc container instead of hardcoding it
+	img.SELinux = "targeted"
 
 	img.KernelOptionsAppend = []string{
 		"rw",
@@ -87,8 +89,6 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		"console=tty0",
 		"console=ttyS0",
 	}
-
-	img.SysrootReadOnly = true
 
 	switch c.Architecture {
 	case arch.ARCH_X86_64:
@@ -265,7 +265,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		},
 	}
 
-	img.ISOLabelTmpl = "Container-Installer-%s"
+	img.ISOLabel = fmt.Sprintf("Container-Installer-%s", c.Architecture)
 
 	var customizations *blueprint.Customizations
 	if c.Config != nil && c.Config.Blueprint != nil {
