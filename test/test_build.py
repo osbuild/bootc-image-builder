@@ -237,6 +237,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             "--privileged",
             "--security-opt", "label=type:unconfined_t",
             "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
+            "-v", f"{config_json_path}:/config.json:ro",
             "-v", f"{output_path}:/output",
             "-v", "/store",  # share the cache between builds
         ]
@@ -249,7 +250,6 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             *creds_args,
             build_container,
             container_ref,
-            "--config", "/output/config.json",
             *types_arg,
             *upload_args,
             *target_arch_args,

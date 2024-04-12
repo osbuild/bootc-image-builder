@@ -42,7 +42,6 @@ sudo podman run \
     -v $(pwd)/output:/output \
     quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
-    --config /config.json \
     quay.io/centos-bootc/fedora-bootc:eln
 ```
 
@@ -134,7 +133,7 @@ Usage:
 
 Flags:
       --chown string           chown the ouput directory to match the specified UID:GID
-      --config string          build config file
+      --config string          build config file (default: /config.json if present)
       --tls-verify             require HTTPS and verify certificates when contacting registries (default true)
       --type string            image type to build [qcow2, ami] (default "qcow2")
       --target-arch string     architecture to build image for (default is the native architecture)

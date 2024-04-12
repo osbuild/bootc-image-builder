@@ -3,6 +3,7 @@ package main
 import (
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -32,6 +33,9 @@ const (
 	distroName       = "fedora-39"
 	modulePlatformID = "platform:f39"
 	releaseVersion   = "39"
+
+	// If present, this config will be picked up
+	configFileDefault = "/config.json"
 
 	// As a baseline heuristic we double the size of
 	// the input container to support in-place updates.
@@ -254,6 +258,16 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	}
 
 	var config *BuildConfig
+	// If we're not passed a config path explicitly, use the default.
+	if configFile == "" {
+		if _, err := os.Stat(configFileDefault); err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				return nil, err
+			}
+		} else {
+			configFile = configFileDefault
+		}
+	}
 	if configFile != "" {
 		config, err = loadConfig(configFile)
 		if err != nil {
@@ -485,7 +499,7 @@ func run() error {
 	}
 	rootCmd.AddCommand(manifestCmd)
 	manifestCmd.Flags().Bool("tls-verify", true, "require HTTPS and verify certificates when contacting registries")
-	manifestCmd.Flags().String("config", "", "build config file")
+	manifestCmd.Flags().String("config", "", "build config file; /config.json will be used if present")
 	manifestCmd.Flags().String("rpmmd", "/rpmmd", "rpm metadata cache directory")
 	manifestCmd.Flags().String("target-arch", "", "build for the given target architecture (experimental)")
 	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, fmt.Sprintf("image types to build [%s]", allImageTypesString()))
