@@ -191,6 +191,9 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
                         "groups": ["wheel"],
                     },
                 ],
+                "kernel": {
+                    "append": "user.sometestkarg=sometestvalue"
+                }
             },
         },
     }
