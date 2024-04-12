@@ -348,6 +348,21 @@ Example:
 }
 ```
 
+### Kernel Arguments (`kernel`, mapping)
+
+```json
+{
+  "blueprint": {
+    "customizations": {
+      "kernel": {
+        "append": "mitigations=auto,nosmt"
+      }
+    }
+  }
+}
+
+```
+
 ## Building
 
 To build the container locally you can run
