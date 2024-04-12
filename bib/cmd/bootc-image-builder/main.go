@@ -103,6 +103,25 @@ func loadConfig(path string) (*BuildConfig, error) {
 	return &conf, nil
 }
 
+// getContainerArch returns the architecture of an already pulled container image
+func getContainerArch(imgref string) (cntArch arch.Arch, err error) {
+	outputB, err := exec.Command("podman", "image", "inspect", imgref, "--format", "{{.Architecture}}").Output()
+	if err != nil {
+		return 0, fmt.Errorf("failed inspect image for architecture: %w", util.OutputErr(err))
+	}
+	output := strings.TrimSpace(string(outputB))
+
+	// TODO: make images:arch.FromString() return an error
+	defer func() {
+		if panicErr := recover(); panicErr != nil {
+			err = fmt.Errorf("cannot convert %q to an architecture", output)
+		}
+	}()
+	cntArch = arch.FromString(output)
+
+	return cntArch, nil
+}
+
 // getContainerSize returns the size of an already pulled container image in bytes
 func getContainerSize(imgref string) (uint64, error) {
 	output, err := exec.Command("podman", "image", "inspect", imgref, "--format", "{{.Size}}").Output()
@@ -145,19 +164,13 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 
 	// Resolve container - the normal case is that host and target
 	// architecture are the same. However it is possible to build
-	// cross-arch images by using qemu-user. Just run everything
+	// cross-arch images by using qemu-user. This will run everything
 	// (including the build-root) with the target arch then, it
 	// is fast enough (given that it's mostly I/O and all I/O is
 	// run naively via syscall translation)
-	hostArch := arch.Current().String()
-	targetArch := c.Architecture.String()
 
-	var resolver *container.Resolver
-	if targetArch != "" {
-		resolver = container.NewResolver(targetArch)
-	} else {
-		resolver = container.NewResolver(hostArch)
-	}
+	// XXX: should NewResolver() take "arch.Arch"?
+	resolver := container.NewResolver(c.Architecture.String())
 
 	containerSpecs := make(map[string][]container.Spec)
 	for plName, sourceSpecs := range manifest.GetContainerSourceSpecs() {
@@ -195,7 +208,7 @@ func saveManifest(ms manifest.OSBuildManifest, fpath string) error {
 }
 
 func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, error) {
-	buildArch := arch.Current()
+	cntArch := arch.Current()
 
 	imgref := args[0]
 	configFile, _ := cmd.Flags().GetString("config")
@@ -215,7 +228,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		if slices.Contains(imgTypes, "iso") {
 			return nil, nil, fmt.Errorf("cannot build iso for different target arches yet")
 		}
-		buildArch = arch.FromString(targetArch)
+		cntArch = arch.FromString(targetArch)
 	}
 	// TODO: add "target-variant", see https://github.com/osbuild/bootc-image-builder/pull/139/files#r1467591868
 
@@ -257,11 +270,19 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	// to using containers storage in all code paths happened.
 	// We might want to change this behaviour in the future to match podman.
 	if !localStorage {
-		if output, err := exec.Command("podman", "pull", "--arch", buildArch.String(), fmt.Sprintf("--tls-verify=%v", tlsVerify), imgref).CombinedOutput(); err != nil {
+		if output, err := exec.Command("podman", "pull", "--arch", cntArch.String(), fmt.Sprintf("--tls-verify=%v", tlsVerify), imgref).CombinedOutput(); err != nil {
 			return nil, nil, fmt.Errorf("failed to pull container image: %w\n%s", err, output)
 		}
 	}
 
+	// TODO: check arch compat before pulling
+	pulledCntArch, err := getContainerArch(imgref)
+	if err != nil {
+		return nil, nil, fmt.Errorf("cannot get container architecture: %w", err)
+	}
+	if cntArch != pulledCntArch {
+		return nil, nil, fmt.Errorf("image found is for unexpected architecture %q (expected %q), if that is intentional, please make sure --target-arch matches", pulledCntArch, cntArch)
+	}
 	cntSize, err := getContainerSize(imgref)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot get container size: %w", err)
@@ -295,7 +316,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	}
 
 	manifestConfig := &ManifestConfig{
-		Architecture:   buildArch,
+		Architecture:   cntArch,
 		Config:         config,
 		BuildType:      buildType,
 		Imgref:         imgref,
