@@ -1,4 +1,5 @@
 import json
+import platform
 import subprocess
 import textwrap
 
@@ -109,3 +110,26 @@ def test_manifest_local_checks_containers_storage_works(tmp_path, build_containe
             f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--local", "localhost/{container_tag}"]',
             build_container,
         ], check=True, encoding="utf8")
+
+
+@pytest.mark.skipif(platform.uname().machine != "x86_64", reason="cross build test only runs on x86")
+def test_manifest_cross_arch_check(tmp_path, build_container):
+    cntf_path = tmp_path / "Containerfile"
+    cntf_path.write_text(textwrap.dedent("""\n
+    # build for x86_64 only
+    FROM scratch
+    """), encoding="utf8")
+
+    with make_container(tmp_path, arch="x86_64") as container_tag:
+        with pytest.raises(subprocess.CalledProcessError) as exc:
+            subprocess.run([
+                "podman", "run", "--rm",
+                "--privileged",
+                "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
+                "--security-opt", "label=type:unconfined_t",
+                f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest",\
+                   "--target-arch=aarch64", "--local", \
+                   "localhost/{container_tag}"]',
+                build_container,
+            ], check=True, capture_output=True, encoding="utf8")
+        assert 'image found is for unexpected architecture "x86_64"' in exc.value.stderr
