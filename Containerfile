@@ -16,9 +16,7 @@ FROM registry.fedoraproject.org/fedora:39
 # - https://github.com/osbuild/osbuild/pull/1468
 COPY ./group_osbuild-osbuild-fedora-39.repo /etc/yum.repos.d/
 COPY ./package-requires.txt .
-RUN grep -vE '^#' package-requires.txt | xargs dnf install -y && rm -f package-requires.txt && \
-    dnf -y upgrade https://kojipkgs.fedoraproject.org//packages/rpm-ostree/2024.4/3.fc39/$(arch)/rpm-ostree-{,libs-}2024.4-3.fc39.$(arch).rpm \
-&& dnf clean all
+RUN grep -vE '^#' package-requires.txt | xargs dnf install -y && rm -f package-requires.txt && dnf clean all
 COPY --from=builder /build/bin/bootc-image-builder /usr/bin/bootc-image-builder
 COPY entrypoint.sh /
 
