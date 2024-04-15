@@ -38,6 +38,7 @@ class ImageBuildResult(NamedTuple):
     img_arch: str
     username: str
     password: str
+    kargs: str
     bib_output: str
     journal_output: str
     metadata: dict = {}
@@ -125,6 +126,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
 
     username = "test"
     password = "password"
+    kargs = "user.sometestkarg=sometestvalue"
 
     # params can be long and the qmp socket (that has a limit of 100ish
     # AF_UNIX) is derived from the path
@@ -167,6 +169,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             bib_output = bib_output_path.read_text(encoding="utf8")
             results.append(ImageBuildResult(
                 image_type, generated_img, target_arch, username, password,
+                kargs,
                 bib_output, journal_output))
 
     # Because we always build all image types, regardless of what was requested, we should either have 0 results or all
@@ -192,7 +195,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
                     },
                 ],
                 "kernel": {
-                    "append": "user.sometestkarg=sometestvalue"
+                    "append": kargs,
                 }
             },
         },
@@ -286,7 +289,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
     results = []
     for image_type in image_types:
         results.append(ImageBuildResult(image_type, artifact[image_type], target_arch,
-                                        username, password, bib_output, journal_output, metadata))
+                                        username, password, kargs, bib_output, journal_output, metadata))
     yield results
 
     # Try to cache as much as possible
@@ -318,6 +321,14 @@ def test_image_is_generated(image_type):
         f"content: {os.listdir(os.fspath(image_type.img_path))}"
 
 
+def assert_kernel_args(test_vm, image_type):
+    exit_status, kcmdline = test_vm.run("cat /proc/cmdline", user=image_type.username, password=image_type.password)
+    assert exit_status == 0
+    # the kernel arg string must have a space as the prefix and either a space
+    # as suffix or be the last element of the kernel commandline
+    assert re.search(f" {re.escape(image_type.kargs)}( |$)", kcmdline)
+
+
 @pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
 @pytest.mark.parametrize("image_type", gen_testcases("qemu-boot"), indirect=["image_type"])
 def test_image_boots(image_type):
@@ -327,6 +338,7 @@ def test_image_boots(image_type):
         exit_status, output = test_vm.run("echo hello", user=image_type.username, password=image_type.password)
         assert exit_status == 0
         assert "hello" in output
+        assert_kernel_args(test_vm, image_type)
 
 
 @pytest.mark.parametrize("image_type", gen_testcases("ami-boot"), indirect=["image_type"])
@@ -407,6 +419,7 @@ def test_iso_installs(image_type):
         vm.start(use_ovmf=True)
         exit_status, _ = vm.run("true", user=image_type.username, password=image_type.password)
         assert exit_status == 0
+        assert_kernel_args(vm, image_type)
 
 
 @pytest.mark.parametrize("images", gen_testcases("multidisk"), indirect=["images"])
