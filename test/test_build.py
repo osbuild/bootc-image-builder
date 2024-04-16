@@ -36,6 +36,7 @@ class ImageBuildResult(NamedTuple):
     img_type: str
     img_path: str
     img_arch: str
+    container_ref: str
     username: str
     password: str
     ssh_keyfile_private_path: str
@@ -171,7 +172,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             journal_output = journal_log_path.read_text(encoding="utf8")
             bib_output = bib_output_path.read_text(encoding="utf8")
             results.append(ImageBuildResult(
-                image_type, generated_img, target_arch,
+                image_type, generated_img, target_arch, container_ref,
                 username, password, ssh_keyfile_private_path,
                 bib_output, journal_output))
 
@@ -207,7 +208,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
                         "name": "root",
                         "key": ssh_pubkey,
                         # cannot use default /root as is on a read-only place
-                        "home": "/var/roothome",
+                        "home": "/var",
                     }, {
                         "name": username,
                         "password": password,
@@ -310,7 +311,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
     results = []
     for image_type in image_types:
         results.append(ImageBuildResult(
-            image_type, artifact[image_type], target_arch,
+            image_type, artifact[image_type], target_arch, container_ref,
             username, password, ssh_keyfile_private_path,
             bib_output, journal_output, metadata))
     yield results
@@ -355,6 +356,10 @@ def test_image_boots(image_type):
         exit_status, output = test_vm.run("id", user="root", keyfile=image_type.ssh_keyfile_private_path)
         assert exit_status == 0
         assert "uid=0" in output
+        # ensure bootc points to the right image
+        _, output = test_vm.run("bootc status", user="root", keyfile=image_type.ssh_keyfile_private_path)
+        # XXX: read the fully yaml instead?
+        assert f"image: {image_type.container_ref}" in output
 
 
 @pytest.mark.parametrize("image_type", gen_testcases("ami-boot"), indirect=["image_type"])
