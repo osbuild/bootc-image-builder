@@ -126,7 +126,18 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 	mf := manifest.New()
 	mf.Distro = manifest.DISTRO_FEDORA
 	runner := &runner.Linux{}
-	err = img.InstantiateManifestFromContainers(&mf, []container.SourceSpec{containerSource}, runner, rng)
+
+	// Remove the "NewBootcLegacyDiskImage" if part below and
+	// *only* use the "else" part of the code once either of the
+	// following is available in centos/rhel
+	// https://github.com/containers/bootc/pull/462
+	// https://www.mail-archive.com/qemu-devel@nongnu.org/msg1034508.html
+	if c.Architecture != arch.Current() {
+		legacyImg := image.NewBootcLegacyDiskImage(img)
+		err = legacyImg.InstantiateManifestFromContainers(&mf, []container.SourceSpec{containerSource}, runner, rng)
+	} else {
+		err = img.InstantiateManifestFromContainers(&mf, []container.SourceSpec{containerSource}, runner, rng)
+	}
 
 	return &mf, err
 }
