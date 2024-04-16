@@ -36,6 +36,7 @@ class ImageBuildResult(NamedTuple):
     img_type: str
     img_path: str
     img_arch: str
+    container_ref: str
     username: str
     password: str
     kargs: str
@@ -168,9 +169,9 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             journal_output = journal_log_path.read_text(encoding="utf8")
             bib_output = bib_output_path.read_text(encoding="utf8")
             results.append(ImageBuildResult(
-                image_type, generated_img, target_arch, username, password,
-                kargs,
-                bib_output, journal_output))
+                image_type, generated_img, target_arch, container_ref,
+                username, password,
+                kargs, bib_output, journal_output))
 
     # Because we always build all image types, regardless of what was requested, we should either have 0 results or all
     # should be available, so if we found at least one result but not all of them, this is a problem with our setup
@@ -288,8 +289,10 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
 
     results = []
     for image_type in image_types:
-        results.append(ImageBuildResult(image_type, artifact[image_type], target_arch,
-                                        username, password, kargs, bib_output, journal_output, metadata))
+        results.append(ImageBuildResult(
+            image_type, artifact[image_type], target_arch, container_ref,
+            username, password,
+            kargs, bib_output, journal_output, metadata))
     yield results
 
     # Try to cache as much as possible
@@ -339,6 +342,14 @@ def test_image_boots(image_type):
         assert exit_status == 0
         assert "hello" in output
         assert_kernel_args(test_vm, image_type)
+        # ensure bootc points to the right image
+        # TODO: replace this ssh root instead login, see PR#357
+        _, output = test_vm.run(
+            f"echo {image_type.password} | sudo -S bootc status",
+            user=image_type.username, password=image_type.password,
+        )
+        # XXX: read the fully yaml instead?
+        assert f"image: {image_type.container_ref}" in output
 
 
 @pytest.mark.parametrize("image_type", gen_testcases("ami-boot"), indirect=["image_type"])
