@@ -95,3 +95,19 @@ func (c *Container) Stop() error {
 func (c *Container) Root() string {
 	return c.root
 }
+
+// CopyInto copies a file into the container.
+func (c *Container) CopyInto(src, dest string) error {
+	cmd := exec.Command("podman", "cp", src, c.id+":"+dest)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("copying %s into %s container failed: %w\nstderr:\n%s", src, c.id, err, stderr.String())
+	}
+
+	return nil
+}
+
+func (c *Container) ExecArgv() []string {
+	return []string{"podman", "exec", "-i", c.id}
+}

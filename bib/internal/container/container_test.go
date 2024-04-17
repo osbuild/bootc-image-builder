@@ -78,3 +78,29 @@ func TestNew(t *testing.T) {
 
 	assert.Contains(t, string(osRelease), `ID="rhel"`)
 }
+
+func TestCopyInto(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("skipping test; not running as root")
+	}
+
+	tmpdir := t.TempDir()
+	testfile := path.Join(tmpdir, "testfile")
+	require.NoError(t, os.WriteFile(testfile, []byte("Hello, world!"), 0644))
+
+	c, err := New(testingImage)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err = c.Stop()
+		assert.NoError(t, err)
+	})
+
+	err = c.CopyInto(testfile, "/testfile")
+	require.NoError(t, err)
+
+	root := c.Root()
+	testfileInContainer := path.Join(root, "testfile")
+	testfileContent, err := os.ReadFile(testfileInContainer)
+	require.NoError(t, err)
+	require.Equal(t, "Hello, world!", string(testfileContent))
+}
