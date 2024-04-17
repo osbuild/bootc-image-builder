@@ -31,9 +31,6 @@ import (
 	"github.com/osbuild/bootc-image-builder/bib/internal/util"
 )
 
-//go:embed fedora-eln.json
-var reposStr string
-
 const (
 	// If present, this config will be picked up
 	configFileDefault = "/config.json"
@@ -86,21 +83,6 @@ func canChownInPath(path string) (bool, error) {
 	return checkFile.Chown(osGetuid(), osGetgid()) == nil, nil
 }
 
-// Parse embedded repositories and return repo configs for the given
-// architecture.
-func loadRepos(archName string) ([]rpmmd.RepoConfig, error) {
-	var repoData map[string][]rpmmd.RepoConfig
-	err := json.Unmarshal([]byte(reposStr), &repoData)
-	if err != nil {
-		return nil, err
-	}
-	archRepos, ok := repoData[archName]
-	if !ok {
-		return nil, fmt.Errorf("no repositories defined for %s", archName)
-	}
-	return archRepos, nil
-}
-
 func loadConfig(path string) (*BuildConfig, error) {
 	fp, err := os.Open(path)
 	if err != nil {
@@ -143,6 +125,8 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 
 	// depsolve packages
 	solver := dnfjson.NewSolver(c.Info.PlatformID, c.Info.VersionID, c.Architecture.String(), fmt.Sprintf("%s-%s", c.Info.ID, c.Info.VersionID), cacheRoot)
+	solver.SetDNFJSONPath(c.DepsolverCmd[0], c.DepsolverCmd[1:]...)
+	solver.SetRootDir("/")
 	depsolvedSets := make(map[string][]rpmmd.PackageSpec)
 	for name, pkgSet := range manifest.GetPackageSetChains() {
 		res, _, err := solver.Depsolve(pkgSet)
@@ -205,10 +189,6 @@ func saveManifest(ms manifest.OSBuildManifest, fpath string) error {
 
 func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	buildArch := arch.Current()
-	repos, err := loadRepos(buildArch.String())
-	if err != nil {
-		return nil, fmt.Errorf("cannot load repositories: %w", err)
-	}
 
 	imgref := args[0]
 	configFile, _ := cmd.Flags().GetString("config")
@@ -292,6 +272,10 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 		}
 	}()
 
+	if err := container.CopyInto("/usr/libexec/osbuild-depsolve-dnf", "/osbuild-depsolve-dnf"); err != nil {
+		return nil, fmt.Errorf("cannot prepare depsolve in the container: %w", err)
+	}
+
 	sourceinfo, err := source.LoadInfo(container.Root())
 	if err != nil {
 		return nil, err
@@ -302,11 +286,11 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 		Config:         config,
 		BuildType:      buildType,
 		Imgref:         imgref,
-		Repos:          repos,
 		TLSVerify:      tlsVerify,
 		Filesystems:    filesystems,
 		DistroDefPaths: distroDefPaths,
 		Info:           sourceinfo,
+		DepsolverCmd:   append(container.ExecArgv(), "/osbuild-depsolve-dnf"),
 	}
 
 	return makeManifest(manifestConfig, rpmCacheRoot)
