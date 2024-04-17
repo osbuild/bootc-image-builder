@@ -128,12 +128,14 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 	solver.SetDNFJSONPath(c.DepsolverCmd[0], c.DepsolverCmd[1:]...)
 	solver.SetRootDir("/")
 	depsolvedSets := make(map[string][]rpmmd.PackageSpec)
+	depsolvedRepos := make(map[string][]rpmmd.RepoConfig)
 	for name, pkgSet := range manifest.GetPackageSetChains() {
-		res, _, err := solver.Depsolve(pkgSet)
+		res, repos, err := solver.Depsolve(pkgSet)
 		if err != nil {
 			return nil, fmt.Errorf("cannot depsolve: %w", err)
 		}
 		depsolvedSets[name] = res
+		depsolvedRepos[name] = repos
 	}
 
 	// Resolve container - the normal case is that host and target
@@ -163,7 +165,7 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 		}
 	}
 
-	mf, err := manifest.Serialize(depsolvedSets, containerSpecs, nil, nil)
+	mf, err := manifest.Serialize(depsolvedSets, containerSpecs, nil, depsolvedRepos)
 	if err != nil {
 		return nil, fmt.Errorf("[ERROR] manifest serialization failed: %s", err.Error())
 	}
