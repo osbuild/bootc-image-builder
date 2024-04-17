@@ -33,9 +33,6 @@ type ManifestConfig struct {
 	// Build config
 	Config *BuildConfig
 
-	// Repositories for a buildroot (or an installer tree in the future)
-	Repos []rpmmd.RepoConfig
-
 	// CPU architecture of the image
 	Architecture arch.Arch
 
@@ -50,6 +47,9 @@ type ManifestConfig struct {
 
 	// Extracted information about the source container image
 	Info *source.Info
+
+	// Command to run the depsolver
+	DepsolverCmd []string
 }
 
 func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
@@ -226,7 +226,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	// options, and rely on tests to catch any issues.
 	mf.Distro = manifest.DISTRO_NULL
 	runner := &runner.Linux{}
-	_, err = img.InstantiateManifest(&mf, c.Repos, runner, rng)
+	_, err = img.InstantiateManifest(&mf, nil, runner, rng)
 	return &mf, err
 }
 
