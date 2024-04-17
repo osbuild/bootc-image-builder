@@ -19,8 +19,6 @@ github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d/go.mod h1:asat6
 github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 h1:DklsrG3dyBCFEj5IhUbnKptjxatkF07cF2ak3yi77so=
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
-github.com/aws/aws-sdk-go v1.51.21 h1:UrT6JC9R9PkYYXDZBV0qDKTualMr+bfK2eboTknMgbs=
-github.com/aws/aws-sdk-go v1.51.21/go.mod h1:LF8svs817+Nz+DmiMQKTO3ubZ/6IaTpq3TjupRn3Eqk=
 github.com/aws/aws-sdk-go v1.51.22 h1:VL2p2JgC32myt7DMEcbe1devdtgGSgMNvZpkcdvlxq4=
 github.com/aws/aws-sdk-go v1.51.22/go.mod h1:LF8svs817+Nz+DmiMQKTO3ubZ/6IaTpq3TjupRn3Eqk=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
@@ -38,8 +36,6 @@ github.com/containerd/errdefs v0.1.0/go.mod h1:YgWiiHtLmSeBrvpw+UfPijzbLaB77mEG1
 github.com/containerd/log v0.1.0 h1:TCJt7ioM2cr/tfR8GPbGf9/VRAX8D2B4PjzCpfX540I=
 github.com/containerd/stargz-snapshotter/estargz v0.15.1 h1:eXJjw9RbkLFgioVaTG+G/ZW/0kEe2oEKCdS/ZxIyoCU=
 github.com/containerd/stargz-snapshotter/estargz v0.15.1/go.mod h1:gr2RNwukQ/S9Nv33Lt6UC7xEx58C+LHRdoqbEKjz1Kk=
-github.com/containers/common v0.58.1 h1:E1DN9Lr7kgMVQy7AXLv1CYQCiqnweklMiYWbf0KOnqY=
-github.com/containers/common v0.58.1/go.mod h1:l3vMqanJGj7tZ3W/i76gEJ128VXgFUO1tLaohJXPvdk=
 github.com/containers/common v0.58.2 h1:5nu9lQz4QNSgovNk7NRk33SkqkVNKYoXh7L6gXmACow=
 github.com/containers/common v0.58.2/go.mod h1:l3vMqanJGj7tZ3W/i76gEJ128VXgFUO1tLaohJXPvdk=
 github.com/containers/image/v5 v5.30.0 h1:CmHeSwI6W2kTRWnUsxATDFY5TEX4b58gPkaQcEyrLIA=
@@ -285,10 +281,8 @@ github.com/opencontainers/runtime-spec v1.2.0 h1:z97+pHb3uELt/yiAWD691HNHQIF07bE
 github.com/opencontainers/runtime-spec v1.2.0/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
 github.com/opencontainers/selinux v1.11.0 h1:+5Zbo97w3Lbmb3PeqQtpmTkMwsW5nRI3YaLpt7tQ7oU=
 github.com/opencontainers/selinux v1.11.0/go.mod h1:E5dMC3VPuVvVHDYmi78qvhJp8+M586T4DlDRYpFkyec=
-github.com/osbuild/images v0.55.1-0.20240415121712-d97682ef6dcf h1:E2fAXNHpGmFSQeWoNTt0UmUIlsJpyeKcmKasmN99FRI=
-github.com/osbuild/images v0.55.1-0.20240415121712-d97682ef6dcf/go.mod h1:Lc5FckyU9YcKbSUdVSojYxp9nlvbnnrOzgH0jt+byvw=
-github.com/osbuild/images v0.55.1-0.20240417075153-faefd5894ce1 h1:fPpdj8T/YoYmixyiAFWjC74VU5ElpYBick6ktUE4IKU=
-github.com/osbuild/images v0.55.1-0.20240417075153-faefd5894ce1/go.mod h1:dDIYbQe69f9Qp6yPWgQ5xrA2hBnP9KA9qnLI6a5wnZQ=
+github.com/osbuild/images v0.55.1-0.20240417140519-729129e81b9d h1:L78xBqjBfhYQ9/ia5xB1CgWJi92N0qFwLNpgNNe81Lo=
+github.com/osbuild/images v0.55.1-0.20240417140519-729129e81b9d/go.mod h1:dDIYbQe69f9Qp6yPWgQ5xrA2hBnP9KA9qnLI6a5wnZQ=
 github.com/ostreedev/ostree-go v0.0.0-20210805093236-719684c64e4f h1:/UDgs8FGMqwnHagNDPGOlts35QkhAZ8by3DR7nMih7M=
 github.com/ostreedev/ostree-go v0.0.0-20210805093236-719684c64e4f/go.mod h1:J6OG6YJVEWopen4avK3VNQSnALmmjvniMmni/YFYAwc=
 github.com/otiai10/copy v1.14.0 h1:dCI/t1iTdYGtkvCuBG2BgR6KZa83PTclw4U5n2wAllU=
@@ -518,8 +512,6 @@ google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55/go.mod h1:DMBHOl98
 google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013/go.mod h1:NbSheEEYHJ7i3ixzK3sjbqSGDJWnxyFXZblF3eUsNvo=
 google.golang.org/genproto v0.0.0-20240213162025-012b6fc9bca9 h1:9+tzLLstTlPTRyJTh+ah5wIMsBW5c4tQwGTN3thOW9Y=
 google.golang.org/genproto/googleapis/api v0.0.0-20240314234333-6e1732d8331c h1:kaI7oewGK5YnVwj+Y+EJBO/YN1ht8iTL9XkFHtVZLsc=
-google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 h1:NnYq6UN9ReLM9/Y01KWNOWyI5xQ9kbIms5GGJVwS/Yc=
-google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237/go.mod h1:WtryC6hu0hhx87FDGxWCDptyssuo68sk10vYjF+T9fY=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20240325203815-454cdb8f5daa h1:RBgMaUMP+6soRkik4VoN8ojR2nex2TqZwjSSogic+eo=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20240325203815-454cdb8f5daa/go.mod h1:WtryC6hu0hhx87FDGxWCDptyssuo68sk10vYjF+T9fY=
 google.golang.org/grpc v1.19.0/go.mod h1:mqu4LbDTu4XGKhr4mRzUsmM4RtVoemTSY81AxZiDr8c=
