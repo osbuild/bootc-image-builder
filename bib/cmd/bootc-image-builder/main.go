@@ -158,7 +158,7 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 
 	manifest, err := Manifest(c)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot get manifest: %w", err)
 	}
 
 	// depsolve packages
@@ -167,7 +167,7 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 	for name, pkgSet := range manifest.GetPackageSetChains() {
 		res, _, err := solver.Depsolve(pkgSet)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("cannot depsolve: %w", err)
 		}
 		depsolvedSets[name] = res
 	}
@@ -195,7 +195,7 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 		}
 		containerSpecs[plName], err = resolver.Finish()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("cannot resolve containers: %w", err)
 		}
 	}
 
@@ -227,7 +227,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	buildArch := arch.Current()
 	repos, err := loadRepos(buildArch.String())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot load repositories: %w", err)
 	}
 
 	imgref := args[0]
@@ -254,7 +254,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 
 	buildType, err := NewBuildType(imgTypes)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot detect build types %v: %w", imgTypes, err)
 	}
 
 	var config *BuildConfig
@@ -262,7 +262,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	if configFile == "" {
 		if _, err := os.Stat(configFileDefault); err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
-				return nil, err
+				return nil, fmt.Errorf("cannot find config file: %w", err)
 			}
 		} else {
 			configFile = configFileDefault
@@ -271,7 +271,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	if configFile != "" {
 		config, err = loadConfig(configFile)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("cannot load config: %w", err)
 		}
 	} else {
 		config = &BuildConfig{}
@@ -292,7 +292,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 func cmdManifest(cmd *cobra.Command, args []string) error {
 	mf, err := manifestFromCobra(cmd, args)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot generate manifest: %w", err)
 	}
 	fmt.Print(string(mf))
 	return nil
@@ -355,24 +355,24 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	targetArch, _ := cmd.Flags().GetString("target-arch")
 
 	if err := setup.Validate(); err != nil {
-		return err
+		return fmt.Errorf("cannot validate the setup: %w", err)
 	}
 	if err := setup.EnsureEnvironment(osbuildStore); err != nil {
-		return err
+		return fmt.Errorf("cannot ensure the environment: %w", err)
 	}
 
 	if err := os.MkdirAll(outputDir, 0777); err != nil {
-		return err
+		return fmt.Errorf("cannot setup build dir: %w", err)
 	}
 
 	upload, err := handleAWSFlags(cmd)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot handle AWS setup: %w", err)
 	}
 
 	canChown, err := canChownInPath(outputDir)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot ensure ownership: %w", err)
 	}
 	if !canChown && chown != "" {
 		return fmt.Errorf("chowning is not allowed in output directory")
@@ -382,7 +382,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Generating manifest %s\n", manifest_fname)
 	mf, err := manifestFromCobra(cmd, args)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("cannot build manifest: %w", err)
 	}
 	fmt.Print("DONE\n")
 
@@ -406,7 +406,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	}
 	manifestPath := filepath.Join(outputDir, manifest_fname)
 	if err := saveManifest(mf, manifestPath); err != nil {
-		return err
+		return fmt.Errorf("cannot save manifest: %w", err)
 	}
 
 	fmt.Printf("Building %s\n", manifest_fname)
@@ -418,7 +418,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	}
 	_, err = osbuild.RunOSBuild(mf, osbuildStore, outputDir, exports, nil, osbuildEnv, false, os.Stderr)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot run osbuild: %w", err)
 	}
 
 	fmt.Println("Build complete!")
@@ -428,7 +428,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 			case "ami":
 				diskpath := filepath.Join(outputDir, exports[idx], "disk.raw")
 				if err := uploadAMI(diskpath, targetArch, cmd.Flags()); err != nil {
-					return err
+					return fmt.Errorf("cannot upload AMI: %w", err)
 				}
 			default:
 				continue
@@ -439,7 +439,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := chownR(outputDir, chown); err != nil {
-		return err
+		return fmt.Errorf("cannot setup owner for %q: %w", outputDir, err)
 	}
 
 	return nil
