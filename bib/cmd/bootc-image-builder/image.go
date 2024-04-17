@@ -40,9 +40,6 @@ type ManifestConfig struct {
 	// TLSVerify specifies whether HTTPS and a valid TLS certificate are required
 	TLSVerify bool
 
-	// Use a local container from the host rather than a repository
-	Local bool
-
 	// Only the "/" filesystem size is configured here right now
 	Filesystems []blueprint.FilesystemCustomization
 }
