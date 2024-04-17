@@ -322,8 +322,11 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.Filename = "install.iso"
 
 	mf := manifest.New()
-	mf.Distro = manifest.DISTRO_FEDORA
-	runner := &runner.Fedora{Version: 39}
+	// The following two lines are slightly hacky, but converting os-release
+	// into these "enums" cannot be done generically, so let's use use the generic
+	// options, and rely on tests to catch any issues.
+	mf.Distro = manifest.DISTRO_NULL
+	runner := &runner.Linux{}
 	_, err := img.InstantiateManifest(&mf, c.Repos, runner, rng)
 	return &mf, err
 }
