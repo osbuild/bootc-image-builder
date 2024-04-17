@@ -19,6 +19,7 @@ COPY ./package-requires.txt .
 RUN grep -vE '^#' package-requires.txt | xargs dnf install -y && rm -f package-requires.txt && dnf clean all
 COPY --from=builder /build/bin/bootc-image-builder /usr/bin/bootc-image-builder
 COPY entrypoint.sh /
+COPY bib/data /usr/share/bootc-image-builder
 
 ENTRYPOINT ["/entrypoint.sh"]
 VOLUME /output

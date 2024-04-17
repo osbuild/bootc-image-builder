@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"math/rand"
 
+	"github.com/osbuild/bootc-image-builder/bib/internal/distrodef"
 	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/blueprint"
@@ -43,6 +44,9 @@ type ManifestConfig struct {
 
 	// Only the "/" filesystem size is configured here right now
 	Filesystems []blueprint.FilesystemCustomization
+
+	// Paths to the directory with the distro definitions
+	DistroDefPaths []string
 
 	// Extracted information about the source container image
 	Info *source.Info
@@ -148,6 +152,11 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		return nil, fmt.Errorf("pipeline: no base image defined")
 	}
 
+	imageDef, err := distrodef.LoadImageDef(c.DistroDefPaths, c.Info.ID, "anaconda-iso")
+	if err != nil {
+		return nil, err
+	}
+
 	containerSource := container.SourceSpec{
 		Source:    c.Imgref,
 		Name:      c.Imgref,
@@ -163,117 +172,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.Product = c.Info.Name
 
 	img.ExtraBasePackages = rpmmd.PackageSet{
-		Include: []string{
-			"aajohan-comfortaa-fonts",
-			"abattis-cantarell-fonts",
-			"alsa-firmware",
-			"alsa-tools-firmware",
-			"anaconda",
-			"anaconda-dracut",
-			"anaconda-install-env-deps",
-			"anaconda-widgets",
-			"atheros-firmware",
-			"audit",
-			"bind-utils",
-			"bitmap-fangsongti-fonts",
-			"brcmfmac-firmware",
-			"bzip2",
-			"cryptsetup",
-			"curl",
-			"dbus-x11",
-			"dejavu-sans-fonts",
-			"dejavu-sans-mono-fonts",
-			"device-mapper-persistent-data",
-			"dmidecode",
-			"dnf",
-			"dracut-config-generic",
-			"dracut-network",
-			"efibootmgr",
-			"ethtool",
-			"fcoe-utils",
-			"ftp",
-			"gdb-gdbserver",
-			"gdisk",
-			"glibc-all-langpacks",
-			"gnome-kiosk",
-			"google-noto-sans-cjk-ttc-fonts",
-			"grub2-tools",
-			"grub2-tools-extra",
-			"grub2-tools-minimal",
-			"grubby",
-			"gsettings-desktop-schemas",
-			"hdparm",
-			"hexedit",
-			"hostname",
-			"initscripts",
-			"ipmitool",
-			"iwlwifi-dvm-firmware",
-			"iwlwifi-mvm-firmware",
-			"jomolhari-fonts",
-			"kbd",
-			"kbd-misc",
-			"kdump-anaconda-addon",
-			"kernel",
-			"khmeros-base-fonts",
-			"less",
-			"libblockdev-lvm-dbus",
-			"libibverbs",
-			"libreport-plugin-bugzilla",
-			"libreport-plugin-reportuploader",
-			"librsvg2",
-			"linux-firmware",
-			"lldpad",
-			"lsof",
-			"madan-fonts",
-			"mt-st",
-			"mtr",
-			"net-tools",
-			"nfs-utils",
-			"nm-connection-editor",
-			"nmap-ncat",
-			"nss-tools",
-			"openssh-clients",
-			"openssh-server",
-			"ostree",
-			"pciutils",
-			"perl-interpreter",
-			"pigz",
-			"plymouth",
-			"python3-pyatspi",
-			"rdma-core",
-			"realtek-firmware",
-			"rit-meera-new-fonts",
-			"rng-tools",
-			"rpcbind",
-			"rpm-ostree",
-			"rsync",
-			"rsyslog",
-			"selinux-policy-targeted",
-			"sg3_utils",
-			"sil-abyssinica-fonts",
-			"sil-padauk-fonts",
-			"smartmontools",
-			"spice-vdagent",
-			"strace",
-			"systemd",
-			"tar",
-			"tigervnc-server-minimal",
-			"tigervnc-server-module",
-			"udisks2",
-			"udisks2-iscsi",
-			"usbutils",
-			"vim-minimal",
-			"volume_key",
-			"wget",
-			"xfsdump",
-			"xfsprogs",
-			"xorg-x11-drivers",
-			"xorg-x11-fonts-misc",
-			"xorg-x11-server-Xorg",
-			"xorg-x11-xauth",
-			"xrdb",
-			"xz",
-		},
+		Include: imageDef.Packages,
 	}
 
 	img.ISOLabel = fmt.Sprintf("Container-Installer-%s", c.Architecture)
@@ -327,7 +226,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	// options, and rely on tests to catch any issues.
 	mf.Distro = manifest.DISTRO_NULL
 	runner := &runner.Linux{}
-	_, err := img.InstantiateManifest(&mf, c.Repos, runner, rng)
+	_, err = img.InstantiateManifest(&mf, c.Repos, runner, rng)
 	return &mf, err
 }
 
