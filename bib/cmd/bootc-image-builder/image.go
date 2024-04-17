@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"math/rand"
 
+	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/container"
@@ -42,6 +43,9 @@ type ManifestConfig struct {
 
 	// Only the "/" filesystem size is configured here right now
 	Filesystems []blueprint.FilesystemCustomization
+
+	// Extracted information about the source container image
+	Info *source.Info
 }
 
 func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {

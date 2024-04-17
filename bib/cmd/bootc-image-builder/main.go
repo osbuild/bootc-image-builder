@@ -25,7 +25,9 @@ import (
 	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/rpmmd"
 
+	podman_container "github.com/osbuild/bootc-image-builder/bib/internal/container"
 	"github.com/osbuild/bootc-image-builder/bib/internal/setup"
+	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 	"github.com/osbuild/bootc-image-builder/bib/internal/util"
 )
 
@@ -275,6 +277,20 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	filesystems := []blueprint.FilesystemCustomization{
 		{Mountpoint: "/", MinSize: cntSize * containerSizeToDiskSizeMultiplier},
 	}
+	container, err := podman_container.New(imgref)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := container.Stop(); err != nil {
+			logrus.Warnf("error stopping container: %v", err)
+		}
+	}()
+
+	sourceinfo, err := source.LoadInfo(container.Root())
+	if err != nil {
+		return nil, err
+	}
 
 	manifestConfig := &ManifestConfig{
 		Architecture: buildArch,
@@ -284,6 +300,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 		Repos:        repos,
 		TLSVerify:    tlsVerify,
 		Filesystems:  filesystems,
+		Info:         sourceinfo,
 	}
 
 	return makeManifest(manifestConfig, rpmCacheRoot)
