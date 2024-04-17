@@ -17,6 +17,7 @@ import (
 	"github.com/osbuild/images/pkg/rpmmd"
 
 	main "github.com/osbuild/bootc-image-builder/bib/cmd/bootc-image-builder"
+	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 )
 
 func TestCanChownInPathHappy(t *testing.T) {
@@ -67,6 +68,16 @@ func getBaseConfig() *main.ManifestConfig {
 	return &main.ManifestConfig{
 		Architecture: arch.ARCH_X86_64,
 		Imgref:       "testempty",
+		Info: &source.Info{
+			ID:         "fedora",
+			VersionID:  "40",
+			Name:       "Fedora Linux",
+			UEFIVendor: "fedora",
+			PlatformID: "platform:f40",
+		},
+
+		// We need the real path here, because we are creating real manifests
+		DistroDefPaths: []string{"../../data/defs"},
 	}
 }
 
@@ -91,6 +102,16 @@ func getUserConfig() *main.ManifestConfig {
 				},
 			},
 		},
+		Info: &source.Info{
+			ID:         "fedora",
+			VersionID:  "40",
+			Name:       "Fedora Linux",
+			UEFIVendor: "fedora",
+			PlatformID: "platform:f40",
+		},
+
+		// We need the real path here, because we are creating real manifests
+		DistroDefPaths: []string{"../../data/defs"},
 	}
 }
 

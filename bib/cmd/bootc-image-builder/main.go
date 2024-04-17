@@ -45,6 +45,15 @@ const (
 	containerSizeToDiskSizeMultiplier = 2
 )
 
+// all possible locations for the bib's distro definitions
+// ./data/defs and ./bib/data/defs are for development
+// /usr/share/bootc-image-builder/defs is for the production, containerized version
+var distroDefPaths = []string{
+	"./data/defs",
+	"./bib/data/defs",
+	"/usr/share/bootc-image-builder/defs",
+}
+
 type BuildConfig struct {
 	Blueprint *blueprint.Blueprint `json:"blueprint,omitempty"`
 }
@@ -289,14 +298,15 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	}
 
 	manifestConfig := &ManifestConfig{
-		Architecture: buildArch,
-		Config:       config,
-		BuildType:    buildType,
-		Imgref:       imgref,
-		Repos:        repos,
-		TLSVerify:    tlsVerify,
-		Filesystems:  filesystems,
-		Info:         sourceinfo,
+		Architecture:   buildArch,
+		Config:         config,
+		BuildType:      buildType,
+		Imgref:         imgref,
+		Repos:          repos,
+		TLSVerify:      tlsVerify,
+		Filesystems:    filesystems,
+		DistroDefPaths: distroDefPaths,
+		Info:           sourceinfo,
 	}
 
 	return makeManifest(manifestConfig, rpmCacheRoot)
