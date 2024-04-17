@@ -276,6 +276,12 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 		return nil, fmt.Errorf("cannot prepare depsolve in the container: %w", err)
 	}
 
+	// This is needed just for RHEL and RHSM in most cases, but let's run it every time in case
+	// the image has some non-standard dnf plugins.
+	if err := container.InitDNF(); err != nil {
+		return nil, err
+	}
+
 	sourceinfo, err := source.LoadInfo(container.Root())
 	if err != nil {
 		return nil, err
