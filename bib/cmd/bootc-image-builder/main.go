@@ -35,10 +35,6 @@ import (
 var reposStr string
 
 const (
-	distroName       = "fedora-39"
-	modulePlatformID = "platform:f39"
-	releaseVersion   = "39"
-
 	// If present, this config will be picked up
 	configFileDefault = "/config.json"
 
@@ -137,7 +133,7 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 	}
 
 	// depsolve packages
-	solver := dnfjson.NewSolver(modulePlatformID, releaseVersion, c.Architecture.String(), distroName, cacheRoot)
+	solver := dnfjson.NewSolver(c.Info.PlatformID, c.Info.VersionID, c.Architecture.String(), fmt.Sprintf("%s-%s", c.Info.ID, c.Info.VersionID), cacheRoot)
 	depsolvedSets := make(map[string][]rpmmd.PackageSpec)
 	for name, pkgSet := range manifest.GetPackageSetChains() {
 		res, _, err := solver.Depsolve(pkgSet)
