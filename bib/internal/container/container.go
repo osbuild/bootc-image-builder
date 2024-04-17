@@ -111,3 +111,19 @@ func (c *Container) CopyInto(src, dest string) error {
 func (c *Container) ExecArgv() []string {
 	return []string{"podman", "exec", "-i", c.id}
 }
+
+// InitDNF initializes dnf in the container. This is necessary when the caller wants to read the image's dnf
+// repositories, but they are not static, but rather configured by dnf dynamically. The primaru use-case for
+// this is RHEL and subscription-manager.
+//
+// The implementation is simple: We just run plain `dnf` in the container.
+func (c *Container) InitDNF() error {
+	var stderr bytes.Buffer
+	cmd := exec.Command("podman", "exec", c.id, "dnf")
+	cmd.Stderr = &stderr
+	if runErr := cmd.Run(); runErr != nil {
+		return fmt.Errorf("initializing dnf in %s container failed: %w\nstderr:\n%s", c.id, runErr, stderr.String())
+	}
+
+	return nil
+}
