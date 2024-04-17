@@ -129,31 +129,6 @@ func getContainerSize(imgref string) (uint64, error) {
 }
 
 func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest, error) {
-	if c.Local {
-		if err := setup.ValidateHasContainerStorageMounted(); err != nil {
-			return nil, fmt.Errorf("local storage not working, did you forget -v /var/lib/containers/storage:/var/lib/containers/storage? (%w)", err)
-		}
-	}
-
-	// If --local wasn't given, always pull the container.
-	// If the user mount a container storage inside bib (without --local), the code will try to pull
-	// a newer version of the container even if an older one is already present. This doesn't match
-	// how `podman run`` behaves by default, but it matches the bib's behaviour before the switch
-	// to using containers storage in all code paths happened.
-	// We might want to change this behaviour in the future to match podman.
-	if !c.Local {
-		if output, err := exec.Command("podman", "pull", "--arch", c.Architecture.String(), c.Imgref).CombinedOutput(); err != nil {
-			return nil, fmt.Errorf("failed to pull container image: %w\n%s", err, output)
-		}
-	}
-	cntSize, err := getContainerSize(c.Imgref)
-	if err != nil {
-		return nil, fmt.Errorf("cannot get container size: %w", err)
-	}
-	c.Filesystems = []blueprint.FilesystemCustomization{
-		{Mountpoint: "/", MinSize: cntSize * containerSizeToDiskSizeMultiplier},
-	}
-
 	manifest, err := Manifest(c)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get manifest: %w", err)
@@ -250,6 +225,12 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	}
 	// TODO: add "target-variant", see https://github.com/osbuild/bootc-image-builder/pull/139/files#r1467591868
 
+	if localStorage {
+		if err := setup.ValidateHasContainerStorageMounted(); err != nil {
+			return nil, fmt.Errorf("local storage not working, did you forget -v /var/lib/containers/storage:/var/lib/containers/storage? (%w)", err)
+		}
+	}
+
 	buildType, err := NewBuildType(imgTypes)
 	if err != nil {
 		return nil, fmt.Errorf("cannot detect build types %v: %w", imgTypes, err)
@@ -275,6 +256,26 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 		config = &BuildConfig{}
 	}
 
+	// If --local wasn't given, always pull the container.
+	// If the user mount a container storage inside bib (without --local), the code will try to pull
+	// a newer version of the container even if an older one is already present. This doesn't match
+	// how `podman run`` behaves by default, but it matches the bib's behaviour before the switch
+	// to using containers storage in all code paths happened.
+	// We might want to change this behaviour in the future to match podman.
+	if !localStorage {
+		if output, err := exec.Command("podman", "pull", "--arch", buildArch.String(), imgref).CombinedOutput(); err != nil {
+			return nil, fmt.Errorf("failed to pull container image: %w\n%s", err, output)
+		}
+	}
+
+	cntSize, err := getContainerSize(imgref)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get container size: %w", err)
+	}
+	filesystems := []blueprint.FilesystemCustomization{
+		{Mountpoint: "/", MinSize: cntSize * containerSizeToDiskSizeMultiplier},
+	}
+
 	manifestConfig := &ManifestConfig{
 		Architecture: buildArch,
 		Config:       config,
@@ -282,8 +283,9 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 		Imgref:       imgref,
 		Repos:        repos,
 		TLSVerify:    tlsVerify,
-		Local:        localStorage,
+		Filesystems:  filesystems,
 	}
+
 	return makeManifest(manifestConfig, rpmCacheRoot)
 }
 
