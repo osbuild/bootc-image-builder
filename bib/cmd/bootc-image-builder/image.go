@@ -160,8 +160,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img := image.NewAnacondaContainerInstaller(containerSource, "")
 	img.SquashfsCompression = "zstd"
 
-	// TODO: Parametrize me!
-	img.Product = "Fedora"
+	img.Product = c.Info.Name
 
 	img.ExtraBasePackages = rpmmd.PackageSet{
 		Include: []string{
@@ -304,14 +303,18 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 				ImageFormat: platform.FORMAT_ISO,
 			},
 			BIOS:       true,
-			UEFIVendor: "fedora",
+			UEFIVendor: c.Info.UEFIVendor,
 		}
 	case arch.ARCH_AARCH64:
+		// aarch64 always uses UEFI, so let's enforce the vendor
+		if c.Info.UEFIVendor == "" {
+			return nil, fmt.Errorf("UEFI vendor must be set for aarch64 ISO")
+		}
 		img.Platform = &platform.Aarch64{
 			BasePlatform: platform.BasePlatform{
 				ImageFormat: platform.FORMAT_ISO,
 			},
-			UEFIVendor: "fedora",
+			UEFIVendor: c.Info.UEFIVendor,
 		}
 	}
 
