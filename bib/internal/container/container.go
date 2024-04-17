@@ -96,6 +96,19 @@ func (c *Container) Root() string {
 	return c.root
 }
 
+// Reads a file from the container
+func (c *Container) ReadFile(path string) ([]byte, error) {
+	cmd := exec.Command("podman", "exec", c.id, "cat", path)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("reading %s from %s container failed: %w\nstderr:\n%s", path, c.id, err, stderr.String())
+	}
+
+	return stdout.Bytes(), nil
+}
+
 // CopyInto copies a file into the container.
 func (c *Container) CopyInto(src, dest string) error {
 	cmd := exec.Command("podman", "cp", src, c.id+":"+dest)

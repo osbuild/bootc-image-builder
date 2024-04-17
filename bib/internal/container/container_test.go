@@ -79,6 +79,23 @@ func TestNew(t *testing.T) {
 	assert.Contains(t, string(osRelease), `ID="rhel"`)
 }
 
+func TestReadFile(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("skipping test; not running as root")
+	}
+
+	c, err := New(testingImage)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err = c.Stop()
+		assert.NoError(t, err)
+	})
+
+	content, err := c.ReadFile("/etc/os-release")
+	require.NoError(t, err)
+	require.Contains(t, string(content), `ID="rhel"`)
+}
+
 func TestCopyInto(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("skipping test; not running as root")

@@ -117,10 +117,10 @@ func getContainerSize(imgref string) (uint64, error) {
 	return size, nil
 }
 
-func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest, error) {
+func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest, map[string][]rpmmd.RepoConfig, error) {
 	manifest, err := Manifest(c)
 	if err != nil {
-		return nil, fmt.Errorf("cannot get manifest: %w", err)
+		return nil, nil, fmt.Errorf("cannot get manifest: %w", err)
 	}
 
 	// depsolve packages
@@ -132,7 +132,7 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 	for name, pkgSet := range manifest.GetPackageSetChains() {
 		res, repos, err := solver.Depsolve(pkgSet)
 		if err != nil {
-			return nil, fmt.Errorf("cannot depsolve: %w", err)
+			return nil, nil, fmt.Errorf("cannot depsolve: %w", err)
 		}
 		depsolvedSets[name] = res
 		depsolvedRepos[name] = repos
@@ -161,15 +161,15 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 		}
 		containerSpecs[plName], err = resolver.Finish()
 		if err != nil {
-			return nil, fmt.Errorf("cannot resolve containers: %w", err)
+			return nil, nil, fmt.Errorf("cannot resolve containers: %w", err)
 		}
 	}
 
 	mf, err := manifest.Serialize(depsolvedSets, containerSpecs, nil, depsolvedRepos)
 	if err != nil {
-		return nil, fmt.Errorf("[ERROR] manifest serialization failed: %s", err.Error())
+		return nil, nil, fmt.Errorf("[ERROR] manifest serialization failed: %s", err.Error())
 	}
-	return mf, nil
+	return mf, depsolvedRepos, nil
 }
 
 func saveManifest(ms manifest.OSBuildManifest, fpath string) error {
@@ -189,7 +189,7 @@ func saveManifest(ms manifest.OSBuildManifest, fpath string) error {
 	return nil
 }
 
-func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
+func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, error) {
 	buildArch := arch.Current()
 
 	imgref := args[0]
@@ -208,7 +208,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 		// binaries inside our bib container
 		fmt.Fprintf(os.Stderr, "WARNING: target-arch is experimental and needs an installed 'qemu-user' package\n")
 		if slices.Contains(imgTypes, "iso") {
-			return nil, fmt.Errorf("cannot build iso for different target arches yet")
+			return nil, nil, fmt.Errorf("cannot build iso for different target arches yet")
 		}
 		buildArch = arch.FromString(targetArch)
 	}
@@ -216,13 +216,13 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 
 	if localStorage {
 		if err := setup.ValidateHasContainerStorageMounted(); err != nil {
-			return nil, fmt.Errorf("local storage not working, did you forget -v /var/lib/containers/storage:/var/lib/containers/storage? (%w)", err)
+			return nil, nil, fmt.Errorf("local storage not working, did you forget -v /var/lib/containers/storage:/var/lib/containers/storage? (%w)", err)
 		}
 	}
 
 	buildType, err := NewBuildType(imgTypes)
 	if err != nil {
-		return nil, fmt.Errorf("cannot detect build types %v: %w", imgTypes, err)
+		return nil, nil, fmt.Errorf("cannot detect build types %v: %w", imgTypes, err)
 	}
 
 	var config *BuildConfig
@@ -230,7 +230,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	if configFile == "" {
 		if _, err := os.Stat(configFileDefault); err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
-				return nil, fmt.Errorf("cannot find config file: %w", err)
+				return nil, nil, fmt.Errorf("cannot find config file: %w", err)
 			}
 		} else {
 			configFile = configFileDefault
@@ -239,7 +239,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	if configFile != "" {
 		config, err = loadConfig(configFile)
 		if err != nil {
-			return nil, fmt.Errorf("cannot load config: %w", err)
+			return nil, nil, fmt.Errorf("cannot load config: %w", err)
 		}
 	} else {
 		config = &BuildConfig{}
@@ -253,20 +253,20 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	// We might want to change this behaviour in the future to match podman.
 	if !localStorage {
 		if output, err := exec.Command("podman", "pull", "--arch", buildArch.String(), imgref).CombinedOutput(); err != nil {
-			return nil, fmt.Errorf("failed to pull container image: %w\n%s", err, output)
+			return nil, nil, fmt.Errorf("failed to pull container image: %w\n%s", err, output)
 		}
 	}
 
 	cntSize, err := getContainerSize(imgref)
 	if err != nil {
-		return nil, fmt.Errorf("cannot get container size: %w", err)
+		return nil, nil, fmt.Errorf("cannot get container size: %w", err)
 	}
 	filesystems := []blueprint.FilesystemCustomization{
 		{Mountpoint: "/", MinSize: cntSize * containerSizeToDiskSizeMultiplier},
 	}
 	container, err := podman_container.New(imgref)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer func() {
 		if err := container.Stop(); err != nil {
@@ -275,18 +275,18 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	}()
 
 	if err := container.CopyInto("/usr/libexec/osbuild-depsolve-dnf", "/osbuild-depsolve-dnf"); err != nil {
-		return nil, fmt.Errorf("cannot prepare depsolve in the container: %w", err)
+		return nil, nil, fmt.Errorf("cannot prepare depsolve in the container: %w", err)
 	}
 
 	// This is needed just for RHEL and RHSM in most cases, but let's run it every time in case
 	// the image has some non-standard dnf plugins.
 	if err := container.InitDNF(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	sourceinfo, err := source.LoadInfo(container.Root())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	manifestConfig := &ManifestConfig{
@@ -301,11 +301,21 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 		DepsolverCmd:   append(container.ExecArgv(), "/osbuild-depsolve-dnf"),
 	}
 
-	return makeManifest(manifestConfig, rpmCacheRoot)
+	manifest, repos, err := makeManifest(manifestConfig, rpmCacheRoot)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	mTLS, err := extractTLSKeys(container, repos)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return manifest, mTLS, nil
 }
 
 func cmdManifest(cmd *cobra.Command, args []string) error {
-	mf, err := manifestFromCobra(cmd, args)
+	mf, _, err := manifestFromCobra(cmd, args)
 	if err != nil {
 		return fmt.Errorf("cannot generate manifest: %w", err)
 	}
@@ -395,7 +405,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 
 	manifest_fname := fmt.Sprintf("manifest-%s.json", strings.Join(imgTypes, "-"))
 	fmt.Printf("Generating manifest %s\n", manifest_fname)
-	mf, err := manifestFromCobra(cmd, args)
+	mf, mTLS, err := manifestFromCobra(cmd, args)
 	if err != nil {
 		return fmt.Errorf("cannot build manifest: %w", err)
 	}
@@ -431,6 +441,18 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		// set export options for osbuild
 		osbuildEnv = []string{"OSBUILD_EXPORT_FORCE_NO_PRESERVE_OWNER=1"}
 	}
+
+	if mTLS != nil {
+		envVars, cleanup, err := prepareOsbuildMTLSConfig(mTLS)
+		if err != nil {
+			return fmt.Errorf("failed to prepare osbuild TLS keys: %w", err)
+		}
+
+		defer cleanup()
+
+		osbuildEnv = append(osbuildEnv, envVars...)
+	}
+
 	_, err = osbuild.RunOSBuild(mf, osbuildStore, outputDir, exports, nil, osbuildEnv, false, os.Stderr)
 	if err != nil {
 		return fmt.Errorf("cannot run osbuild: %w", err)
