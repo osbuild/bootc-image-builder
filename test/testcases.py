@@ -38,11 +38,9 @@ def gen_testcases(what):
         return [cnt + ",ami" for cnt in CONTAINERS_TO_TEST.values()]
     elif what == "anaconda-iso":
         test_cases = []
-        # only fedora right now, centos iso installer is broken right now:
-        # https://github.com/osbuild/bootc-image-builder/issues/157
-        cnt = CONTAINERS_TO_TEST["fedora"]
-        for img_type in INSTALLER_IMAGE_TYPES:
-            test_cases.append(f"{cnt},{img_type}")
+        for cnt in CONTAINERS_TO_TEST.values():
+            for img_type in INSTALLER_IMAGE_TYPES:
+                test_cases.append(f"{cnt},{img_type}")
         return test_cases
     elif what == "qemu-boot":
         test_cases = []
