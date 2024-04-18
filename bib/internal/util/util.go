@@ -26,3 +26,12 @@ func RunCmdSync(cmdName string, args ...string) error {
 	}
 	return nil
 }
+
+// OutputErr takes an error from exec.Command().Output() and tries
+// generate an error with stderr details
+func OutputErr(err error) error {
+	if err, ok := err.(*exec.ExitError); ok {
+		return fmt.Errorf("%w, stderr:\n%s", err, err.Stderr)
+	}
+	return err
+}
