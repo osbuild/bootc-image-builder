@@ -143,9 +143,8 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 	// to using containers storage in all code paths happened.
 	// We might want to change this behaviour in the future to match podman.
 	if !c.Local {
-		pullCmd := exec.Command("podman", "pull", "--arch", c.Architecture.String(), c.Imgref)
-		if err := pullCmd.Run(); err != nil {
-			return nil, fmt.Errorf("failed to pull container image: %w", err)
+		if output, err := exec.Command("podman", "pull", "--arch", c.Architecture.String(), c.Imgref).CombinedOutput(); err != nil {
+			return nil, fmt.Errorf("failed to pull container image: %w\n%s", err, output)
 		}
 	}
 	cntSize, err := getContainerSize(c.Imgref)
