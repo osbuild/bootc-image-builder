@@ -124,7 +124,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
 
     username = "test"
     password = "password"
-    kargs = "user.sometestkarg=sometestvalue"
+    kargs = "systemd.journald.forward_to_console=1"
 
     # params can be long and the qmp socket (that has a limit of 100ish
     # AF_UNIX) is derived from the path
