@@ -12,7 +12,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/osbuild/bootc-image-builder/bib/internal/setup"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
+
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
@@ -21,9 +24,9 @@ import (
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/rpmmd"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
+
+	"github.com/osbuild/bootc-image-builder/bib/internal/setup"
+	"github.com/osbuild/bootc-image-builder/bib/internal/util"
 )
 
 //go:embed fedora-eln.json
@@ -113,15 +116,11 @@ func loadConfig(path string) (*BuildConfig, error) {
 
 // getContainerSize returns the size of an already pulled container image in bytes
 func getContainerSize(imgref string) (uint64, error) {
-	var stdout, stderr strings.Builder
-
-	cmd := exec.Command("podman", "image", "inspect", imgref, "--format", "{{.Size}}")
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return 0, fmt.Errorf("failed inspect image: %w:\n%s", err, stderr.String())
+	output, err := exec.Command("podman", "image", "inspect", imgref, "--format", "{{.Size}}").Output()
+	if err != nil {
+		return 0, fmt.Errorf("failed inspect image: %w", util.OutputErr(err))
 	}
-	size, err := strconv.ParseUint(strings.TrimSpace(stdout.String()), 10, 64)
+	size, err := strconv.ParseUint(strings.TrimSpace(string(output)), 10, 64)
 	if err != nil {
 		return 0, fmt.Errorf("cannot parse image size: %w", err)
 	}
