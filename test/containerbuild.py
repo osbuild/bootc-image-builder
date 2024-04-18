@@ -1,4 +1,5 @@
 import os
+import platform
 import random
 import string
 import subprocess
@@ -9,12 +10,23 @@ import pytest
 
 
 @contextmanager
-def make_container(container_path):
+def make_container(container_path, arch=None):
     # BIB only supports container tags, not hashes
     container_tag = "bib-test-" + "".join(random.choices(string.digits, k=12))
+
+    if not arch:
+        # Always provide an architecture here because without that the default
+        # behavior is to pull whatever arch was pulled for this image ref
+        # last but we want "native" if nothing else is specified.
+        #
+        # Note: podman seems to translate kernel arch to go arches
+        # automatically it seems.
+        arch = platform.uname().machine
+
     subprocess.check_call([
         "podman", "build",
         "-t", container_tag,
+        "--arch", arch,
         container_path], encoding="utf8")
     yield container_tag
     subprocess.check_call(["podman", "rmi", container_tag])
