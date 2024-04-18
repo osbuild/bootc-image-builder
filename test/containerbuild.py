@@ -44,6 +44,10 @@ def build_fake_container_fixture(tmpdir_factory, build_container):
     fake_osbuild_path.write_text(textwrap.dedent("""\
     #!/bin/sh -e
 
+    # injest generated manifest from the images library, if we do not
+    # do this images may fail with "broken" pipe errors
+    cat -
+
     mkdir -p /output/qcow2
     echo "fake-disk.qcow2" > /output/qcow2/disk.qcow2
 
