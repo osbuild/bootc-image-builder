@@ -238,7 +238,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, error) {
 	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
 	localStorage, _ := cmd.Flags().GetBool("local")
 
-	if targetArch != "" {
+	if targetArch != "" && arch.FromString(targetArch) != arch.Current() {
 		// TODO: detect if binfmt_misc for target arch is
 		// available, e.g. by mounting the binfmt_misc fs into
 		// the container and inspects the files or by
