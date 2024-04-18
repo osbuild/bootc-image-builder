@@ -10,11 +10,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	main "github.com/osbuild/bootc-image-builder/bib/cmd/bootc-image-builder"
+	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/container"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/rpmmd"
+
+	main "github.com/osbuild/bootc-image-builder/bib/cmd/bootc-image-builder"
 )
 
 func TestCanChownInPathHappy(t *testing.T) {
@@ -62,7 +64,10 @@ type manifestTestCase struct {
 }
 
 func getBaseConfig() *main.ManifestConfig {
-	return &main.ManifestConfig{Imgref: "testempty"}
+	return &main.ManifestConfig{
+		Architecture: arch.ARCH_X86_64,
+		Imgref:       "testempty",
+	}
 }
 
 func getUserConfig() *main.ManifestConfig {
@@ -70,8 +75,9 @@ func getUserConfig() *main.ManifestConfig {
 	pass := "super-secret-password-42"
 	key := "ssh-ed25519 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 	return &main.ManifestConfig{
-		Imgref:    "testuser",
-		BuildType: 0,
+		Architecture: arch.ARCH_X86_64,
+		Imgref:       "testuser",
+		BuildType:    0,
 		Config: &main.BuildConfig{
 			Blueprint: &blueprint.Blueprint{
 				Customizations: &blueprint.Customizations{
