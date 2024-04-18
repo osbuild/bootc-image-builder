@@ -413,7 +413,6 @@ def test_image_build_without_se_linux_denials(image_type):
         f"denials in log {image_type.journal_output}"
 
 
-@pytest.mark.skip(reason="see https://github.com/osbuild/bootc-image-builder/issues/233")
 @pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
 @pytest.mark.parametrize("image_type", gen_testcases("anaconda-iso"), indirect=["image_type"])
 def test_iso_installs(image_type):
