@@ -68,12 +68,14 @@ func getBaseConfig() *main.ManifestConfig {
 	return &main.ManifestConfig{
 		Architecture: arch.ARCH_X86_64,
 		Imgref:       "testempty",
-		Info: &source.Info{
-			ID:         "fedora",
-			VersionID:  "40",
-			Name:       "Fedora Linux",
+		SourceInfo: &source.Info{
+			OSRelease: source.OSRelease{
+				ID:         "fedora",
+				VersionID:  "40",
+				Name:       "Fedora Linux",
+				PlatformID: "platform:f40",
+			},
 			UEFIVendor: "fedora",
-			PlatformID: "platform:f40",
 		},
 
 		// We need the real path here, because we are creating real manifests
@@ -102,12 +104,14 @@ func getUserConfig() *main.ManifestConfig {
 				},
 			},
 		},
-		Info: &source.Info{
-			ID:         "fedora",
-			VersionID:  "40",
-			Name:       "Fedora Linux",
+		SourceInfo: &source.Info{
+			OSRelease: source.OSRelease{
+				ID:         "fedora",
+				VersionID:  "40",
+				Name:       "Fedora Linux",
+				PlatformID: "platform:f40",
+			},
 			UEFIVendor: "fedora",
-			PlatformID: "platform:f40",
 		},
 
 		// We need the real path here, because we are creating real manifests

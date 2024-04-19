@@ -46,7 +46,7 @@ type ManifestConfig struct {
 	DistroDefPaths []string
 
 	// Extracted information about the source container image
-	Info *source.Info
+	SourceInfo *source.Info
 
 	// Command to run the depsolver
 	DepsolverCmd []string
@@ -152,7 +152,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		return nil, fmt.Errorf("pipeline: no base image defined")
 	}
 
-	imageDef, err := distrodef.LoadImageDef(c.DistroDefPaths, c.Info.ID, "anaconda-iso")
+	imageDef, err := distrodef.LoadImageDef(c.DistroDefPaths, c.SourceInfo.OSRelease.ID, "anaconda-iso")
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +169,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img := image.NewAnacondaContainerInstaller(containerSource, "")
 	img.SquashfsCompression = "zstd"
 
-	img.Product = c.Info.Name
+	img.Product = c.SourceInfo.OSRelease.Name
 
 	img.ExtraBasePackages = rpmmd.PackageSet{
 		Include: imageDef.Packages,
@@ -202,18 +202,18 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 				ImageFormat: platform.FORMAT_ISO,
 			},
 			BIOS:       true,
-			UEFIVendor: c.Info.UEFIVendor,
+			UEFIVendor: c.SourceInfo.UEFIVendor,
 		}
 	case arch.ARCH_AARCH64:
 		// aarch64 always uses UEFI, so let's enforce the vendor
-		if c.Info.UEFIVendor == "" {
+		if c.SourceInfo.UEFIVendor == "" {
 			return nil, fmt.Errorf("UEFI vendor must be set for aarch64 ISO")
 		}
 		img.Platform = &platform.Aarch64{
 			BasePlatform: platform.BasePlatform{
 				ImageFormat: platform.FORMAT_ISO,
 			},
-			UEFIVendor: c.Info.UEFIVendor,
+			UEFIVendor: c.SourceInfo.UEFIVendor,
 		}
 	}
 
