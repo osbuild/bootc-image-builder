@@ -285,6 +285,12 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 
 	img.Users = users.UsersFromBP(customizations.GetUsers())
 	img.Groups = users.GroupsFromBP(customizations.GetGroups())
+	// XXX: this should really be done by images, the consumer should not
+	// need to know these details. so once images is fixed drop it here
+	// again.
+	if len(img.Users) > 0 || len(img.Groups) > 0 {
+		img.AdditionalAnacondaModules = append(img.AdditionalAnacondaModules, "org.fedoraproject.Anaconda.Modules.Users")
+	}
 
 	switch c.Architecture {
 	case arch.ARCH_X86_64:
