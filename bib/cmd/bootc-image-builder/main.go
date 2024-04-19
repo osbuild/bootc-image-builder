@@ -124,7 +124,12 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 	}
 
 	// depsolve packages
-	solver := dnfjson.NewSolver(c.Info.PlatformID, c.Info.VersionID, c.Architecture.String(), fmt.Sprintf("%s-%s", c.Info.ID, c.Info.VersionID), cacheRoot)
+	solver := dnfjson.NewSolver(
+		c.SourceInfo.OSRelease.PlatformID,
+		c.SourceInfo.OSRelease.VersionID,
+		c.Architecture.String(),
+		fmt.Sprintf("%s-%s", c.SourceInfo.OSRelease.ID, c.SourceInfo.OSRelease.VersionID),
+		cacheRoot)
 	solver.SetDNFJSONPath(c.DepsolverCmd[0], c.DepsolverCmd[1:]...)
 	solver.SetRootDir("/")
 	depsolvedSets := make(map[string][]rpmmd.PackageSpec)
@@ -297,7 +302,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		TLSVerify:      tlsVerify,
 		Filesystems:    filesystems,
 		DistroDefPaths: distroDefPaths,
-		Info:           sourceinfo,
+		SourceInfo:     sourceinfo,
 		DepsolverCmd:   append(container.ExecArgv(), "/osbuild-depsolve-dnf"),
 	}
 

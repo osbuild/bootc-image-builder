@@ -74,11 +74,11 @@ func TestLoadInfo(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			assert.Equal(t, c.id, info.ID)
-			assert.Equal(t, c.versionID, info.VersionID)
-			assert.Equal(t, c.name, info.Name)
+			assert.Equal(t, c.id, info.OSRelease.ID)
+			assert.Equal(t, c.versionID, info.OSRelease.VersionID)
+			assert.Equal(t, c.name, info.OSRelease.Name)
 			assert.Equal(t, c.uefiVendor, info.UEFIVendor)
-			assert.Equal(t, c.platformID, info.PlatformID)
+			assert.Equal(t, c.platformID, info.OSRelease.PlatformID)
 
 		})
 	}
