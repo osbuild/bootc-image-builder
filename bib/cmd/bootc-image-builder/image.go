@@ -6,6 +6,8 @@ import (
 	"math"
 	"math/big"
 	"math/rand"
+	"strconv"
+	"strings"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/distrodef"
 	"github.com/osbuild/bootc-image-builder/bib/internal/source"
@@ -19,6 +21,7 @@ import (
 	"github.com/osbuild/images/pkg/platform"
 	"github.com/osbuild/images/pkg/rpmmd"
 	"github.com/osbuild/images/pkg/runner"
+	"github.com/sirupsen/logrus"
 )
 
 // TODO: Auto-detect this from container image metadata
@@ -221,13 +224,76 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.Filename = "install.iso"
 
 	mf := manifest.New()
-	// The following two lines are slightly hacky, but converting os-release
-	// into these "enums" cannot be done generically, so let's use use the generic
-	// options, and rely on tests to catch any issues.
-	mf.Distro = manifest.DISTRO_NULL
-	runner := &runner.Linux{}
-	_, err = img.InstantiateManifest(&mf, nil, runner, rng)
+
+	foundDistro, foundRunner, err := getDistroAndRunner(c.SourceInfo.OSRelease)
+	if err != nil {
+		return nil, fmt.Errorf("failed to infer distro and runner: %w", err)
+	}
+	mf.Distro = foundDistro
+
+	_, err = img.InstantiateManifest(&mf, nil, foundRunner, rng)
 	return &mf, err
+}
+
+func getDistroAndRunner(osRelease source.OSRelease) (manifest.Distro, runner.Runner, error) {
+	switch osRelease.ID {
+	case "fedora":
+		version, err := strconv.ParseUint(osRelease.VersionID, 10, 64)
+		if err != nil {
+			return manifest.DISTRO_NULL, nil, fmt.Errorf("cannot parse Fedora version (%s): %w", osRelease.VersionID, err)
+		}
+
+		return manifest.DISTRO_FEDORA, &runner.Fedora{
+			Version: version,
+		}, nil
+	case "centos":
+		version, err := strconv.ParseUint(osRelease.VersionID, 10, 64)
+		if err != nil {
+			return manifest.DISTRO_NULL, nil, fmt.Errorf("cannot parse CentOS version (%s): %w", osRelease.VersionID, err)
+		}
+		r := &runner.CentOS{
+			Version: version,
+		}
+		switch version {
+		case 9:
+			return manifest.DISTRO_EL9, r, nil
+		case 10:
+			return manifest.DISTRO_EL10, r, nil
+		default:
+			logrus.Warnf("Unknown CentOS version %d, using default distro for manifest generation", version)
+			return manifest.DISTRO_NULL, r, nil
+		}
+
+	case "rhel":
+		versionParts := strings.Split(osRelease.VersionID, ".")
+		if len(versionParts) != 2 {
+			return manifest.DISTRO_NULL, nil, fmt.Errorf("invalid RHEL version format: %s", osRelease.VersionID)
+		}
+		major, err := strconv.ParseUint(versionParts[0], 10, 64)
+		if err != nil {
+			return manifest.DISTRO_NULL, nil, fmt.Errorf("cannot parse RHEL major version (%s): %w", versionParts[0], err)
+		}
+		minor, err := strconv.ParseUint(versionParts[1], 10, 64)
+		if err != nil {
+			return manifest.DISTRO_NULL, nil, fmt.Errorf("cannot parse RHEL minor version (%s): %w", versionParts[1], err)
+		}
+		r := &runner.RHEL{
+			Major: major,
+			Minor: minor,
+		}
+		switch major {
+		case 9:
+			return manifest.DISTRO_EL9, r, nil
+		case 10:
+			return manifest.DISTRO_EL10, r, nil
+		default:
+			logrus.Warnf("Unknown RHEL version %d, using default distro for manifest generation", major)
+			return manifest.DISTRO_NULL, r, nil
+		}
+	}
+
+	logrus.Warnf("Unknown distro %s, using default runner", osRelease.ID)
+	return manifest.DISTRO_NULL, &runner.Linux{}, nil
 }
 
 func createRand() *rand.Rand {
