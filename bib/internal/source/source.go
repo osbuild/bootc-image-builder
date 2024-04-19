@@ -9,12 +9,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type Info struct {
+type OSRelease struct {
+	PlatformID string
 	ID         string
 	VersionID  string
 	Name       string
+}
+
+type Info struct {
+	OSRelease  OSRelease
 	UEFIVendor string
-	PlatformID string
 }
 
 func validateOSRelease(osrelease map[string]string) error {
@@ -64,10 +68,13 @@ func LoadInfo(root string) (*Info, error) {
 	}
 
 	return &Info{
-		ID:         osrelease["ID"],
-		VersionID:  osrelease["VERSION_ID"],
-		Name:       osrelease["NAME"],
-		PlatformID: osrelease["PLATFORM_ID"],
+		OSRelease: OSRelease{
+			ID:         osrelease["ID"],
+			VersionID:  osrelease["VERSION_ID"],
+			Name:       osrelease["NAME"],
+			PlatformID: osrelease["PLATFORM_ID"],
+		},
+
 		UEFIVendor: vendor,
 	}, nil
 }
