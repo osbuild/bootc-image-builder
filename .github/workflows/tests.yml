@@ -95,17 +95,23 @@ jobs:
       run: |
         # make sure test deps are available for root
         sudo -E pip install --user -r test/requirements.txt
-        # podman needs (parts of) the environment but will break when
-        # XDG_RUNTIME_DIR is set.
-        # TODO: figure out what exactly podman needs
+    - name: Workarounds for GH runner diskspace
+      run: |
         # use custom basetemp here because /var/tmp is on a smaller disk
         # than /mnt
         sudo mkdir -p /mnt/var/tmp/bib-tests
+        # on GH runners /mnt has 70G free space, use that for our container
+        # storage
+        sudo mkdir -p /mnt/var/lib/containers
+        sudo mount -o bind /mnt/var/lib/containers /var/lib/containers 
     - name: Run tests
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       run: |
+        # podman needs (parts of) the environment but will break when
+        # XDG_RUNTIME_DIR is set.
+        # TODO: figure out what exactly podman needs
         sudo -E XDG_RUNTIME_DIR= pytest-3 --basetemp=/mnt/var/tmp/bib-tests
     - name: Diskspace (after)
       if: ${{ always() }}
