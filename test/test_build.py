@@ -243,7 +243,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
             "-v", f"{config_json_path}:/config.json:ro",
             "-v", f"{output_path}:/output",
-            "-v", "/store",  # share the cache between builds
+            "-v", "/var/tmp/osbuild-test-store:/store",  # share the cache between builds
         ]
 
         # we need to mount the host's container store
