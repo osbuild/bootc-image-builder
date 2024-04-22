@@ -103,7 +103,14 @@ jobs:
         # on GH runners /mnt has 70G free space, use that for our container
         # storage
         sudo mkdir -p /mnt/var/lib/containers
-        sudo mount -o bind /mnt/var/lib/containers /var/lib/containers 
+        sudo mount -o bind /mnt/var/lib/containers /var/lib/containers
+    - run: |
+        mkdir -p /var/tmp/osbuild-test-store
+    - name: Cache osbuild env
+      uses: actions/cache@v4
+      with:
+        path: /var/tmp/osbuild-test-store
+        key: no-key-needed-here
     - name: Run tests
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
