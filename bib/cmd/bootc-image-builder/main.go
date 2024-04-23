@@ -299,6 +299,10 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 			logrus.Warnf("error stopping container: %v", err)
 		}
 	}()
+	rootfsType, err := container.RootfsType()
+	if err != nil {
+		return nil, nil, fmt.Errorf("cannot get rootfs type for container: %w", err)
+	}
 
 	if err := container.CopyInto("/usr/libexec/osbuild-depsolve-dnf", "/osbuild-depsolve-dnf"); err != nil {
 		return nil, nil, fmt.Errorf("cannot prepare depsolve in the container: %w", err)
@@ -325,6 +329,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		DistroDefPaths: distroDefPaths,
 		SourceInfo:     sourceinfo,
 		DepsolverCmd:   append(container.ExecArgv(), "/osbuild-depsolve-dnf"),
+		RootFSType:     rootfsType,
 	}
 
 	manifest, repos, err := makeManifest(manifestConfig, rpmCacheRoot)
