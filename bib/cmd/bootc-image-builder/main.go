@@ -303,6 +303,16 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot get rootfs type for container: %w", err)
 	}
+	// TODO: on a cross arch build we need to be conservative,
+	// i.e.  we can only use the default ext4 because if xfs is
+	// select we run into the issue that mkfs.xfs calls
+	// "ioctl(BLKBSZSET)" which is missing in qemu-user, once
+	// https://www.mail-archive.com/qemu-devel@nongnu.org/msg1037409.html
+	// is merged we can remove the following code
+	if cntArch != arch.Current() && rootfsType != "ext4" {
+		logrus.Warningf("container prefered root filesystem %q cannot be used during cross arch build", rootfsType)
+		rootfsType = ""
+	}
 
 	if err := container.CopyInto("/usr/libexec/osbuild-depsolve-dnf", "/osbuild-depsolve-dnf"); err != nil {
 		return nil, nil, fmt.Errorf("cannot prepare depsolve in the container: %w", err)
