@@ -136,6 +136,10 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
     output_path = shared_tmpdir / format(abs(hash(container_ref + str(target_arch))), "x")
     output_path.mkdir(exist_ok=True)
 
+    # make sure that the test store exists, because podman refuses to start if the source directory for a volume
+    # doesn't exist
+    pathlib.Path("/var/tmp/osbuild-test-store").mkdir(exist_ok=True, parents=True)
+
     journal_log_path = output_path / "journal.log"
     bib_output_path = output_path / "bib-output.log"
     artifact = {
