@@ -1,10 +1,15 @@
 package container
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+
+	"golang.org/x/exp/slices"
+
+	"github.com/osbuild/bootc-image-builder/bib/internal/util"
 )
 
 // Container is a simpler wrapper around a running podman container.
@@ -125,8 +130,44 @@ func (c *Container) ExecArgv() []string {
 // The implementation is simple: We just run plain `dnf` in the container.
 func (c *Container) InitDNF() error {
 	if output, err := exec.Command("podman", "exec", c.id, "dnf").CombinedOutput(); err != nil {
-		return fmt.Errorf("initializing dnf in %s container failed: %w\noutput:\n%s", c.id, err, output)
+		return fmt.Errorf("initializing dnf in %s container failed: %w\noutput:\n%s", c.id, err, string(output))
 	}
 
 	return nil
+}
+
+func (c *Container) RootfsType() (string, error) {
+	output, err := exec.Command("podman", "exec", c.id, "bootc", "install", "print-configuration").Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to run bootc install print-configuration: %w", util.OutputErr(err))
+	}
+
+	var bootcConfig struct {
+		Filesystem struct {
+			Root struct {
+				Type string `json:"type"`
+			} `json:"root"`
+		} `json:"filesystem"`
+	}
+
+	if err := json.Unmarshal(output, &bootcConfig); err != nil {
+		return "", fmt.Errorf("failed to unmarshal bootc configuration: %w", err)
+	}
+
+	// filesystem.root.type is the preferred way instead of the old root-fs-type top-level key.
+	// See https://github.com/containers/bootc/commit/558cd4b1d242467e0ffec77fb02b35166469dcc7
+	fsType := bootcConfig.Filesystem.Root.Type
+	// Note that these are the only filesystems that the "images" library
+	// knows how to handle, i.e. how to construct the required osbuild
+	// stages for.
+	// TODO: move this into a helper in "images" so that there is only
+	// a single place that needs updating when we add e.g. btrfs or
+	// bcachefs
+	supportedFS := []string{"ext4", "xfs"}
+
+	if !slices.Contains(supportedFS, fsType) {
+		return "", fmt.Errorf("unsupported root filesystem type: %s, supported: %s", fsType, strings.Join(supportedFS, ", "))
+	}
+
+	return fsType, nil
 }
