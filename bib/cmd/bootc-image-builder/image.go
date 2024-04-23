@@ -53,6 +53,9 @@ type ManifestConfig struct {
 
 	// Command to run the depsolver
 	DepsolverCmd []string
+
+	// RootFSType specifies the filesystem type for the root partition
+	RootFSType string
 }
 
 func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
@@ -121,6 +124,19 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 	if !ok {
 		return nil, fmt.Errorf("pipelines: no partition tables defined for %s", c.Architecture)
 	}
+	// XXX: extract into helper
+	if c.RootFSType != "" {
+		rootMountable := basept.FindMountable("/")
+		if rootMountable == nil {
+			return nil, fmt.Errorf("no root filesystem defined in the partition table")
+		}
+		rootFS, isFS := rootMountable.(*disk.Filesystem)
+		if !isFS {
+			return nil, fmt.Errorf("root mountable is not an ordinary filesystem (btrfs is not yet supported)")
+		}
+		rootFS.Type = c.RootFSType
+	}
+
 	pt, err := disk.NewPartitionTable(&basept, c.Filesystems, DEFAULT_SIZE, disk.RawPartitioningMode, nil, rng)
 	if err != nil {
 		return nil, err
