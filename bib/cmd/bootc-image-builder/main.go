@@ -257,7 +257,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	// to using containers storage in all code paths happened.
 	// We might want to change this behaviour in the future to match podman.
 	if !localStorage {
-		if output, err := exec.Command("podman", "pull", "--arch", buildArch.String(), imgref).CombinedOutput(); err != nil {
+		if output, err := exec.Command("podman", "pull", "--arch", buildArch.String(), fmt.Sprintf("--tls-verify=%v", tlsVerify), imgref).CombinedOutput(); err != nil {
 			return nil, nil, fmt.Errorf("failed to pull container image: %w\n%s", err, output)
 		}
 	}
