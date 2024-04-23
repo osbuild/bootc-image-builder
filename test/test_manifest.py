@@ -133,3 +133,37 @@ def test_manifest_cross_arch_check(tmp_path, build_container):
                 build_container,
             ], check=True, capture_output=True, encoding="utf8")
         assert 'image found is for unexpected architecture "x86_64"' in exc.value.stderr
+
+
+def find_rootfs_type_from(manifest_str):
+    manifest = json.loads(manifest_str)
+    for pipl in manifest["pipelines"]:
+        if pipl["name"] == "image":
+            for st in pipl["stages"]:
+                if st["type"].startswith("org.osbuild.mkfs."):
+                    if st.get("options", {}).get("label") == "root":
+                        return st["type"].rpartition(".")[2]
+    raise ValueError(f"cannot find rootfs type in manifest:\n{manifest_str}")
+
+
+@pytest.mark.parametrize("testcase_ref", gen_testcases("manifest"))
+def test_manifest_rootfs_respected(build_container, testcase_ref):
+    # testcases_ref has the form "container_url,img_type1+img_type2,arch"
+    container_ref = testcase_ref.split(",")[0]
+
+    # TODO: derive container and fake "bootc install print-configuration"?
+    output = subprocess.check_output([
+        "podman", "run", "--rm",
+        "--privileged",
+        "--security-opt", "label=type:unconfined_t",
+        f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "{container_ref}"]',
+        build_container,
+    ])
+    rootfs_type = find_rootfs_type_from(output)
+    match container_ref:
+        case "quay.io/centos-bootc/centos-bootc:stream9":
+            assert rootfs_type == "xfs"
+        case "quay.io/centos-bootc/fedora-bootc:eln":
+            assert rootfs_type == "xfs"
+        case _:
+            pytest.fail(f"unknown container_ref {container_ref} please update test")
