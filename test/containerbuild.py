@@ -40,6 +40,20 @@ def build_fake_container_fixture(tmpdir_factory, build_container):
     """Build a container with a fake osbuild and returns the name"""
     tmp_path = tmpdir_factory.mktemp("build-fake-container")
 
+    # see https://github.com/osbuild/osbuild/blob/main/osbuild/testutil/__init__.py#L91
+    tracing_podman_path = tmp_path / "tracing-podman"
+    tracing_podman_path.write_text(textwrap.dedent("""\
+    #!/bin/sh -e
+
+    TRACE_PATH=/output/"$(basename $0)".log
+    for arg in "$@"; do
+        echo "$arg" >> "$TRACE_PATH"
+    done
+    # extra separator to differenciate between calls
+    echo >> "$TRACE_PATH"
+    exec "$0".real "$@"
+    """), encoding="utf8")
+
     fake_osbuild_path = tmp_path / "fake-osbuild"
     fake_osbuild_path.write_text(textwrap.dedent("""\
     #!/bin/sh -e
@@ -60,6 +74,9 @@ def build_fake_container_fixture(tmpdir_factory, build_container):
     FROM {build_container}
     COPY fake-osbuild /usr/bin/osbuild
     RUN chmod 755 /usr/bin/osbuild
+    COPY --from={build_container} /usr/bin/podman /usr/bin/podman.real
+    COPY tracing-podman /usr/bin/podman
+    RUN chmod 755 /usr/bin/podman
     """), encoding="utf8")
 
     container_tag = "bootc-image-builder-test-faked-osbuild"
