@@ -23,10 +23,10 @@ $ podman machine start
 
 ## 🚀 Examples
 
-The following example builds a [Fedora ELN](https://docs.fedoraproject.org/en-US/eln/) bootable container into a QCOW2 image for the architecture you're running
+The following example builds a [CentoOS Stream9](https://centos.org/stream9/) bootable container into a QCOW2 image for the architecture you're running
 the command on.
 
-The `fedora-bootc:eln` base image does not include a default user. This example injects a [user configuration file](#-build-config)
+The `centos-bootc:stream9` base image does not include a default user. This example injects a [user configuration file](#-build-config)
 by adding a volume-mount for the local file as well as the `--config` flag to the bootc-image-builder container.
 
 The following command will create a QCOW2 disk image. First, create `./config.json` as described above to configure user access.
@@ -42,7 +42,7 @@ sudo podman run \
     -v $(pwd)/output:/output \
     quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
-    quay.io/centos-bootc/fedora-bootc:eln
+    quay.io/centos-bootc/centos-bootc:stream9
 ```
 
 ### Using local containers
@@ -219,10 +219,10 @@ For example:
   --env AWS_PROFILE=default \
   quay.io/centos-bootc/bootc-image-builder:latest \
   --type ami \
-  --aws-ami-name fedora-bootc-ami \
+  --aws-ami-name centos-bootc-ami \
   --aws-bucket fedora-bootc-bucket \
   --aws-region us-east-1 \
-  quay.io/centos-bootc/fedora-bootc:eln
+  quay.io/centos-bootc/centos-bootc:stream9
 ```
 
 Notes:
@@ -258,10 +258,10 @@ $ sudo podman run \
   --env-file=aws.secrets \
   quay.io/centos-bootc/bootc-image-builder:latest \
   --type ami \
-  --aws-ami-name fedora-bootc-ami \
-  --aws-bucket fedora-bootc-bucket \
+  --aws-ami-name centos-bootc-ami \
+  --aws-bucket centos-bootc-bucket \
   --aws-region us-east-1 \
-  quay.io/centos-bootc/fedora-bootc:eln
+  quay.io/centos-bootc/centos-bootc:stream9
 ```
 
 ## 💽 Volumes
@@ -315,7 +315,7 @@ sudo podman run \
     quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
     --config /config.json \
-    quay.io/centos-bootc/fedora-bootc:eln
+    quay.io/centos-bootc/centos-bootc:stream9
 ```
 
 ### Users (`user`, array)
@@ -382,11 +382,11 @@ ssh -i /path/to/private/ssh-key alice@ip-address
 ```
 
 Note that if you do not provide a password for the provided user, `sudo` will not work unless passwordless sudo
-is configured. The base image `quay.io/centos-bootc/fedora-bootc:eln` does not configure passwordless sudo.
+is configured. The base image `quay.io/centos-bootc/centos-bootc:stream9` does not configure passwordless sudo.
 This can be configured in a derived bootc container by including the following in a Containerfile.
 
 ```dockerfile
-FROM quay.io/centos-bootc/fedora-bootc:eln
+FROM quay.io/centos-bootc/centos-bootc:stream9
 ADD wheel-passwordless-sudo /etc/sudoers.d/wheel-passwordless-sudo
 ```
 
