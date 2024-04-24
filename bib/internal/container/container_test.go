@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -120,4 +121,25 @@ func TestCopyInto(t *testing.T) {
 	testfileContent, err := os.ReadFile(testfileInContainer)
 	require.NoError(t, err)
 	require.Equal(t, "Hello, world!", string(testfileContent))
+}
+
+func makeFakePodman(t *testing.T, content string) {
+	tmpdir := t.TempDir()
+	t.Setenv("PATH", tmpdir+":"+os.Getenv("PATH"))
+
+	err := os.WriteFile(filepath.Join(tmpdir, "podman"), []byte(content), 0755)
+	assert.NoError(t, err)
+}
+func TestNewFakedUnhappy(t *testing.T) {
+	fakePodman := `#!/bin/sh
+if [ "$1" = "mount" ]; then
+    >&2 echo "forced-crash"
+    exit 2
+fi
+exec /usr/bin/podman "$@"
+`
+	makeFakePodman(t, fakePodman)
+	_, err := New(testingImage)
+	assert.ErrorContains(t, err, fmt.Sprintf("mounting %s container failed: ", testingImage))
+	assert.ErrorContains(t, err, "stderr:\nforced-crash")
 }
