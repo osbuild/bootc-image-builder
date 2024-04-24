@@ -20,7 +20,7 @@ type Container struct {
 // NB:
 // - --net host is used to make networking work in a nested container
 // - /run/secrets is mounted from the host to make sure RHSM credentials are available
-func New(ref string) (c *Container, err error) {
+func New(ref string) (*Container, error) {
 	const secretDir = "/run/secrets"
 	secretVolume := fmt.Sprintf("%s:%s", secretDir, secretDir)
 
@@ -48,7 +48,7 @@ func New(ref string) (c *Container, err error) {
 		return nil, fmt.Errorf("running %s container failed with generic error: %w", ref, err)
 	}
 
-	c = &Container{}
+	c := &Container{}
 	c.id = strings.TrimSpace(string(output))
 	// Ensure that the container is stopped when this function errors
 	defer func() {
@@ -69,7 +69,7 @@ func New(ref string) (c *Container, err error) {
 	}
 	c.root = strings.TrimSpace(string(output))
 
-	return
+	return c, err
 }
 
 // Stop stops the container. Since New() creates a container with --rm, this
