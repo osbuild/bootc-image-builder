@@ -17,6 +17,7 @@ import (
 	"github.com/osbuild/images/pkg/rpmmd"
 
 	main "github.com/osbuild/bootc-image-builder/bib/cmd/bootc-image-builder"
+	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
 	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 )
 
@@ -91,7 +92,7 @@ func getUserConfig() *main.ManifestConfig {
 		Architecture: arch.ARCH_X86_64,
 		Imgref:       "testuser",
 		BuildType:    0,
-		Config: &main.BuildConfig{
+		Config: &buildconfig.BuildConfig{
 			Blueprint: &blueprint.Blueprint{
 				Customizations: &blueprint.Customizations{
 					User: []blueprint.UserCustomization{

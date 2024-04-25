@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
 	"github.com/osbuild/bootc-image-builder/bib/internal/distrodef"
 	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 	"github.com/osbuild/images/pkg/arch"
@@ -34,7 +35,7 @@ type ManifestConfig struct {
 	BuildType BuildType
 
 	// Build config
-	Config *BuildConfig
+	Config *buildconfig.BuildConfig
 
 	// CPU architecture of the image
 	Architecture arch.Arch
