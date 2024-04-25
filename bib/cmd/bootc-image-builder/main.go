@@ -1,9 +1,7 @@
 package main
 
 import (
-	_ "embed"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -25,6 +23,7 @@ import (
 	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/rpmmd"
 
+	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
 	podman_container "github.com/osbuild/bootc-image-builder/bib/internal/container"
 	"github.com/osbuild/bootc-image-builder/bib/internal/setup"
 	"github.com/osbuild/bootc-image-builder/bib/internal/source"
@@ -32,9 +31,6 @@ import (
 )
 
 const (
-	// If present, this config will be picked up
-	configFileDefault = "/config.json"
-
 	// As a baseline heuristic we double the size of
 	// the input container to support in-place updates.
 	// This is planned to be more configurable in the
@@ -49,10 +45,6 @@ var distroDefPaths = []string{
 	"./data/defs",
 	"./bib/data/defs",
 	"/usr/share/bootc-image-builder/defs",
-}
-
-type BuildConfig struct {
-	Blueprint *blueprint.Blueprint `json:"blueprint,omitempty"`
 }
 
 var (
@@ -81,26 +73,6 @@ func canChownInPath(path string) (bool, error) {
 		}
 	}()
 	return checkFile.Chown(osGetuid(), osGetgid()) == nil, nil
-}
-
-func loadConfig(path string) (*BuildConfig, error) {
-	fp, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer fp.Close()
-
-	dec := json.NewDecoder(fp)
-	dec.DisallowUnknownFields()
-
-	var conf BuildConfig
-	if err := dec.Decode(&conf); err != nil {
-		return nil, err
-	}
-	if dec.More() {
-		return nil, fmt.Errorf("multiple configuration objects or extra data found in %q", path)
-	}
-	return &conf, nil
 }
 
 // getContainerArch returns the architecture of an already pulled container image
@@ -212,7 +184,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	cntArch := arch.Current()
 
 	imgref := args[0]
-	configFile, _ := cmd.Flags().GetString("config")
+	userConfigFile, _ := cmd.Flags().GetString("config")
 	imgTypes, _ := cmd.Flags().GetStringArray("type")
 	rpmCacheRoot, _ := cmd.Flags().GetString("rpmmd")
 	targetArch, _ := cmd.Flags().GetString("target-arch")
@@ -244,24 +216,9 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		return nil, nil, fmt.Errorf("cannot detect build types %v: %w", imgTypes, err)
 	}
 
-	var config *BuildConfig
-	// If we're not passed a config path explicitly, use the default.
-	if configFile == "" {
-		if _, err := os.Stat(configFileDefault); err != nil {
-			if !errors.Is(err, os.ErrNotExist) {
-				return nil, nil, fmt.Errorf("cannot find config file: %w", err)
-			}
-		} else {
-			configFile = configFileDefault
-		}
-	}
-	if configFile != "" {
-		config, err = loadConfig(configFile)
-		if err != nil {
-			return nil, nil, fmt.Errorf("cannot load config: %w", err)
-		}
-	} else {
-		config = &BuildConfig{}
+	config, err := buildconfig.ReadWithFallback(userConfigFile)
+	if err != nil {
+		return nil, nil, fmt.Errorf("cannot read config: %w", err)
 	}
 
 	// If --local wasn't given, always pull the container.
