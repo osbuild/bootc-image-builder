@@ -86,3 +86,22 @@ def test_bib_tls_opts(tmp_path, container_storage, build_fake_container, tls_opt
     ] + tls_opt)
     podman_log = output_path / "podman.log"
     assert expected_cmdline in podman_log.read_text()
+
+
+@pytest.mark.parametrize("with_debug", [False, True])
+def test_bib_log_level_smoke(tmp_path, container_storage, build_fake_container, with_debug):
+    output_path = tmp_path / "output"
+    output_path.mkdir(exist_ok=True)
+
+    log_debug = ["--log-level", "debug"] if with_debug else []
+    res = subprocess.run([
+        "podman", "run", "--rm",
+        "--privileged",
+        "--security-opt", "label=type:unconfined_t",
+        "-v", f"{container_storage}:/var/lib/containers/storage",
+        "-v", f"{output_path}:/output",
+        build_fake_container,
+        *log_debug,
+        "quay.io/centos-bootc/centos-bootc:stream9"
+    ], check=True, capture_output=True, text=True)
+    assert ('level=debug' in res.stderr) == with_debug
