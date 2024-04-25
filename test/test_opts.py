@@ -1,3 +1,4 @@
+import os
 import platform
 import subprocess
 
@@ -8,6 +9,10 @@ from containerbuild import build_container_fixture, build_fake_container_fixture
 
 @pytest.fixture(name="container_storage", scope="session")
 def container_storage_fixture(tmp_path_factory):
+    # share systemwide storage when running as root, this makes the GH
+    # tests faster because they already have the test images used here
+    if os.getuid() == 0:
+        return "/var/lib/containers/storage"
     return tmp_path_factory.mktemp("storage")
 
 
