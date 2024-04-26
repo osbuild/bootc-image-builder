@@ -29,7 +29,7 @@ the command on.
 The `centos-bootc:stream9` base image does not include a default user. This example injects a [user configuration file](#-build-config)
 by adding a volume-mount for the local file as well as the `--config` flag to the bootc-image-builder container.
 
-The following command will create a QCOW2 disk image. First, create `./config.json` as described above to configure user access.
+The following command will create a QCOW2 disk image. First, create `./config.toml` as described above to configure user access.
 
 ```bash
 sudo podman run \
@@ -38,7 +38,7 @@ sudo podman run \
     --privileged \
     --pull=newer \
     --security-opt label=type:unconfined_t \
-    -v $(pwd)/config.json:/config.json \
+    -v $(pwd)/config.toml:/config.toml \
     -v $(pwd)/output:/output \
     quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
@@ -60,12 +60,12 @@ sudo podman run \
     --privileged \
     --pull=newer \
     --security-opt label=type:unconfined_t \
-    -v $(pwd)/config.json:/config.json \
+    -v $(pwd)/config.toml:/config.toml \
     -v $(pwd)/output:/output \
     -v /var/lib/containers/storage:/var/lib/containers/storage \
     quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
-    --config /config.json \
+    --config /config.toml \
     --local \
     localhost/bootc:eln
 ```
@@ -133,7 +133,7 @@ Usage:
 
 Flags:
       --chown string           chown the ouput directory to match the specified UID:GID
-      --config string          build config file (default: /config.json if present)
+      --config string          build config file (default: /config.toml if present)
       --tls-verify             require HTTPS and verify certificates when contacting registries (default true)
       --type string            image type to build [qcow2, ami] (default "qcow2")
       --target-arch string     architecture to build image for (default is the native architecture)
@@ -276,29 +276,18 @@ The following volumes can be mounted inside the container:
 
 ## 📝 Build config
 
-A build config is a JSON file with customizations for the resulting image. A path to the file is passed via  the `--config` argument. The customizations are specified under a `blueprint.customizations` object.
+A build config is a Toml (or JSON) file with customizations for the resulting image. A path to the file is passed via  the `--config` argument. The customizations are specified under a `blueprint.customizations` object.
 
 As an example, let's show how you can add a user to the image:
 
-Firstly create a file `./config.json` and put the following content into it:
+Firstly create a file `./config.toml` and put the following content into it:
 
 ```json
-{
-  "blueprint": {
-    "customizations": {
-      "user": [
-        {
-          "name": "alice",
-          "password": "bob",
-          "key": "ssh-rsa AAA ... user@email.com",
-          "groups": [
-            "wheel"
-          ]
-        }
-      ]
-    }
-  }
-}
+[[blueprint.customizations.user]]
+name = "alice"
+password = "bob"
+key = "ssh-rsa AAA ... user@email.com"
+groups = ["wheel"]
 ```
 
 Then, run `bootc-image-builder` with the following arguments:
@@ -310,11 +299,10 @@ sudo podman run \
     --privileged \
     --pull=newer \
     --security-opt label=type:unconfined_t \
-    -v $(pwd)/config.json:/config.json \
+    -v $(pwd)/config.toml:/config.toml \
     -v $(pwd)/output:/output \
     quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
-    --config /config.json \
     quay.io/centos-bootc/centos-bootc:stream9
 ```
 
