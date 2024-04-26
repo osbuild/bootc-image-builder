@@ -84,8 +84,8 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 	}
 
 	var customizations *blueprint.Customizations
-	if c.Config != nil && c.Config.Blueprint != nil {
-		customizations = c.Config.Blueprint.Customizations
+	if c.Config != nil {
+		customizations = c.Config.Customizations
 	}
 
 	img := image.NewBootcDiskImage(containerSource)
@@ -198,8 +198,8 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.ISOLabel = fmt.Sprintf("Container-Installer-%s", c.Architecture)
 
 	var customizations *blueprint.Customizations
-	if c.Config != nil && c.Config.Blueprint != nil {
-		customizations = c.Config.Blueprint.Customizations
+	if c.Config != nil {
+		customizations = c.Config.Customizations
 	}
 
 	img.Users = users.UsersFromBP(customizations.GetUsers())

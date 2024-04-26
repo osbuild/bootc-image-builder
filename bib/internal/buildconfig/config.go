@@ -1,6 +1,7 @@
 package buildconfig
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,19 +9,40 @@ import (
 	"path/filepath"
 
 	"github.com/pelletier/go-toml"
+	"github.com/sirupsen/logrus"
 
 	"github.com/osbuild/images/pkg/blueprint"
 )
 
-type BuildConfig struct {
-	Blueprint *blueprint.Blueprint `json:"blueprint,omitempty" toml:"blueprint"`
+// legacyBuildConfig is the json based configuration that was used in
+// bootc-image-builder before PR#395. It was essentially a blueprint
+// with just the extra layer of "blueprint". Supporting it still makes
+// the transition of existing users/docs easier.
+type legacyBuildConfig struct {
+	Blueprint *json.RawMessage `json:"blueprint"`
 }
+
+type BuildConfig blueprint.Blueprint
 
 // configRootDir is only overriden in tests
 var configRootDir = "/"
 
 func decodeJsonBuildConfig(r io.Reader, what string) (*BuildConfig, error) {
-	dec := json.NewDecoder(r)
+	content, err := io.ReadAll(r)
+	if err != nil && err != io.EOF {
+		return nil, fmt.Errorf("cannot read %q: %w", what, err)
+	}
+
+	// support for legacy json before 2024/05
+	var legacyBC legacyBuildConfig
+	if err := json.Unmarshal(content, &legacyBC); err == nil {
+		if legacyBC.Blueprint != nil {
+			logrus.Warningf("Using legacy config")
+			content = *legacyBC.Blueprint
+		}
+	}
+
+	dec := json.NewDecoder(bytes.NewBuffer(content))
 	dec.DisallowUnknownFields()
 
 	var conf BuildConfig

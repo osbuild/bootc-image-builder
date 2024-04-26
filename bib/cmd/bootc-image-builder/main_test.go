@@ -93,14 +93,12 @@ func getUserConfig() *main.ManifestConfig {
 		Imgref:       "testuser",
 		BuildType:    0,
 		Config: &buildconfig.BuildConfig{
-			Blueprint: &blueprint.Blueprint{
-				Customizations: &blueprint.Customizations{
-					User: []blueprint.UserCustomization{
-						{
-							Name:     "tester",
-							Password: &pass,
-							Key:      &key,
-						},
+			Customizations: &blueprint.Customizations{
+				User: []blueprint.UserCustomization{
+					{
+						Name:     "tester",
+						Password: &pass,
+						Key:      &key,
 					},
 				},
 			},

@@ -276,14 +276,14 @@ The following volumes can be mounted inside the container:
 
 ## 📝 Build config
 
-A build config is a Toml (or JSON) file with customizations for the resulting image. A path to the file is passed via  the `--config` argument. The customizations are specified under a `blueprint.customizations` object.
+A build config is a Toml (or JSON) file with customizations for the resulting image. A path to the file is passed via  the `--config` argument. The customizations are specified under a `customizations` object.
 
 As an example, let's show how you can add a user to the image:
 
 Firstly create a file `./config.toml` and put the following content into it:
 
 ```json
-[[blueprint.customizations.user]]
+[[customizations.user]]
 name = "alice"
 password = "bob"
 key = "ssh-rsa AAA ... user@email.com"
@@ -339,11 +339,9 @@ Example:
 
 ```json
 {
-  "blueprint": {
-    "customizations": {
-      "kernel": {
-        "append": "mitigations=auto,nosmt"
-      }
+  "customizations": {
+    "kernel": {
+      "append": "mitigations=auto,nosmt"
     }
   }
 }
