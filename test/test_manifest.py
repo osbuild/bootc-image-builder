@@ -167,3 +167,44 @@ def test_manifest_rootfs_respected(build_container, testcase_ref):
             assert rootfs_type == "xfs"
         case _:
             pytest.fail(f"unknown container_ref {container_ref} please update test")
+
+
+def find_user_stage_from(manifest_str):
+    manifest = json.loads(manifest_str)
+    for pipl in manifest["pipelines"]:
+        if pipl["name"] == "image":
+            for st in pipl["stages"]:
+                if st["type"] == "org.osbuild.users":
+                    return st
+    raise ValueError(f"cannot find users stage in manifest:\n{manifest_str}")
+
+
+def test_manifest_user_customizations_toml(tmp_path, build_container):
+    # no need to parameterize this test, toml is the same for all containers
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+
+    config_toml_path = tmp_path / "config.toml"
+    config_toml_path.write_text(textwrap.dedent("""\
+    [[blueprint.customizations.user]]
+    name = "alice"
+    password = "$5$xx$aabbccddeeffgghhiijj"  # notsecret
+    key = "ssh-rsa AAA ... user@email.com"
+    groups = ["wheel"]
+    """))
+    output = subprocess.check_output([
+        "podman", "run", "--rm",
+        "--privileged",
+        "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
+        "-v", f"{config_toml_path}:/config.toml",
+        "--security-opt", "label=type:unconfined_t",
+        f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "{container_ref}"]',
+        build_container,
+    ])
+    user_stage = find_user_stage_from(output)
+    assert user_stage["options"]["users"].get("alice") == {
+        # use very fake password here, if it looks too real the
+        # infosec "leak detect" get very nervous
+        "password": "$5$xx$aabbccddeeffgghhiijj",  # notsecret
+        "key": "ssh-rsa AAA ... user@email.com",
+        "groups": ["wheel"],
+    }
