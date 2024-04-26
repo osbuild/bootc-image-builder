@@ -6,7 +6,8 @@ require (
 	github.com/aws/aws-sdk-go v1.51.29
 	github.com/cheggaaa/pb/v3 v3.1.5
 	github.com/google/uuid v1.6.0
-	github.com/osbuild/images v0.56.0
+	github.com/osbuild/images v0.57.0
+	github.com/pelletier/go-toml v1.9.5
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
@@ -92,7 +93,6 @@ require (
 	github.com/opencontainers/runtime-spec v1.2.0 // indirect
 	github.com/opencontainers/selinux v1.11.0 // indirect
 	github.com/ostreedev/ostree-go v0.0.0-20210805093236-719684c64e4f // indirect
-	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/proglottis/gpgme v0.1.3 // indirect
@@ -119,7 +119,7 @@ require (
 	golang.org/x/crypto v0.22.0 // indirect
 	golang.org/x/mod v0.16.0 // indirect
 	golang.org/x/net v0.24.0 // indirect
-	golang.org/x/sync v0.6.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/term v0.19.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.19.0 // indirect
