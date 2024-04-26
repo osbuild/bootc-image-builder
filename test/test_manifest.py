@@ -117,7 +117,7 @@ def test_manifest_cross_arch_check(tmp_path, build_container):
     cntf_path = tmp_path / "Containerfile"
     cntf_path.write_text(textwrap.dedent("""\n
     # build for x86_64 only
-    FROM scratch
+    FROM quay.io/centos-bootc/centos-bootc:stream9
     """), encoding="utf8")
 
     with make_container(tmp_path, arch="x86_64") as container_tag:
