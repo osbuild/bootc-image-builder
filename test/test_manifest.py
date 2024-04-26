@@ -185,7 +185,7 @@ def test_manifest_user_customizations_toml(tmp_path, build_container):
 
     config_toml_path = tmp_path / "config.toml"
     config_toml_path.write_text(textwrap.dedent("""\
-    [[blueprint.customizations.user]]
+    [[customizations.user]]
     name = "alice"
     password = "$5$xx$aabbccddeeffgghhiijj"  # notsecret
     key = "ssh-rsa AAA ... user@email.com"

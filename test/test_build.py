@@ -190,19 +190,17 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
 
     # not all requested image types are available - build them
     cfg = {
-        "blueprint": {
-            "customizations": {
-                "user": [
-                    {
-                        "name": username,
-                        "password": password,
-                        "groups": ["wheel"],
-                    },
-                ],
-                "kernel": {
-                    "append": kargs,
-                }
-            },
+        "customizations": {
+            "user": [
+                {
+                    "name": username,
+                    "password": password,
+                    "groups": ["wheel"],
+                },
+            ],
+            "kernel": {
+                "append": kargs,
+            }
         },
     }
 

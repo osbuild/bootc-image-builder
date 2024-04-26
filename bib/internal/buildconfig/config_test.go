@@ -13,31 +13,27 @@ import (
 )
 
 var expectedBuildConfig = &buildconfig.BuildConfig{
-	Blueprint: &blueprint.Blueprint{
-		Customizations: &blueprint.Customizations{
-			User: []blueprint.UserCustomization{
-				{
-					Name: "alice",
-				},
+	Customizations: &blueprint.Customizations{
+		User: []blueprint.UserCustomization{
+			{
+				Name: "alice",
 			},
 		},
 	},
 }
 
 var fakeConfigJSON = `{
-  "blueprint": {
-    "customizations": {
-      "user": [
-        {
-          "name": "alice"
-        }
-     ]
-    }
+  "customizations": {
+    "user": [
+      {
+        "name": "alice"
+      }
+   ]
   }
 }`
 
 var fakeConfigToml = `
-[[blueprint.customizations.user]]
+[[customizations.user]]
 name = "alice"
 `
 
@@ -116,4 +112,23 @@ func TestReadUserConfigTwoConfigsError(t *testing.T) {
 
 	_, err := buildconfig.ReadWithFallback("")
 	assert.ErrorContains(t, err, `found "config.json" and also "config.toml", only a single one is supported`)
+}
+
+var fakeLegacyConfigJSON = `{
+  "blueprint": {
+    "customizations": {
+      "user": [
+        {
+          "name": "alice"
+        }
+     ]
+    }
+  }
+}`
+
+func TestReadLegacyJSONConfig(t *testing.T) {
+	fakeUserCnfPath := makeFakeConfig(t, "config.json", fakeLegacyConfigJSON)
+	cfg, err := buildconfig.ReadWithFallback(fakeUserCnfPath)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedBuildConfig, cfg)
 }
