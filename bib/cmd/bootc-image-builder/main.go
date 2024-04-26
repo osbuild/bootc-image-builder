@@ -75,25 +75,6 @@ func canChownInPath(path string) (bool, error) {
 	return checkFile.Chown(osGetuid(), osGetgid()) == nil, nil
 }
 
-// getContainerArch returns the architecture of an already pulled container image
-func getContainerArch(imgref string) (cntArch arch.Arch, err error) {
-	outputB, err := exec.Command("podman", "image", "inspect", imgref, "--format", "{{.Architecture}}").Output()
-	if err != nil {
-		return 0, fmt.Errorf("failed inspect image for architecture: %w", util.OutputErr(err))
-	}
-	output := strings.TrimSpace(string(outputB))
-
-	// TODO: make images:arch.FromString() return an error
-	defer func() {
-		if panicErr := recover(); panicErr != nil {
-			err = fmt.Errorf("cannot convert %q to an architecture", output)
-		}
-	}()
-	cntArch = arch.FromString(output)
-
-	return cntArch, nil
-}
-
 // getContainerSize returns the size of an already pulled container image in bytes
 func getContainerSize(imgref string) (uint64, error) {
 	output, err := exec.Command("podman", "image", "inspect", imgref, "--format", "{{.Size}}").Output()
@@ -150,10 +131,16 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 		for _, c := range sourceSpecs {
 			resolver.Add(c)
 		}
-		containerSpecs[plName], err = resolver.Finish()
+		specs, err := resolver.Finish()
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot resolve containers: %w", err)
 		}
+		for _, spec := range specs {
+			if spec.Arch != c.Architecture {
+				return nil, nil, fmt.Errorf("image found is for unexpected architecture %q (expected %q), if that is intentional, please make sure --target-arch matches", spec.Arch, c.Architecture)
+			}
+		}
+		containerSpecs[plName] = specs
 	}
 
 	mf, err := manifest.Serialize(depsolvedSets, containerSpecs, nil, depsolvedRepos)
@@ -236,14 +223,6 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		logrus.Debug("Using local container")
 	}
 
-	// TODO: check arch compat before pulling
-	pulledCntArch, err := getContainerArch(imgref)
-	if err != nil {
-		return nil, nil, fmt.Errorf("cannot get container architecture: %w", err)
-	}
-	if cntArch != pulledCntArch {
-		return nil, nil, fmt.Errorf("image found is for unexpected architecture %q (expected %q), if that is intentional, please make sure --target-arch matches", pulledCntArch, cntArch)
-	}
 	cntSize, err := getContainerSize(imgref)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot get container size: %w", err)
