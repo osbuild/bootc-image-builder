@@ -165,6 +165,9 @@ func (c *Container) RootfsType() (string, error) {
 	// bcachefs
 	supportedFS := []string{"ext4", "xfs"}
 
+	if fsType == "" {
+		return "", fmt.Errorf("container does not include a default root filesystem type")
+	}
 	if !slices.Contains(supportedFS, fsType) {
 		return "", fmt.Errorf("unsupported root filesystem type: %s, supported: %s", fsType, strings.Join(supportedFS, ", "))
 	}
