@@ -26,6 +26,8 @@ execute:
   script: |
     echo "DEBUG: available diskspace"
     df -h /
+    # Testing farm doesn't do a recursive clone
+    git submodule update --init --recursive
     echo "Install test requirements"
     pip install --user -r test/requirements.txt
     echo "Run tests"
