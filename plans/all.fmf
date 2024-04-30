@@ -2,10 +2,10 @@ summary: Run all tests inside a VM environment
 provision:
   how: virtual
   image: fedora:39
-  # 120 means 120GB, disk has to be specificed here, the format from:
+  # 240 means 240GB, disk has to be specificed here, the format from:
   #   https://tmt.readthedocs.io/en/stable/spec/hardware.html#disk
   # does not work here or below under "hardware"
-  disk: 120
+  disk: 240
   hardware:
     virtualization:
       is-supported: true
