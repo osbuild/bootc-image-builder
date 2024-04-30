@@ -3,10 +3,10 @@ module github.com/osbuild/bootc-image-builder/bib
 go 1.20
 
 require (
-	github.com/aws/aws-sdk-go v1.51.30
+	github.com/aws/aws-sdk-go v1.51.31
 	github.com/cheggaaa/pb/v3 v3.1.5
 	github.com/google/uuid v1.6.0
-	github.com/osbuild/images v0.57.0
+	github.com/osbuild/images v0.58.0
 	github.com/pelletier/go-toml v1.9.5
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
