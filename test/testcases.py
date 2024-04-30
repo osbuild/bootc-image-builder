@@ -22,6 +22,7 @@ def gen_testcases(what):
     CONTAINERS_TO_TEST = {
         "fedora": "quay.io/centos-bootc/fedora-bootc:eln",
         "centos": "quay.io/centos-bootc/centos-bootc:stream9",
+        "fedora-40": "registry.fedoraproject.org/fedora/fedora-bootc:40",
     }
     # allow commandline override, this is used when testing
     # custom images
@@ -51,7 +52,7 @@ def gen_testcases(what):
         if platform.machine() == "x86_64":
             # todo: add fedora:eln
             test_cases.append(
-                f'{CONTAINERS_TO_TEST["centos"]},raw,arm64')
+                f'{CONTAINERS_TO_TEST["fedora-40"]},raw,arm64')
         elif platform.machine() == "arm64":
             # TODO: add arm64->x86_64 cross build test too
             pass
