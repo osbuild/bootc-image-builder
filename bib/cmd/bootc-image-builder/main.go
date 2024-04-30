@@ -177,6 +177,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	targetArch, _ := cmd.Flags().GetString("target-arch")
 	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
 	localStorage, _ := cmd.Flags().GetBool("local")
+	rootFs, _ := cmd.Flags().GetString("rootfs")
 
 	if targetArch != "" && arch.FromString(targetArch) != arch.Current() {
 		// TODO: detect if binfmt_misc for target arch is
@@ -239,10 +240,17 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 			logrus.Warnf("error stopping container: %v", err)
 		}
 	}()
-	rootfsType, err := container.RootfsType()
-	if err != nil {
-		return nil, nil, fmt.Errorf("cannot get rootfs type for container: %w", err)
+
+	var rootfsType string
+	if rootFs != "" {
+		rootfsType = rootFs
+	} else {
+		rootfsType, err = container.RootfsType()
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot get rootfs type for container: %w", err)
+		}
 	}
+
 	// TODO: on a cross arch build we need to be conservative,
 	// i.e.  we can only use the default ext4 because if xfs is
 	// select we run into the issue that mkfs.xfs calls
@@ -545,6 +553,7 @@ func run() error {
 	manifestCmd.Flags().String("target-arch", "", "build for the given target architecture (experimental)")
 	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, fmt.Sprintf("image types to build [%s]", allImageTypesString()))
 	manifestCmd.Flags().Bool("local", false, "use a local container rather than a container from a registry")
+	manifestCmd.Flags().String("rootfs", "", "Root filesystem type. If not given, the default configured in the source container image is used.")
 
 	buildCmd.Flags().AddFlagSet(manifestCmd.Flags())
 	buildCmd.Flags().String("aws-ami-name", "", "name for the AMI in AWS (only for type=ami)")

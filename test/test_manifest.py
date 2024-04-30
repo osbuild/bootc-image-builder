@@ -169,6 +169,22 @@ def test_manifest_rootfs_respected(build_container, testcase_ref):
             pytest.fail(f"unknown container_ref {container_ref} please update test")
 
 
+def test_manifest_rootfs_override(build_container):
+    # no need to parameterize this test, --rootfs behaves same for all containers
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+
+    output = subprocess.check_output([
+        "podman", "run", "--rm",
+        "--privileged",
+        "--security-opt", "label=type:unconfined_t",
+        f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest",\
+           "--rootfs", "ext4", "{container_ref}"]',
+        build_container,
+    ])
+    rootfs_type = find_rootfs_type_from(output)
+    assert rootfs_type == "ext4"
+
+
 def find_user_stage_from(manifest_str):
     manifest = json.loads(manifest_str)
     for pipl in manifest["pipelines"]:

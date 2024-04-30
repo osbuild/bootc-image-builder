@@ -141,13 +141,14 @@ Flags:
 
 ### Detailed description of optional flags
 
-| Argument          | Description                                                         | Default Value |
-|-------------------|---------------------------------------------------------------------|:-------------:|
-| **--chown**       | chown the ouput directory to match the specified UID:GID            |       ❌      |
-| **--config**      | Path to a [build config](#-build-config)                            |       ❌      |
-| **--tls-verify**  | Require HTTPS and verify certificates when contacting registries    |    `true`     |
-| **--type**        | [Image type](#-image-types) to build                                |    `qcow2`    |
-| **--target-arch** | [Target arch](#-target-architecture) to build                       |       ❌      |
+| Argument          | Description                                                                                        | Default Value |
+|-------------------|----------------------------------------------------------------------------------------------------|:-------------:|
+| **--chown**       | chown the output directory to match the specified UID:GID                                          |       ❌      |
+| **--config**      | Path to a [build config](#-build-config)                                                           |       ❌      |
+| **--rootfs**      | Root filesystem type. Overrides the default from the source container. Supported values: ext4, xfs |
+| **--tls-verify**  | Require HTTPS and verify certificates when contacting registries                                   |    `true`     |
+| **--type**        | [Image type](#-image-types) to build                                                               |    `qcow2`    |
+| **--target-arch** | [Target arch](#-target-architecture) to build                                                      |       ❌      |
 
 The `--type` parameter can be given multiple times and multiple outputs will
 be produced.
