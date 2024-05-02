@@ -26,7 +26,11 @@ prepare:
 execute:
   how: tmt
   script: |
+    echo "DEBUG: available diskspace"
+    df -h /
+    echo "Install test requirements"
     pip install --user -r test/requirements.txt
+    echo "Run tests"
     pytest --force-aws-upload
   duration: 2h
 finish:
