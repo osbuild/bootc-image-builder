@@ -1,9 +1,8 @@
 # bootc-image-builder
 
-A container to create disk-images from [bootc](https://github.com/containers/bootc) container inputs.
-
-This tools allows to build and deploy disk-images from bootc container
-inputs.
+A container to create disk images from [bootc](https://github.com/containers/bootc) container inputs,
+especially oriented towards [Fedora/CentOS bootc](https://docs.fedoraproject.org/en-US/bootc/) or
+derivatives.
 
 ## 🔨 Installation
 
@@ -23,15 +22,19 @@ $ podman machine start
 
 ## 🚀 Examples
 
-The following example builds a [CentoOS Stream9](https://centos.org/stream9/) bootable container into a QCOW2 image for the architecture you're running
-the command on.
+The following example builds a `centos-bootc:stream9` bootable container into a QCOW2 image for the architecture you're running
+the command on.  However, be sure to see the [upstream documentation](https://docs.fedoraproject.org/en-US/bootc/)
+for more general information!  Note that outside of initial experimentation, it's recommended to build a *derived* container image
+(or reuse a derived image built via someone else) and then use this project to make a disk image from your custom image.
 
-The `centos-bootc:stream9` base image does not include a default user. This example injects a [user configuration file](#-build-config)
+The generic base images do not include a default user. This example injects a [user configuration file](#-build-config)
 by adding a volume-mount for the local file as well as the `--config` flag to the bootc-image-builder container.
 
 The following command will create a QCOW2 disk image. First, create `./config.toml` as described above to configure user access.
 
 ```bash
+# Ensure the image is fetched
+sudo podman pull quay.io/centos-bootc/centos-bootc:stream9
 sudo podman run \
     --rm \
     -it \
@@ -42,39 +45,15 @@ sudo podman run \
     -v $(pwd)/output:/output \
     quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
+    --local \
     quay.io/centos-bootc/centos-bootc:stream9
 ```
 
-### Using local containers
-
-To use containers from local container's storage rather than a registry, we need to ensure two things:
-- the container exists in local storage
-- mount the local container storage
-
-Since the container is run in `rootful` only root container storage paths are allowed.
-
-```bash
-sudo podman run \
-    --rm \
-    -it \
-    --privileged \
-    --pull=newer \
-    --security-opt label=type:unconfined_t \
-    -v $(pwd)/config.toml:/config.toml \
-    -v $(pwd)/output:/output \
-    -v /var/lib/containers/storage:/var/lib/containers/storage \
-    quay.io/centos-bootc/bootc-image-builder:latest \
-    --type qcow2 \
-    --config /config.toml \
-    --local \
-    localhost/bootc:eln
-```
-
-When using the --local flag, we need to mount the storage path as a volume. With this enabled, it is assumed that the target container is in the container storage.
-
 ### Running the resulting QCOW2 file on Linux (x86_64)
 
-A virtual machine can be launched using `qemu-system-x86_64` or with `virt-install` as shown below.
+A virtual machine can be launched using `qemu-system-x86_64` or with `virt-install` as shown below;
+however there is more information about virtualization and other
+choices in the [Fedora/CentOS bootc documentation](https://docs.fedoraproject.org/en-US/bootc/).
 
 #### qemu-system-x86_64
 
