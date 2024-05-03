@@ -256,7 +256,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             *types_arg,
             *upload_args,
             *target_arch_args,
-            "--local" if local else "--local=false",
+            "--pull=never" if local else "--pull=always",
         ])
 
         # print the build command for easier tracing

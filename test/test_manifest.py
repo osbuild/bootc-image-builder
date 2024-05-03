@@ -70,7 +70,7 @@ def test_manifest_disksize(tmp_path, build_container, testcase_ref):
             # ensure local storage is here
             "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
             # need different entry point
-            f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--local", "localhost/{container_tag}"]',
+            f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--pull=never", "localhost/{container_tag}"]',
             build_container,
         ], encoding="utf8")
         # ensure disk size is bigger than the default 10G
@@ -86,7 +86,7 @@ def test_manifest_local_checks_containers_storage_errors(build_container):
         "podman", "run", "--rm",
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
-        '--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--local", "arg-not-used"]',
+        '--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--pull=never", "arg-not-used"]',
         build_container,
     ], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf8")
     assert res.returncode == 1
@@ -107,7 +107,7 @@ def test_manifest_local_checks_containers_storage_works(tmp_path, build_containe
             "--privileged",
             "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
             "--security-opt", "label=type:unconfined_t",
-            f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--local", "localhost/{container_tag}"]',
+            f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--pull=never", "localhost/{container_tag}"]',
             build_container,
         ], check=True, encoding="utf8")
 
@@ -128,7 +128,7 @@ def test_manifest_cross_arch_check(tmp_path, build_container):
                 "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
                 "--security-opt", "label=type:unconfined_t",
                 f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest",\
-                   "--target-arch=aarch64", "--local", \
+                   "--target-arch=aarch64", "--pull=never", \
                    "localhost/{container_tag}"]',
                 build_container,
             ], check=True, capture_output=True, encoding="utf8")
