@@ -585,6 +585,7 @@ func run() error {
 	manifestCmd.Flags().Bool("local", false, "use a local container rather than a container from a registry")
 	manifestCmd.Flags().String("rootfs", "", "Root filesystem type. If not given, the default configured in the source container image is used.")
 	manifestCmd.Flags().String("pull", string(pullPolicyAlways), "pull policy ['always', 'never']")
+	_ = manifestCmd.Flags().MarkDeprecated("local", "use pull=never instead")
 
 	buildCmd.Flags().AddFlagSet(manifestCmd.Flags())
 	buildCmd.Flags().String("aws-ami-name", "", "name for the AMI in AWS (only for type=ami)")
