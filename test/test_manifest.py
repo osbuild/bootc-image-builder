@@ -81,7 +81,7 @@ def test_manifest_disksize(tmp_path, build_container, tc):
         manifest_str = subprocess.check_output([
             *testutil.podman_run_common,
             build_container,
-            "manifest", "--local",
+            "manifest",
             *tc.bib_rootfs_args(),
             f"localhost/{container_tag}",
         ], encoding="utf8")
@@ -100,10 +100,11 @@ def test_manifest_local_checks_containers_storage_errors(build_container):
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
         build_container,
-        "manifest", "--local", "arg-not-used",
+        "manifest", "arg-not-used",
     ], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf8")
     assert res.returncode == 1
-    err = 'local storage not working, did you forget -v /var/lib/containers/storage:/var/lib/containers/storage?'
+    err = 'could not access container storage, ' + \
+        'did you forget -v /var/lib/containers/storage:/var/lib/containers/storage?'
     assert err in res.stderr
 
 
@@ -118,7 +119,7 @@ def test_manifest_local_checks_containers_storage_works(tmp_path, build_containe
         subprocess.run([
             *testutil.podman_run_common,
             build_container,
-            "manifest", "--local",
+            "manifest",
             *tc.bib_rootfs_args(),
             f"localhost/{container_tag}",
         ], check=True, encoding="utf8")
@@ -138,7 +139,7 @@ def test_manifest_cross_arch_check(tmp_path, build_container):
                 *testutil.podman_run_common,
                 build_container,
                 "manifest", "--target-arch=aarch64",
-                "--local", f"localhost/{container_tag}"
+                f"localhost/{container_tag}"
             ], check=True, capture_output=True, encoding="utf8")
         assert 'image found is for unexpected architecture "x86_64"' in exc.value.stderr
 
