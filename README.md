@@ -33,8 +33,6 @@ by adding a volume-mount for the local file as well as the `--config` flag to th
 The following command will create a QCOW2 disk image. First, create `./config.toml` as described above to configure user access.
 
 ```bash
-# Ensure the image is fetched
-sudo podman pull quay.io/centos-bootc/centos-bootc:stream9
 sudo podman run \
     --rm \
     -it \
@@ -43,11 +41,17 @@ sudo podman run \
     --security-opt label=type:unconfined_t \
     -v $(pwd)/config.toml:/config.toml \
     -v $(pwd)/output:/output \
+    -v /var/lib/containers/storage:/var/lib/containers/storage \
     quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
-    --local \
+    --pull=always \ # Ensure the image is fetched
     quay.io/centos-bootc/centos-bootc:stream9
 ```
+
+The `--pull` flag is based on the behaviour of `podman-build(1)` and has the following three options:
+- `--pull=always`, always pull the remote image
+- `--pull=missing`, only pull the image if it is not in local storage
+- `--pull=never`, don't pull the image (this is functionally the same as the deprecated `--local` flag)
 
 ### Running the resulting QCOW2 file on Linux (x86_64)
 
