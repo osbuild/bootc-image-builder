@@ -176,7 +176,6 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	rpmCacheRoot, _ := cmd.Flags().GetString("rpmmd")
 	targetArch, _ := cmd.Flags().GetString("target-arch")
 	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
-	localStorage, _ := cmd.Flags().GetBool("local")
 	rootFs, _ := cmd.Flags().GetString("rootfs")
 
 	if targetArch != "" && arch.FromString(targetArch) != arch.Current() {
@@ -193,10 +192,8 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	}
 	// TODO: add "target-variant", see https://github.com/osbuild/bootc-image-builder/pull/139/files#r1467591868
 
-	if localStorage {
-		if err := setup.ValidateHasContainerStorageMounted(); err != nil {
-			return nil, nil, fmt.Errorf("local storage not working, did you forget -v /var/lib/containers/storage:/var/lib/containers/storage? (%w)", err)
-		}
+	if err := setup.ValidateHasContainerStorageMounted(); err != nil {
+		return nil, nil, fmt.Errorf("could not access container storage, did you forget -v /var/lib/containers/storage:/var/lib/containers/storage? (%w)", err)
 	}
 
 	buildType, err := NewBuildType(imgTypes)
@@ -207,21 +204,6 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	config, err := buildconfig.ReadWithFallback(userConfigFile)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot read config: %w", err)
-	}
-
-	// If --local wasn't given, always pull the container.
-	// If the user mount a container storage inside bib (without --local), the code will try to pull
-	// a newer version of the container even if an older one is already present. This doesn't match
-	// how `podman run`` behaves by default, but it matches the bib's behaviour before the switch
-	// to using containers storage in all code paths happened.
-	// We might want to change this behaviour in the future to match podman.
-	if !localStorage {
-		logrus.Infof("Pulling image %s (arch=%s)\n", imgref, cntArch)
-		if output, err := exec.Command("podman", "pull", "--arch", cntArch.String(), fmt.Sprintf("--tls-verify=%v", tlsVerify), imgref).CombinedOutput(); err != nil {
-			return nil, nil, fmt.Errorf("failed to pull container image: %w\n%s", err, output)
-		}
-	} else {
-		logrus.Debug("Using local container")
 	}
 
 	cntSize, err := getContainerSize(imgref)
