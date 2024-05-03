@@ -103,7 +103,8 @@ def test_manifest_local_checks_containers_storage_errors(build_container):
         build_container,
     ], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf8")
     assert res.returncode == 1
-    err = 'local storage not working, did you forget -v /var/lib/containers/storage:/var/lib/containers/storage?'
+    err = 'could not access container storage, ' + \
+        'did you forget -v /var/lib/containers/storage:/var/lib/containers/storage?'
     assert err in res.stderr
 
 
