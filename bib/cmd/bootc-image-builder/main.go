@@ -48,8 +48,9 @@ const (
 	// future.
 	containerSizeToDiskSizeMultiplier = 2
 
-	pullPolicyAlways pullPolicy = "always"
-	pullPolicyNever  pullPolicy = "never"
+	pullPolicyAlways  pullPolicy = "always"
+	pullPolicyNever   pullPolicy = "never"
+	pullPolicyMissing pullPolicy = "missing"
 )
 
 // all possible locations for the bib's distro definitions
@@ -236,8 +237,35 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		return nil, nil, fmt.Errorf("cannot read config: %w", err)
 	}
 
-	// If --pull=always pull the container into local storage. This behaviour is more in line with podman
-	if imagePullPolicy == pullPolicyAlways {
+	// we need to check a couple of cases here this could result
+	// in false positives for cross-arch builds if the an image
+	// exists for another architecture. If this is the case, then
+	// just pull the image again (since this gets quite complicated)
+	containerImageExists := func(imgref string, cntArch arch.Arch) bool {
+		logrus.Infof("Checking if image %s exists in local store\n", imgref)
+		if err := exec.Command("podman", "image", "exists", imgref).Run(); err != nil {
+			return false
+		}
+		cmd := exec.Command(
+			"podman",
+			"image",
+			"inspect",
+			"--format",
+			"{{ .Architecture }}",
+			imgref,
+		)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return false
+		}
+		a := strings.TrimSpace(string(output))
+		return arch.FromString(a) == cntArch
+	}
+
+	// If --pull=always or if --pull=missing and the container image is missing,
+	// pull the container into local storage. This behaviour is more in line
+	// with podman
+	if imagePullPolicy == pullPolicyAlways || (imagePullPolicy == pullPolicyMissing && !containerImageExists(imgref, cntArch)) {
 		logrus.Infof("Pulling image %s (arch=%s)\n", imgref, cntArch)
 		cmd := exec.Command(
 			"podman",
@@ -584,7 +612,7 @@ func run() error {
 	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, fmt.Sprintf("image types to build [%s]", allImageTypesString()))
 	manifestCmd.Flags().Bool("local", false, "use a local container rather than a container from a registry")
 	manifestCmd.Flags().String("rootfs", "", "Root filesystem type. If not given, the default configured in the source container image is used.")
-	manifestCmd.Flags().String("pull", string(pullPolicyAlways), "pull policy ['always', 'never']")
+	manifestCmd.Flags().String("pull", string(pullPolicyMissing), "pull policy ['always', 'never', 'missing]")
 	_ = manifestCmd.Flags().MarkDeprecated("local", "use pull=never instead")
 
 	buildCmd.Flags().AddFlagSet(manifestCmd.Flags())
