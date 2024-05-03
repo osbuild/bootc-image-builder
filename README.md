@@ -56,7 +56,6 @@ sudo podman run \
     -v /var/lib/containers/storage:/var/lib/containers/storage \
     quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
-    --local \
 	--use-librepo=True \
     quay.io/centos-bootc/centos-bootc:stream9
 ```

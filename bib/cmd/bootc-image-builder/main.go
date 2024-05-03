@@ -195,9 +195,19 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	rpmCacheRoot, _ := cmd.Flags().GetString("rpmmd")
 	targetArch, _ := cmd.Flags().GetString("target-arch")
 	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
-	localStorage, _ := cmd.Flags().GetBool("local")
 	rootFs, _ := cmd.Flags().GetString("rootfs")
 	useLibrepo, _ := cmd.Flags().GetBool("use-librepo")
+
+	// If --local was given, warn in the case of --local or --local=true (true is the default), error in the case of --local=false
+	if cmd.Flags().Changed("local") {
+		localStorage, _ := cmd.Flags().GetBool("local")
+		if localStorage {
+			fmt.Fprintf(os.Stderr, "WARNING: --local is now the default behavior, you can remove it from the command line\n")
+		} else {
+			return nil, nil, fmt.Errorf(`--local=false is no longer supported, remove it and make sure to pull the container before running bib:
+	sudo podman pull %s`, imgref)
+		}
+	}
 
 	if targetArch != "" && arch.FromString(targetArch) != arch.Current() {
 		// TODO: detect if binfmt_misc for target arch is
@@ -213,10 +223,8 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	}
 	// TODO: add "target-variant", see https://github.com/osbuild/bootc-image-builder/pull/139/files#r1467591868
 
-	if localStorage {
-		if err := setup.ValidateHasContainerStorageMounted(); err != nil {
-			return nil, nil, fmt.Errorf("local storage not working, did you forget -v /var/lib/containers/storage:/var/lib/containers/storage? (%w)", err)
-		}
+	if err := setup.ValidateHasContainerStorageMounted(); err != nil {
+		return nil, nil, fmt.Errorf("could not access container storage, did you forget -v /var/lib/containers/storage:/var/lib/containers/storage? (%w)", err)
 	}
 
 	imageTypes, err := imagetypes.New(imgTypes...)
@@ -227,27 +235,6 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	config, err := buildconfig.ReadWithFallback(userConfigFile)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot read config: %w", err)
-	}
-
-	// If --local wasn't given, always pull the container.
-	// If the user mount a container storage inside bib (without --local), the code will try to pull
-	// a newer version of the container even if an older one is already present. This doesn't match
-	// how `podman run`` behaves by default, but it matches the bib's behaviour before the switch
-	// to using containers storage in all code paths happened.
-	// We might want to change this behaviour in the future to match podman.
-	if !localStorage {
-		logrus.Infof("Pulling image %s (arch=%s)\n", imgref, cntArch)
-		cmd := exec.Command("podman", "pull", "--arch", cntArch.String(), fmt.Sprintf("--tls-verify=%v", tlsVerify), imgref)
-		// podman prints progress on stderr so connect that to give
-		// better UX. But do not connect stdout as "bib manifest"
-		// needs to be purely json so any stray output there is a
-		// problem
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return nil, nil, fmt.Errorf("failed to pull container image: %w", util.OutputErr(err))
-		}
-	} else {
-		logrus.Debug("Using local container")
 	}
 
 	pbar.SetPulseMsgf("Manifest generation step")
@@ -670,7 +657,10 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	manifestCmd.Flags().String("rpmmd", "/rpmmd", "rpm metadata cache directory")
 	manifestCmd.Flags().String("target-arch", "", "build for the given target architecture (experimental)")
 	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, fmt.Sprintf("image types to build [%s]", imagetypes.Available()))
-	manifestCmd.Flags().Bool("local", false, "use a local container rather than a container from a registry")
+	manifestCmd.Flags().Bool("local", true, "DEPRECATED: --local is now the default behavior, make sure to pull the container image before running bootc-image-builder")
+	if err := manifestCmd.Flags().MarkHidden("local"); err != nil {
+		return nil, fmt.Errorf("cannot hide 'local' :%w", err)
+	}
 	manifestCmd.Flags().String("rootfs", "", "Root filesystem type. If not given, the default configured in the source container image is used.")
 	manifestCmd.Flags().Bool("use-librepo", false, "(experimenal) switch to librepo for pkg download, needs new enough osbuild")
 	// --config is only useful for developers who run bib outside

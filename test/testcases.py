@@ -18,8 +18,6 @@ class TestCase:
     image: str = ""
     # target_arch is the target archicture, empty means current arch
     target_arch: str = ""
-    # local means that the container should be pulled locally ("--local" flag)
-    local: bool = False
     # rootfs to use (e.g. ext4), some containers like fedora do not
     # have a default rootfs. If unset the container default is used.
     rootfs: str = ""

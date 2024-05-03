@@ -144,7 +144,7 @@ def test_bib_errors_only_once(tmp_path, container_storage, build_fake_container)
         build_fake_container,
         "localhost/no-such-image",
     ], check=False, capture_output=True, text=True)
-    needle = "cannot build manifest: failed to pull container image:"
+    needle = "cannot build manifest: failed to inspect the image:"
     assert res.stderr.count(needle) == 1
 
 
