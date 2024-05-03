@@ -30,12 +30,26 @@ import (
 	"github.com/osbuild/bootc-image-builder/bib/internal/util"
 )
 
+type pullPolicy string
+
+func newPullPolicy(s string) (pullPolicy, error) {
+	switch s {
+	case "always", "never":
+		return pullPolicy(s), nil
+	default:
+		return "", fmt.Errorf("unknown pull policy: %q", s)
+	}
+}
+
 const (
 	// As a baseline heuristic we double the size of
 	// the input container to support in-place updates.
 	// This is planned to be more configurable in the
 	// future.
 	containerSizeToDiskSizeMultiplier = 2
+
+	pullPolicyAlways pullPolicy = "always"
+	pullPolicyNever  pullPolicy = "never"
 )
 
 // all possible locations for the bib's distro definitions
@@ -178,6 +192,18 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
 	localStorage, _ := cmd.Flags().GetBool("local")
 	rootFs, _ := cmd.Flags().GetString("rootfs")
+	pullPolicyFlag, _ := cmd.Flags().GetString("pull")
+
+	if localStorage {
+		// don't error out since --local and
+		// --pull=never are functionally equivalent
+		pullPolicyFlag = string(pullPolicyNever)
+	}
+
+	imagePullPolicy, err := newPullPolicy(pullPolicyFlag)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	if targetArch != "" && arch.FromString(targetArch) != arch.Current() {
 		// TODO: detect if binfmt_misc for target arch is
@@ -193,10 +219,11 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	}
 	// TODO: add "target-variant", see https://github.com/osbuild/bootc-image-builder/pull/139/files#r1467591868
 
-	if localStorage {
-		if err := setup.ValidateHasContainerStorageMounted(); err != nil {
-			return nil, nil, fmt.Errorf("local storage not working, did you forget -v /var/lib/containers/storage:/var/lib/containers/storage? (%w)", err)
-		}
+	// since either pulling containers into local storage or
+	// using a container from local storage, we might want local storage
+	// to always be mounted
+	if err := setup.ValidateHasContainerStorageMounted(); err != nil {
+		return nil, nil, fmt.Errorf("local storage not working, did you forget -v /var/lib/containers/storage:/var/lib/containers/storage? (%w)", err)
 	}
 
 	buildType, err := NewBuildType(imgTypes)
@@ -209,15 +236,18 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		return nil, nil, fmt.Errorf("cannot read config: %w", err)
 	}
 
-	// If --local wasn't given, always pull the container.
-	// If the user mount a container storage inside bib (without --local), the code will try to pull
-	// a newer version of the container even if an older one is already present. This doesn't match
-	// how `podman run`` behaves by default, but it matches the bib's behaviour before the switch
-	// to using containers storage in all code paths happened.
-	// We might want to change this behaviour in the future to match podman.
-	if !localStorage {
+	// If --pull=always pull the container into local storage. This behaviour is more in line with podman
+	if imagePullPolicy == pullPolicyAlways {
 		logrus.Infof("Pulling image %s (arch=%s)\n", imgref, cntArch)
-		if output, err := exec.Command("podman", "pull", "--arch", cntArch.String(), fmt.Sprintf("--tls-verify=%v", tlsVerify), imgref).CombinedOutput(); err != nil {
+		cmd := exec.Command(
+			"podman",
+			"pull",
+			"--arch",
+			cntArch.String(),
+			fmt.Sprintf("--tls-verify=%v", tlsVerify),
+			imgref,
+		)
+		if output, err := cmd.CombinedOutput(); err != nil {
 			return nil, nil, fmt.Errorf("failed to pull container image: %w\n%s", err, output)
 		}
 	} else {
@@ -554,6 +584,7 @@ func run() error {
 	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, fmt.Sprintf("image types to build [%s]", allImageTypesString()))
 	manifestCmd.Flags().Bool("local", false, "use a local container rather than a container from a registry")
 	manifestCmd.Flags().String("rootfs", "", "Root filesystem type. If not given, the default configured in the source container image is used.")
+	manifestCmd.Flags().String("pull", string(pullPolicyAlways), "pull policy ['always', 'never']")
 
 	buildCmd.Flags().AddFlagSet(manifestCmd.Flags())
 	buildCmd.Flags().String("aws-ami-name", "", "name for the AMI in AWS (only for type=ami)")
