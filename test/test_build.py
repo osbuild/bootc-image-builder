@@ -441,7 +441,6 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
             *upload_args,
             *target_arch_args,
             *tc.bib_rootfs_args(),
-            "--local" if tc.local else "--local=false",
             "--tls-verify=false" if tc.sign else "--tls-verify=true",
             f"--use-librepo={tc.use_librepo}",
         ])
