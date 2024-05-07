@@ -80,17 +80,18 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
     container_ref, images, target_arch, local = parse_request_params(request)
 
     if local:
-        cont_tag = "localhost/cont-base-" + "".join(random.choices(string.digits, k=12))
+        container_ref = "localhost/cont-base-" + "".join(random.choices(string.digits, k=12))
 
         # we are not cross-building local images (for now)
-        request.param = ",".join([cont_tag, images, "", "true"])
+        request.param = ",".join([container_ref, images, "", "true"])
 
-        # copy the container into containers-storage
-        subprocess.check_call([
-            "skopeo", "copy",
-            f"docker://{container_ref}",
-            f"containers-storage:[overlay@/var/lib/containers/storage+/run/containers/storage]{cont_tag}"
-        ])
+    # copy the container into containers-storage
+    # for all builds
+    subprocess.check_call([
+        "skopeo", "copy",
+        f"docker://{container_ref}",
+        f"containers-storage:[overlay@/var/lib/containers/storage+/run/containers/storage]{container_ref}"
+    ])
 
     with build_images(shared_tmpdir, build_container, request, force_aws_upload) as build_results:
         yield build_results[0]
@@ -244,10 +245,6 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             "-v", f"{output_path}:/output",
             "-v", "/var/tmp/osbuild-test-store:/store",  # share the cache between builds
         ]
-
-        # we need to mount the host's container store
-        if local:
-            cmd.extend(["-v", "/var/lib/containers/storage:/var/lib/containers/storage"])
 
         cmd.extend([
             *creds_args,
