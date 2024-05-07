@@ -3,6 +3,7 @@ import platform
 import subprocess
 
 import pytest
+import testutil
 # pylint: disable=unused-import
 from containerbuild import build_container_fixture, build_fake_container_fixture
 
@@ -25,6 +26,9 @@ def test_bib_chown_opts(tmp_path, container_storage, build_fake_container, chown
     output_path = tmp_path / "output"
     output_path.mkdir(exist_ok=True)
 
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
+
     subprocess.check_call([
         "podman", "run", "--rm",
         "--privileged",
@@ -32,7 +36,7 @@ def test_bib_chown_opts(tmp_path, container_storage, build_fake_container, chown
         "-v", f"{container_storage}:/var/lib/containers/storage",
         "-v", f"{output_path}:/output",
         build_fake_container,
-        "quay.io/centos-bootc/centos-bootc:stream9",
+        container_ref,
     ] + chown_opt)
     expected_output_disk = output_path / "qcow2/disk.qcow2"
     for p in output_path, expected_output_disk:
@@ -52,6 +56,9 @@ def test_opts_arch_is_same_arch_is_fine(tmp_path, build_fake_container, target_a
     output_path = tmp_path / "output"
     output_path.mkdir(exist_ok=True)
 
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
+
     res = subprocess.run([
         "podman", "run", "--rm",
         "--privileged",
@@ -60,7 +67,7 @@ def test_opts_arch_is_same_arch_is_fine(tmp_path, build_fake_container, target_a
         "-v", f"{output_path}:/output",
         build_fake_container,
         "--type=iso",
-        "quay.io/centos-bootc/centos-bootc:stream9",
+        container_ref,
     ] + target_arch_opt, check=False, capture_output=True, text=True)
     if expected_err == "":
         assert res.returncode == 0
@@ -80,6 +87,9 @@ def test_bib_tls_opts(tmp_path, container_storage, build_fake_container, tls_opt
     output_path = tmp_path / "output"
     output_path.mkdir(exist_ok=True)
 
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
+
     subprocess.check_call([
         "podman", "run", "--rm",
         "--privileged",
@@ -87,7 +97,7 @@ def test_bib_tls_opts(tmp_path, container_storage, build_fake_container, tls_opt
         "-v", f"{container_storage}:/var/lib/containers/storage",
         "-v", f"{output_path}:/output",
         build_fake_container,
-        "quay.io/centos-bootc/centos-bootc:stream9"
+        container_ref,
     ] + tls_opt)
     podman_log = output_path / "podman.log"
     assert expected_cmdline in podman_log.read_text()
@@ -98,6 +108,9 @@ def test_bib_log_level_smoke(tmp_path, container_storage, build_fake_container, 
     output_path = tmp_path / "output"
     output_path.mkdir(exist_ok=True)
 
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
+
     log_debug = ["--log-level", "debug"] if with_debug else []
     res = subprocess.run([
         "podman", "run", "--rm",
@@ -107,7 +120,7 @@ def test_bib_log_level_smoke(tmp_path, container_storage, build_fake_container, 
         "-v", f"{output_path}:/output",
         build_fake_container,
         *log_debug,
-        "quay.io/centos-bootc/centos-bootc:stream9"
+        container_ref,
     ], check=True, capture_output=True, text=True)
     assert ('level=debug' in res.stderr) == with_debug
 
@@ -180,6 +193,9 @@ def test_bib_no_outside_container_warning_in_container(tmp_path, container_stora
     output_path = tmp_path / "output"
     output_path.mkdir(exist_ok=True)
 
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
+
     res = subprocess.run([
         "podman", "run", "--rm",
         "--privileged",
@@ -187,6 +203,6 @@ def test_bib_no_outside_container_warning_in_container(tmp_path, container_stora
         "-v", f"{container_storage}:/var/lib/containers/storage",
         "-v", f"{output_path}:/output",
         build_fake_container,
-        "quay.io/centos-bootc/centos-bootc:stream9"
+        container_ref,
     ], check=True, capture_output=True, text=True)
     assert "running outside a container" not in res.stderr
