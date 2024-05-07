@@ -156,6 +156,7 @@ def test_manifest_rootfs_respected(build_container, testcase_ref):
         "podman", "run", "--rm",
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
+        "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
         f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "{container_ref}"]',
         build_container,
     ])
@@ -177,6 +178,7 @@ def test_manifest_rootfs_override(build_container):
         "podman", "run", "--rm",
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
+        "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
         f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest",\
            "--rootfs", "ext4", "{container_ref}"]',
         build_container,
