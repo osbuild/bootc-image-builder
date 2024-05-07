@@ -2,10 +2,8 @@ import json
 import os
 import pathlib
 import platform
-import random
 import re
 import shutil
-import string
 import subprocess
 import tempfile
 import uuid
@@ -61,20 +59,7 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
     In the case an image is being built from a local container, the
     function will build the required local container for the test.
     """
-    container_ref = request.param.container_ref
-
-    if request.param.local:
-        cont_tag = "localhost/cont-base-" + "".join(random.choices(string.digits, k=12))
-
-        # we are not cross-building local images (for now)
-        request.param.target_arch = ""
-
-        # copy the container into containers-storage
-        subprocess.check_call([
-            "skopeo", "copy",
-            f"docker://{container_ref}",
-            f"containers-storage:[overlay@/var/lib/containers/storage+/run/containers/storage]{cont_tag}"
-        ])
+    testutil.pull_container(request.param.container_ref, request.param.target_arch)
 
     with build_images(shared_tmpdir, build_container, request, force_aws_upload) as build_results:
         yield build_results[0]
@@ -86,6 +71,8 @@ def images_fixture(shared_tmpdir, build_container, request, force_aws_upload):
     Build one or more images inside the passed build_container and return an
     ImageBuildResult array with the resulting image path and user/password
     """
+    testutil.pull_container(request.param.container_ref, request.param.target_arch)
+
     with build_images(shared_tmpdir, build_container, request, force_aws_upload) as build_results:
         yield build_results
 
@@ -251,11 +238,8 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             "-v", f"{config_json_path}:/config.json:ro",
             "-v", f"{output_path}:/output",
             "-v", "/var/tmp/osbuild-test-store:/store",  # share the cache between builds
+            "-v", "/var/lib/containers/storage:/var/lib/containers/storage",  # mount the host's containers storage
         ]
-
-        # we need to mount the host's container store
-        if tc.local:
-            cmd.extend(["-v", "/var/lib/containers/storage:/var/lib/containers/storage"])
 
         cmd.extend([
             *creds_args,
