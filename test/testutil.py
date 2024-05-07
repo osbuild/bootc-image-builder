@@ -213,3 +213,17 @@ def get_ip_from_default_route():
         "default"
     ], check=True, capture_output=True, text=True).stdout
     return default_route.split()[8]
+
+
+def pull_container(container_ref, target_arch=""):
+    if target_arch == "":
+        target_arch = platform.machine()
+
+    if target_arch not in ["x86_64", "amd64", "aarch64", "arm64", "s390x", "ppc64le"]:
+        raise RuntimeError(f"unknown host arch: {target_arch}")
+
+    subprocess.run([
+        "podman", "pull",
+        "--arch", target_arch,
+        container_ref,
+    ], check=True)
