@@ -175,7 +175,6 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	imgTypes, _ := cmd.Flags().GetStringArray("type")
 	rpmCacheRoot, _ := cmd.Flags().GetString("rpmmd")
 	targetArch, _ := cmd.Flags().GetString("target-arch")
-	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
 	rootFs, _ := cmd.Flags().GetString("rootfs")
 
 	if targetArch != "" && arch.FromString(targetArch) != arch.Current() {
@@ -264,7 +263,6 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		Config:         config,
 		BuildType:      buildType,
 		Imgref:         imgref,
-		TLSVerify:      tlsVerify,
 		Filesystems:    filesystems,
 		DistroDefPaths: distroDefPaths,
 		SourceInfo:     sourceinfo,
