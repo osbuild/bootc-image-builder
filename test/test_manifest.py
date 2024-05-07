@@ -7,7 +7,6 @@ import subprocess
 import textwrap
 
 import pytest
-
 import testutil
 from containerbuild import build_container_fixture  # noqa: F401
 from containerbuild import make_container
@@ -57,6 +56,7 @@ def test_iso_manifest_smoke(build_container, tc):
         "podman", "run", "--rm",
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
+        "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest",
@@ -182,6 +182,7 @@ def test_manifest_rootfs_respected(build_container, tc):
         "podman", "run", "--rm",
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
+        "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest", f"{tc.container_ref}",
@@ -202,6 +203,7 @@ def test_manifest_rootfs_override(build_container):
         "podman", "run", "--rm",
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
+        "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest", "--rootfs", "btrfs", f"{container_ref}",
