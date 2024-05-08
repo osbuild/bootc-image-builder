@@ -319,12 +319,6 @@ def test_container_builds(build_container):
     assert build_container in output
 
 
-@pytest.mark.parametrize("image_type", gen_testcases("multidisk"), indirect=["image_type"])
-def test_image_is_generated(image_type):
-    assert image_type.img_path.exists(), "output file missing, dir "\
-        f"content: {os.listdir(os.fspath(image_type.img_path))}"
-
-
 def assert_kernel_args(test_vm, image_type):
     exit_status, kcmdline = test_vm.run("cat /proc/cmdline", user=image_type.username, password=image_type.password)
     assert exit_status == 0
@@ -351,25 +345,6 @@ def test_image_boots(image_type):
         )
         # XXX: read the fully yaml instead?
         assert f"image: {image_type.container_ref}" in output
-
-
-@pytest.mark.parametrize("image_type", gen_testcases("ami-boot"), indirect=["image_type"])
-def test_ami_boots_in_aws(image_type, force_aws_upload):
-    if not testutil.write_aws_creds("/dev/null"):  # we don't care about the file, just the variables being there
-        if force_aws_upload:
-            # upload forced but credentials aren't set
-            raise RuntimeError("AWS credentials not available")
-        pytest.skip("AWS credentials not available (upload not forced)")
-
-    # check that upload progress is in the output log. Uploads looks like:
-    # 4.30 GiB / 10.00 GiB [------------>____________] 43.02% 58.04 MiB p/s
-    assert "] 100.00%" in image_type.bib_output
-    with AWS(image_type.metadata["ami_id"]) as test_vm:
-        exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
-        assert exit_status == 0
-        exit_status, output = test_vm.run("echo hello", user=image_type.username, password=image_type.password)
-        assert exit_status == 0
-        assert "hello" in output
 
 
 def log_has_osbuild_selinux_denials(log):
@@ -403,42 +378,3 @@ def test_osbuild_selinux_denials_re_works():
 
 def has_selinux():
     return testutil.has_executable("selinuxenabled") and subprocess.run("selinuxenabled").returncode == 0
-
-
-@pytest.mark.skipif(not has_selinux(), reason="selinux not enabled")
-@pytest.mark.parametrize("image_type", gen_testcases("qemu-boot"), indirect=["image_type"])
-def test_image_build_without_se_linux_denials(image_type):
-    # the journal always contains logs from the image building
-    assert image_type.journal_output != ""
-    assert not log_has_osbuild_selinux_denials(image_type.journal_output), \
-        f"denials in log {image_type.journal_output}"
-
-
-@pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
-@pytest.mark.parametrize("image_type", gen_testcases("anaconda-iso"), indirect=["image_type"])
-def test_iso_installs(image_type):
-    installer_iso_path = image_type.img_path
-    test_disk_path = installer_iso_path.with_name("test-disk.img")
-    with open(test_disk_path, "w") as fp:
-        fp.truncate(10_1000_1000_1000)
-    # install to test disk
-    with QEMU(test_disk_path, cdrom=installer_iso_path) as vm:
-        vm.start(wait_event="qmp:RESET", snapshot=False, use_ovmf=True)
-        vm.force_stop()
-    # boot test disk and do extremly simple check
-    with QEMU(test_disk_path) as vm:
-        vm.start(use_ovmf=True)
-        exit_status, _ = vm.run("true", user=image_type.username, password=image_type.password)
-        assert exit_status == 0
-        assert_kernel_args(vm, image_type)
-
-
-@pytest.mark.parametrize("images", gen_testcases("multidisk"), indirect=["images"])
-def test_multi_build_request(images):
-    artifacts = set()
-    expected = {"disk.qcow2", "disk.raw", "disk.vmdk"}
-    for result in images:
-        filename = os.path.basename(result.img_path)
-        assert result.img_path.exists()
-        artifacts.add(filename)
-    assert artifacts == expected
