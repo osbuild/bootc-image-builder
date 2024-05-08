@@ -5,6 +5,9 @@ on:
   pull_request:
     branches:
       - "*"
+  push:
+    branches:
+      - "main"
   # for merge queue
   merge_group:
 
