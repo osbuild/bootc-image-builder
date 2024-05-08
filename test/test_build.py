@@ -67,12 +67,19 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
         # we are not cross-building local images (for now)
         request.param.target_arch = ""
 
+    target_arch = request.param.target_arch
+    if target_arch is None or target_arch == "":
+        target_arch = platform.machine()
+
+    if target_arch not in ["x86_64", "amd64", "aarch64", "arm64"]:
+        raise RuntimeError(f"unknown target arch: {target_arch}")
+
     # copy the container into containers-storage
     # for all builds
     subprocess.check_call([
-        "skopeo", "copy",
-        f"docker://{container_ref}",
-        f"containers-storage:[overlay@/var/lib/containers/storage+/run/containers/storage]{container_ref}"
+        "podman", "pull",
+        "--platform", f"linux/{target_arch}",
+        container_ref,
     ])
 
     with build_images(shared_tmpdir, build_container, request, force_aws_upload) as build_results:

@@ -30,14 +30,27 @@ def find_image_size_from(manifest_str):
 
 @pytest.mark.parametrize("tc", gen_testcases("manifest"))
 def test_manifest_smoke(build_container, tc):
+    host_arch = platform.machine()
+    if host_arch not in ["x86_64", "amd64", "aarch64", "arm64"]:
+        raise RuntimeError(f"unknown host arch: {host_arch}")
+
+    output = subprocess.run([
+        "podman", "pull",
+        "--platform", f"linux/{host_arch}",
+        tc.container_ref,
+    ], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf8")
+    assert output.returncode == 0
+
     output = subprocess.check_output([
         "podman", "run", "--rm",
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
+        "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest",
         *tc.rootfs_args(),
+        "--target-arch", host_arch,
         f"{tc.container_ref}",
     ])
     manifest = json.loads(output)
