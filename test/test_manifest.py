@@ -31,12 +31,25 @@ def test_manifest_smoke(build_container, testcase_ref):
     # testcases_ref has the form "container_url,img_type1+img_type2,arch"
     container_ref = testcase_ref.split(",")[0]
 
+    target_arch = "amd64"
+    host_arch = platform.machine()
+    if host_arch == "aarch64" or target_arch == "arm64":
+        target_arch = "arm64"
+
+    output = subprocess.run([
+        "podman", "pull",
+        "--platform", f"linux/{target_arch}",
+        container_ref,
+    ], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf8")
+    assert output.returncode == 0
+
+    entrypoint = f'["/usr/bin/bootc-image-builder", "manifest", "--target-arch", "{target_arch}", "{container_ref}"]'
     output = subprocess.check_output([
         "podman", "run", "--rm",
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
         "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
-        f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "{container_ref}"]',
+        f"--entrypoint={entrypoint}",
         build_container,
     ])
     manifest = json.loads(output)

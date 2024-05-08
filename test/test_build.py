@@ -87,8 +87,13 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
 
     # copy the container into containers-storage
     # for all builds
+    arch = "amd64"
+    if target_arch == "aarch64" or target_arch == "arm64":
+        arch = "arm64"
+
     subprocess.check_call([
         "skopeo", "copy",
+        "--override-arch", arch,
         f"docker://{container_ref}",
         f"containers-storage:[overlay@/var/lib/containers/storage+/run/containers/storage]{container_ref}"
     ])
