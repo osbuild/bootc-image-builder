@@ -149,7 +149,8 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		return nil, fmt.Errorf("pipelines: no partition tables defined for %s", c.Architecture)
 	}
 	// XXX: extract into helper
-	if c.RootFSType != "" {
+	partitioningMode := disk.RawPartitioningMode
+	if c.RootFSType != "" && c.RootFSType != "btrfs" {
 		rootMountable := basept.FindMountable("/")
 		if rootMountable == nil {
 			return nil, fmt.Errorf("no root filesystem defined in the partition table")
@@ -159,13 +160,15 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 			return nil, fmt.Errorf("root mountable is not an ordinary filesystem (btrfs is not yet supported)")
 		}
 		rootFS.Type = c.RootFSType
+	} else if c.RootFSType == "btrfs" {
+		partitioningMode = disk.BtfrsPartitioningMode
 	}
 
 	if err := applyFilesystemCustomizations(customizations, c); err != nil {
 		return nil, err
 	}
 
-	pt, err := disk.NewPartitionTable(&basept, c.Filesystems, DEFAULT_SIZE, disk.RawPartitioningMode, nil, rng)
+	pt, err := disk.NewPartitionTable(&basept, c.Filesystems, DEFAULT_SIZE, partitioningMode, nil, rng)
 	if err != nil {
 		return nil, err
 	}
