@@ -206,10 +206,10 @@ def test_manifest_rootfs_override(build_container):
         "--security-opt", "label=type:unconfined_t",
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
-        "manifest", "--rootfs", "ext4", f"{container_ref}",
+        "manifest", "--rootfs", "btrfs", f"{container_ref}",
     ])
     rootfs_type = find_rootfs_type_from(output)
-    assert rootfs_type == "ext4"
+    assert rootfs_type == "btrfs"
 
 
 def find_user_stage_from(manifest_str):
