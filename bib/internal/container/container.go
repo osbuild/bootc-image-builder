@@ -163,7 +163,7 @@ func (c *Container) RootfsType() (string, error) {
 	// TODO: move this into a helper in "images" so that there is only
 	// a single place that needs updating when we add e.g. btrfs or
 	// bcachefs
-	supportedFS := []string{"ext4", "xfs"}
+	supportedFS := []string{"ext4", "xfs", "btrfs"}
 
 	if fsType == "" {
 		return "", fmt.Errorf("container does not include a default root filesystem type")

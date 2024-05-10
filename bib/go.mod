@@ -2,6 +2,8 @@ module github.com/osbuild/bootc-image-builder/bib
 
 go 1.20
 
+replace github.com/osbuild/images => github.com/ondrejbudai/images v0.0.0-20240516152944-284ef52009fd
+
 require (
 	github.com/aws/aws-sdk-go v1.53.3
 	github.com/cheggaaa/pb/v3 v3.1.5
