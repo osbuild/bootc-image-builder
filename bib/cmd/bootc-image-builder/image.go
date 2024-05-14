@@ -22,6 +22,7 @@ import (
 	"github.com/osbuild/images/pkg/disk"
 	"github.com/osbuild/images/pkg/image"
 	"github.com/osbuild/images/pkg/manifest"
+	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/platform"
 	"github.com/osbuild/images/pkg/policies"
 	"github.com/osbuild/images/pkg/rpmmd"
@@ -228,19 +229,15 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		customizations = c.Config.Customizations
 	}
 
-	img.Kickstart = &kickstart.Options{
-		Path:          "/osbuild.ks",
-		Users:         users.UsersFromBP(customizations.GetUsers()),
-		Groups:        users.GroupsFromBP(customizations.GetGroups()),
-		NetworkOnBoot: true,
-		OSTree: &kickstart.OSTree{
-			OSName: "default",
-		},
+	img.Kickstart, err = kickstart.New(customizations)
+	if err != nil {
+		return nil, err
 	}
+	img.Kickstart.Path = osbuild.KickstartPathOSBuild
 	if kopts := customizations.GetKernel(); kopts != nil && kopts.Append != "" {
 		img.Kickstart.KernelOptionsAppend = append(img.Kickstart.KernelOptionsAppend, kopts.Append)
 	}
-
+	img.Kickstart.NetworkOnBoot = true
 	// XXX: this should really be done by images, the consumer should not
 	// need to know these details. so once images is fixed drop it here
 	// again.
@@ -248,6 +245,9 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		img.AdditionalAnacondaModules = append(img.AdditionalAnacondaModules, "org.fedoraproject.Anaconda.Modules.Users")
 	}
 
+	img.Kickstart.OSTree = &kickstart.OSTree{
+		OSName: "default",
+	}
 	// use lorax-templates-rhel if the source distro is not Fedora with the exception of Fedora ELN
 	img.UseRHELLoraxTemplates =
 		c.SourceInfo.OSRelease.ID != "fedora" || c.SourceInfo.OSRelease.VersionID == "eln"
