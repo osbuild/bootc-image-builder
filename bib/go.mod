@@ -3,10 +3,10 @@ module github.com/osbuild/bootc-image-builder/bib
 go 1.20
 
 require (
-	github.com/aws/aws-sdk-go v1.53.0
+	github.com/aws/aws-sdk-go v1.53.1
 	github.com/cheggaaa/pb/v3 v3.1.5
 	github.com/google/uuid v1.6.0
-	github.com/osbuild/images v0.60.0
+	github.com/osbuild/images v0.61.0
 	github.com/pelletier/go-toml v1.9.5
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
@@ -28,8 +28,8 @@ require (
 	github.com/containerd/cgroups/v3 v3.0.2 // indirect
 	github.com/containerd/errdefs v0.1.0 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.15.1 // indirect
-	github.com/containers/common v0.58.2 // indirect
-	github.com/containers/image/v5 v5.30.0 // indirect
+	github.com/containers/common v0.58.3 // indirect
+	github.com/containers/image/v5 v5.30.1 // indirect
 	github.com/containers/libtrust v0.0.0-20230121012942-c1716e8a8d01 // indirect
 	github.com/containers/ocicrypt v1.1.9 // indirect
 	github.com/containers/storage v1.53.0 // indirect
@@ -116,16 +116,16 @@ require (
 	go.opentelemetry.io/otel v1.24.0 // indirect
 	go.opentelemetry.io/otel/metric v1.24.0 // indirect
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
-	golang.org/x/crypto v0.22.0 // indirect
+	golang.org/x/crypto v0.23.0 // indirect
 	golang.org/x/mod v0.16.0 // indirect
-	golang.org/x/net v0.24.0 // indirect
+	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
-	golang.org/x/term v0.19.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/term v0.20.0 // indirect
+	golang.org/x/text v0.15.0 // indirect
 	golang.org/x/tools v0.19.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240429193739-8cf5692501f6 // indirect
 	google.golang.org/grpc v1.63.2 // indirect
-	google.golang.org/protobuf v1.34.0 // indirect
+	google.golang.org/protobuf v1.34.1 // indirect
 	gopkg.in/go-jose/go-jose.v2 v2.6.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )
