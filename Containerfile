@@ -1,6 +1,6 @@
 FROM registry.fedoraproject.org/fedora:40 AS builder
 RUN dnf install -y git-core golang gpgme-devel libassuan-devel && mkdir -p /build/bib
-COPY bib/go.mod bib/go.sum /build/bib
+COPY bib/go.mod bib/go.sum /build/bib/
 ARG GOPROXY=https://proxy.golang.org,direct
 RUN go env -w GOPROXY=$GOPROXY
 RUN cd /build/bib && go mod download
