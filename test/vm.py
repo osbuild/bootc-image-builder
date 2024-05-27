@@ -104,10 +104,12 @@ class QEMU(VM):
         super().__init__()
         self._img = pathlib.Path(img)
         self._qmp_socket = self._img.with_suffix(".qemp-socket")
+        self._serial_log_path = self._img.with_suffix(".serial-log")
         self._qemu_p = None
         self._snapshot = snapshot
         self._cdrom = cdrom
         self._ssh_port = None
+        self._serial_port = None
         if not arch:
             arch = platform.machine()
         self._arch = arch
@@ -139,7 +141,8 @@ class QEMU(VM):
         # common part
         qemu_cmdline += [
             "-m", self.MEM,
-            "-serial", "stdio",
+            "-chardev", f"stdio,id=char0,logfile={self._serial_log_path}",
+            "-serial", "chardev:char0",
             "-monitor", "none",
             "-netdev", f"user,id=net.0,hostfwd=tcp::{self._ssh_port}-:22",
             "-device", "rtl8139,netdev=net.0",
@@ -159,6 +162,7 @@ class QEMU(VM):
         if self.running():
             return
         self._ssh_port = get_free_port()
+        self._serial_port = get_free_port()
         self._address = "localhost"
 
         # XXX: use systemd-run to ensure cleanup?
@@ -177,6 +181,10 @@ class QEMU(VM):
             qmp_event = ev[1]
             self.wait_qmp_event(qmp_event)
             self._log(f"qmp event {qmp_event}")
+        elif ev[0] == "serial-output":
+            serial_output = ev[1]
+            self._wait_serial_output(serial_output)
+            self._log(f"serial output {serial_output}")
         else:
             raise ValueError(f"unsupported wait_event {wait_event}")
 
@@ -186,6 +194,32 @@ class QEMU(VM):
                 return True
             time.sleep(1)
         raise TimeoutError(f"no {self._qmp_socket} after {timeout_sec} seconds")
+
+    def _wait_serial_output(self, expected_output, timeout_sec=30):
+        # wait for the log to appear
+        for _ in range(timeout_sec):
+            if os.path.exists(self._serial_log_path):
+                break
+            time.sleep(1)
+        else:
+            raise TimeoutError(f"no {self._serial_log_path} after {timeout_sec} seconds")
+        # wait for the expected line on the serial port
+        with self._serial_log_path.open("r", encoding="utf8") as fp:
+            while True:
+                try:
+                    line = fp.readline()
+                except UnicodeDecodeError as e:
+                    self._log(f"got {e}")
+                    line = ""
+                if not line:
+                    # simulate "tail -f" here and keep reading as it
+                    # will keep producing output
+                    time.sleep(0.2)
+                    continue
+                line = line.strip()
+                self._log(f"DEBUG: got serial line {line}")
+                if line == expected_output:
+                    return
 
     def wait_qmp_event(self, qmp_event):
         # import lazy to avoid requiring it for all operations

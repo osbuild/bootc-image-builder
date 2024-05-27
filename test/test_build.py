@@ -440,7 +440,7 @@ def test_iso_installs(image_type):
         fp.truncate(10_1000_1000_1000)
     # install to test disk
     with QEMU(test_disk_path, cdrom=installer_iso_path) as vm:
-        vm.start(wait_event="qmp:RESET", snapshot=False, use_ovmf=True)
+        vm.start(wait_event="serial-output:Install finished", snapshot=False, use_ovmf=True)
         vm.force_stop()
     # boot test disk and do extremly simple check
     with QEMU(test_disk_path) as vm:
