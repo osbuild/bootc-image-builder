@@ -190,6 +190,10 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	// in time
 	img := image.NewAnacondaContainerInstaller(containerSource, "")
 	img.SquashfsCompression = "zstd"
+	// XXX: wrong place for this knowledge, should be distrodef
+	if c.SourceInfo.OSRelease.ID == "fedora" && c.SourceInfo.OSRelease.Variant == "ELN" {
+		img.UseRHELLoraxTemplates = true
+	}
 
 	img.Product = c.SourceInfo.OSRelease.Name
 

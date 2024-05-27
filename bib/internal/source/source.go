@@ -14,6 +14,7 @@ type OSRelease struct {
 	ID         string
 	VersionID  string
 	Name       string
+	Variant    string
 }
 
 type Info struct {
@@ -73,6 +74,7 @@ func LoadInfo(root string) (*Info, error) {
 			VersionID:  osrelease["VERSION_ID"],
 			Name:       osrelease["NAME"],
 			PlatformID: osrelease["PLATFORM_ID"],
+			Variant:    osrelease["VARIANT"],
 		},
 
 		UEFIVendor: vendor,
