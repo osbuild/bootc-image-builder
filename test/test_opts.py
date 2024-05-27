@@ -110,3 +110,22 @@ def test_bib_log_level_smoke(tmp_path, container_storage, build_fake_container, 
         "quay.io/centos-bootc/centos-bootc:stream9"
     ], check=True, capture_output=True, text=True)
     assert ('level=debug' in res.stderr) == with_debug
+
+
+def test_bib_help_hides_config(tmp_path, container_storage, build_fake_container):
+    output_path = tmp_path / "output"
+    output_path.mkdir(exist_ok=True)
+
+    res = subprocess.run([
+        "podman", "run", "--rm",
+        "--privileged",
+        "--security-opt", "label=type:unconfined_t",
+        "-v", f"{container_storage}:/var/lib/containers/storage",
+        "-v", f"{output_path}:/output",
+        build_fake_container,
+        "manifest", "--help",
+    ], check=True, capture_output=True, text=True)
+    # --config should not be user visible
+    assert '--config' not in res.stdout
+    # but other options should be
+    assert '--log-level' in res.stdout

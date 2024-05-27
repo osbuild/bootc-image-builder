@@ -548,12 +548,18 @@ func run() error {
 	}
 	rootCmd.AddCommand(manifestCmd)
 	manifestCmd.Flags().Bool("tls-verify", true, "require HTTPS and verify certificates when contacting registries")
-	manifestCmd.Flags().String("config", "", "build config file; /config.json will be used if present")
 	manifestCmd.Flags().String("rpmmd", "/rpmmd", "rpm metadata cache directory")
 	manifestCmd.Flags().String("target-arch", "", "build for the given target architecture (experimental)")
 	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, fmt.Sprintf("image types to build [%s]", allImageTypesString()))
 	manifestCmd.Flags().Bool("local", false, "use a local container rather than a container from a registry")
 	manifestCmd.Flags().String("rootfs", "", "Root filesystem type. If not given, the default configured in the source container image is used.")
+	// --config is only useful for developers who run bib outside
+	// of a container to generate a manifest. so hide it by
+	// default from users.
+	manifestCmd.Flags().String("config", "", "build config file; /config.json will be used if present")
+	if err := manifestCmd.Flags().MarkHidden("config"); err != nil {
+		return fmt.Errorf("cannot hide 'config' :%w", err)
+	}
 
 	buildCmd.Flags().AddFlagSet(manifestCmd.Flags())
 	buildCmd.Flags().String("aws-ami-name", "", "name for the AMI in AWS (only for type=ami)")
