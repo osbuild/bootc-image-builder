@@ -15,10 +15,12 @@ import (
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/container"
+	"github.com/osbuild/images/pkg/customizations/kickstart"
 	"github.com/osbuild/images/pkg/customizations/users"
 	"github.com/osbuild/images/pkg/disk"
 	"github.com/osbuild/images/pkg/image"
 	"github.com/osbuild/images/pkg/manifest"
+	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/platform"
 	"github.com/osbuild/images/pkg/rpmmd"
 	"github.com/osbuild/images/pkg/runner"
@@ -202,16 +204,20 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		customizations = c.Config.Customizations
 	}
 
-	img.Users = users.UsersFromBP(customizations.GetUsers())
-	img.Groups = users.GroupsFromBP(customizations.GetGroups())
-	if kopts := customizations.GetKernel(); kopts != nil && kopts.Append != "" {
-		img.KickstartKernelOptionsAppend = append(img.KickstartKernelOptionsAppend, kopts.Append)
+	img.Kickstart = &kickstart.Options{
+		// XXX: this really should be the default in "images"
+		Path:   osbuild.KickstartPathOSBuild,
+		Users:  users.UsersFromBP(customizations.GetUsers()),
+		Groups: users.GroupsFromBP(customizations.GetGroups()),
 	}
-	img.KickstartNetworkOnBoot = true
+	if kopts := customizations.GetKernel(); kopts != nil && kopts.Append != "" {
+		img.Kickstart.KernelOptionsAppend = append(img.Kickstart.KernelOptionsAppend, kopts.Append)
+	}
+	img.Kickstart.NetworkOnBoot = true
 	// XXX: this should really be done by images, the consumer should not
 	// need to know these details. so once images is fixed drop it here
 	// again.
-	if len(img.Users) > 0 || len(img.Groups) > 0 {
+	if len(img.Kickstart.Users) > 0 || len(img.Kickstart.Groups) > 0 {
 		img.AdditionalAnacondaModules = append(img.AdditionalAnacondaModules, "org.fedoraproject.Anaconda.Modules.Users")
 	}
 
@@ -237,7 +243,9 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		}
 	}
 
-	img.OSName = "default"
+	img.Kickstart.OSTree = &kickstart.OSTree{
+		OSName: "default",
+	}
 	img.Filename = "install.iso"
 
 	mf := manifest.New()
