@@ -10,6 +10,11 @@ Have [podman](https://podman.io/) installed on your system. Either through your 
 Linux or through [Podman Desktop](https://podman.io/) if you are on macOS or Windows. If you want to run the resulting
 virtual machine(s) or installer media you can use [qemu](https://www.qemu.org/).
 
+A very nice GUI extension for Podman Desktop is also
+[available](https://github.com/containers/podman-desktop-extension-bootc).
+When using this the commandline examples below are all handlded by
+podman desktop.
+
 On macOS, the podman machine must be running in rootful mode:
 
 ```bash
