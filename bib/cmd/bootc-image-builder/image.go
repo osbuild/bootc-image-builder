@@ -3,6 +3,7 @@ package main
 import (
 	cryptorand "crypto/rand"
 	"fmt"
+	"golang.org/x/exp/slices"
 	"math"
 	"math/big"
 	"math/rand"
@@ -73,6 +74,24 @@ func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
 	}
 }
 
+func applyFilesystemCustomizations(customizations *blueprint.Customizations, c *ManifestConfig) error {
+	// Check the filesystem customizations against the policy and set
+	// if user configured
+	if err := blueprint.CheckMountpointsPolicy(customizations.GetFilesystems(), policies.OstreeMountpointPolicies); err != nil {
+		return err
+	}
+	if customFS := customizations.GetFilesystems(); len(customFS) != 0 {
+		allowedMounts := []string{"/", "/boot"}
+		for _, mp := range customFS {
+			if !slices.Contains(allowedMounts, mp.Mountpoint) {
+				return fmt.Errorf("cannot use custom mount points yet, found: %v", mp.Mountpoint)
+			}
+		}
+		c.Filesystems = customFS
+	}
+	return nil
+}
+
 func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, error) {
 	if c.Imgref == "" {
 		return nil, fmt.Errorf("pipeline: no base image defined")
@@ -122,11 +141,6 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		img.KernelOptionsAppend = append(img.KernelOptionsAppend, kopts.Append)
 	}
 
-	// Check the filesystem customizations against the policy
-	if err := blueprint.CheckMountpointsPolicy(customizations.GetFilesystems(), policies.OstreeMountpointPolicies); err != nil {
-		return nil, err
-	}
-
 	basept, ok := partitionTables[c.Architecture.String()]
 	if !ok {
 		return nil, fmt.Errorf("pipelines: no partition tables defined for %s", c.Architecture)
@@ -143,12 +157,12 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		}
 		rootFS.Type = c.RootFSType
 	}
-	filesystems := customizations.GetFilesystems()
-	if len(filesystems) == 0 {
-		filesystems = c.Filesystems
+
+	if err := applyFilesystemCustomizations(customizations, c); err != nil {
+		return nil, err
 	}
 
-	pt, err := disk.NewPartitionTable(&basept, filesystems, DEFAULT_SIZE, disk.RawPartitioningMode, nil, rng)
+	pt, err := disk.NewPartitionTable(&basept, c.Filesystems, DEFAULT_SIZE, disk.RawPartitioningMode, nil, rng)
 	if err != nil {
 		return nil, err
 	}

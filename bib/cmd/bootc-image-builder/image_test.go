@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/osbuild/images/pkg/manifest"
-	"github.com/osbuild/images/pkg/runner"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/osbuild/images/pkg/blueprint"
+	"github.com/osbuild/images/pkg/manifest"
+	"github.com/osbuild/images/pkg/runner"
 
 	bib "github.com/osbuild/bootc-image-builder/bib/cmd/bootc-image-builder"
 	"github.com/osbuild/bootc-image-builder/bib/internal/source"
@@ -53,5 +55,49 @@ func TestGetDistroAndRunner(t *testing.T) {
 				assert.Equal(t, c.expectedRunner, runner)
 			}
 		})
+	}
+}
+
+func TestApplyFilesystemCustomizationsValidates(t *testing.T) {
+	for _, tc := range []struct {
+		fsCust      []blueprint.FilesystemCustomization
+		expectedErr string
+	}{
+		// happy
+		{
+			fsCust:      []blueprint.FilesystemCustomization{},
+			expectedErr: "",
+		},
+		{
+			fsCust: []blueprint.FilesystemCustomization{
+				{Mountpoint: "/"}, {Mountpoint: "/boot"},
+			},
+			expectedErr: "",
+		},
+		// sad
+		{
+			fsCust: []blueprint.FilesystemCustomization{
+				{Mountpoint: "/"},
+				{Mountpoint: "/ostree"},
+			},
+			expectedErr: `The following custom mountpoints are not supported ["/ostree"]`,
+		},
+		{
+			fsCust: []blueprint.FilesystemCustomization{
+				{Mountpoint: "/"},
+				{Mountpoint: "/var/log"},
+			},
+			expectedErr: "cannot use custom mount points yet, found: /var/log",
+		},
+	} {
+		conf := &bib.ManifestConfig{}
+		cust := &blueprint.Customizations{
+			Filesystem: tc.fsCust,
+		}
+		if tc.expectedErr == "" {
+			assert.NoError(t, bib.ApplyFilesystemCustomizations(cust, conf))
+		} else {
+			assert.ErrorContains(t, bib.ApplyFilesystemCustomizations(cust, conf), tc.expectedErr)
+		}
 	}
 }
