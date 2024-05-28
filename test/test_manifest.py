@@ -227,9 +227,10 @@ def test_manifest_user_customizations_toml(tmp_path, build_container):
     }
 
 
-@pytest.mark.parametrize("image_type", gen_testcases("manifest"))
-def test_mount_ostree_error(tmpdir_factory, build_container, image_type):
-    container_ref = image_type.split(",")[0]
+def test_mount_ostree_error(tmpdir_factory, build_container):
+    # no need to parameterize this test, toml is the same for all containers
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+
     CFG = {
         "blueprint": {
             "customizations": {
@@ -245,7 +246,7 @@ def test_mount_ostree_error(tmpdir_factory, build_container, image_type):
                     {
                         "mountpoint": "/ostree",
                         "minsize": "10GiB"
-                    }
+                    },
                 ]
             },
         },
@@ -256,16 +257,15 @@ def test_mount_ostree_error(tmpdir_factory, build_container, image_type):
     config_json_path = output_path / "config.json"
     config_json_path.write_text(json.dumps(CFG), encoding="utf-8")
 
-    try:
+    with pytest.raises(subprocess.CalledProcessError) as exc:
         subprocess.check_output([
             "podman", "run", "--rm",
             "--privileged",
+            "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
             "--security-opt", "label=type:unconfined_t",
             "-v", f"{output_path}:/output",
             f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "{container_ref}"]',
             build_container,
             "--config", "/output/config.json",
-        ], stderr=subprocess.PIPE)
-        assert False, "Did not raise a CalledProcessError when mounting /ostree"
-    except subprocess.CalledProcessError as err:
-        assert 'The following custom mountpoints are not supported ["/ostree"]' in err.stderr.decode("utf-8")
+        ], stderr=subprocess.PIPE, encoding="utf8")
+    assert 'The following custom mountpoints are not supported ["/ostree"]' in exc.value.stderr
