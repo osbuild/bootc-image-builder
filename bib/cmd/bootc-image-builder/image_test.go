@@ -1,14 +1,16 @@
-package main
+package main_test
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/runner"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	bib "github.com/osbuild/bootc-image-builder/bib/cmd/bootc-image-builder"
+	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 )
 
 func TestGetDistroAndRunner(t *testing.T) {
@@ -42,7 +44,7 @@ func TestGetDistroAndRunner(t *testing.T) {
 				ID:        c.id,
 				VersionID: c.versionID,
 			}
-			distro, runner, err := getDistroAndRunner(osRelease)
+			distro, runner, err := bib.GetDistroAndRunner(osRelease)
 			if c.expectedErr != "" {
 				assert.ErrorContains(t, err, c.expectedErr)
 			} else {
