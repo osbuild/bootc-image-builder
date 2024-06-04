@@ -32,11 +32,24 @@ def test_manifest_smoke(build_container, testcase_ref):
     # testcases_ref has the form "container_url,img_type1+img_type2,arch"
     container_ref = testcase_ref.split(",")[0]
 
+    host_arch = platform.machine()
+    if host_arch not in ["x86_64", "amd64", "aarch64", "arm64"]:
+        raise RuntimeError(f"unknown host arch: {host_arch}")
+
+    output = subprocess.run([
+        "podman", "pull",
+        "--platform", f"linux/{host_arch}",
+        container_ref,
+    ], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf8")
+    assert output.returncode == 0
+
     output = subprocess.check_output([
         "podman", "run", "--rm",
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
-        f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "{container_ref}"]',
+        "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
+        f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest",\
+            "--target-arch", "{host_arch}", "{container_ref}"]',
         build_container,
     ])
     manifest = json.loads(output)
@@ -91,7 +104,8 @@ def test_manifest_local_checks_containers_storage_errors(build_container):
         build_container,
     ], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf8")
     assert res.returncode == 1
-    err = 'local storage not working, did you forget -v /var/lib/containers/storage:/var/lib/containers/storage?'
+    err = 'could not access container storage, ' + \
+        'did you forget -v /var/lib/containers/storage:/var/lib/containers/storage?'
     assert err in res.stderr
 
 
@@ -157,6 +171,7 @@ def test_manifest_rootfs_respected(build_container, testcase_ref):
         "podman", "run", "--rm",
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
+        "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
         f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "{container_ref}"]',
         build_container,
     ])
@@ -178,6 +193,7 @@ def test_manifest_rootfs_override(build_container):
         "podman", "run", "--rm",
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
+        "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
         f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest",\
            "--rootfs", "ext4", "{container_ref}"]',
         build_container,
