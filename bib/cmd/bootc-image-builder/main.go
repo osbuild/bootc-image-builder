@@ -231,6 +231,10 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		logrus.Debug("Using local container")
 	}
 
+	if err := setup.ValidateHasContainerTags(imgref); err != nil {
+		return nil, nil, err
+	}
+
 	cntSize, err := getContainerSize(imgref)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot get container size: %w", err)
