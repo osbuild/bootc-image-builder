@@ -61,3 +61,13 @@ func TestValidateCanRunTargetArchUnexpectedOutput(t *testing.T) {
 	err := setup.ValidateCanRunTargetArch("fakearch")
 	assert.ErrorContains(t, err, `internal error: unexpected output`)
 }
+
+func TestValidateTags(t *testing.T) {
+	imageref := "quay.io/centos-bootc/centos-bootc:stream9"
+	err := setup.ValidateHasContainerTags(imageref)
+	assert.NoError(t, err)
+
+	badImageRef := "quay.io/centos/centos:stream9"
+	err = setup.ValidateHasContainerTags(badImageRef)
+	assert.ErrorContains(t, err, "image quay.io/centos/centos:stream9 is not a bootc image")
+}
