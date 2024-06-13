@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"golang.org/x/sys/unix"
 
@@ -144,6 +145,20 @@ func validateCanRunTargetArch(targetArch string) error {
 	}
 	if string(output) != "ok\n" {
 		return fmt.Errorf("internal error: unexpected output from cross-architecture canary: %q", string(output))
+	}
+
+	return nil
+}
+
+func ValidateHasContainerTags(imgref string) error {
+	output, err := exec.Command("podman", "image", "inspect", imgref, "--format", "{{.Labels}}").Output()
+	if err != nil {
+		return fmt.Errorf("failed inspect image: %w", util.OutputErr(err))
+	}
+
+	tags := string(output)
+	if !strings.Contains(tags, "containers.bootc:1") {
+		return fmt.Errorf("image %s is not a bootc image", imgref)
 	}
 
 	return nil
