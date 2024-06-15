@@ -38,12 +38,11 @@ jobs:
         changed_files=$(git diff --raw "$GITHUB_BASE_REF" "$GITHUB_HEAD_REF" | cut -f2)
         num_files=$(echo "$changed_files" | wc -l)
         contains_readme=$(grep -vsF "CANARY.md" <<< "$changed_files")
-        echo $contains_readme
         if [[ $num_files -eq 1  && -n $contains_readme ]]; then
-            echo "Foo"
+            echo "Conditional:False"
             echo "test=false" >> "$GITHUB_OUTPUT"
         else
-            echo "Bar"
+            echo "Conditional:True"
             echo "test=true" >> "$GITHUB_OUTPUT"
         fi
 
