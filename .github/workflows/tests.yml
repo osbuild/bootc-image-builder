@@ -16,9 +16,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  integration-conditional:
+    name: "Integration Conditional"
+    runs-on: ubuntu-latest
+    outputs:
+      run-integration-test: ${{ steps.step1.outputs.test }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+
+    - name: Display commit
+      run: |
+        echo "BASE_REF: $GITHUB_BASE_REF"
+        echo "REF: $GITHUB_REF"
+        echo "HEAD REF: $GITHUB_HEAD_REF"
+        echo "SHA: $GITHUB_SHA"
+    - name: Parse commit
+      id: step1
+      run: |
+        changed_files=$(git diff --raw "$GITHUB_BASE_REF" "$GITHUB_HEAD_REF" | cut -f2)
+        num_files=$(echo "$changed_files" | wc -l)
+        contains_readme=$(grep -vsF "CANARY.md" <<< "$changed_files")
+        echo $contains_readme
+        if [[ $num_files -eq 1  && -n $contains_readme ]]; then
+            echo "Foo"
+            echo "test=false" >> "$GITHUB_OUTPUT"
+        else
+            echo "Bar"
+            echo "test=true" >> "$GITHUB_OUTPUT"
+        fi
+
   lint:
     name: "⌨ Lint & unittests"
     runs-on: ubuntu-latest
+    needs: integration-conditional
+    if: needs.integration-conditional.outputs.run-integration-test == 'true'
     steps:
       - name: Set up Go 1.20
         uses: actions/setup-go@v5
@@ -64,67 +97,4 @@ jobs:
         # allow seemingly unreachable commands
         SHELLCHECK_OPTS: -e SC1091 -e SC2002 -e SC2317
 
-  integration:
-    # TODO: run this also via tmt/testing-farm
-    name: "Integration"
-    runs-on: ubuntu-22.04
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-    - name: Setup up python
-      uses: actions/setup-python@v5
-    - name: Apt update
-      run: sudo apt update
-    - name: Install test dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y podman python3-pytest python3-paramiko python3-boto3 flake8 qemu-system-x86 qemu-efi-aarch64 qemu-system-arm qemu-user-static
-    - name: Diskspace (before)
-      run: |
-        df -h
-        sudo du -sh * /var/tmp /tmp /var/lib/containers | sort -sh
-    - name: Update podman
-      run:  |
-        # from https://askubuntu.com/questions/1414446/whats-the-recommended-way-of-installing-podman-4-in-ubuntu-22-04
-        ubuntu_version='22.04'
-        key_url="https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/unstable/xUbuntu_${ubuntu_version}/Release.key"
-        sources_url="https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/unstable/xUbuntu_${ubuntu_version}"
-        echo "deb $sources_url/ /" | sudo tee /etc/apt/sources.list.d/devel-kubic-libcontainers-unstable.list
-        curl -fsSL $key_url | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/devel_kubic_libcontainers_unstable.gpg > /dev/null
-        sudo apt update
-        sudo apt install -y podman
-    - name: Install python test deps
-      run: |
-        # make sure test deps are available for root
-        sudo -E pip install --user -r test/requirements.txt
-    - name: Workarounds for GH runner diskspace
-      run: |
-        # use custom basetemp here because /var/tmp is on a smaller disk
-        # than /mnt
-        sudo mkdir -p /mnt/var/tmp/bib-tests
-        # on GH runners /mnt has 70G free space, use that for our container
-        # storage
-        sudo mkdir -p /mnt/var/lib/containers
-        sudo mount -o bind /mnt/var/lib/containers /var/lib/containers
-    - run: |
-        mkdir -p /var/tmp/osbuild-test-store
-    - name: Cache osbuild env
-      uses: actions/cache@v4
-      with:
-        path: /var/tmp/osbuild-test-store
-        key: no-key-needed-here
-    - name: Run tests
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      run: |
-        # podman needs (parts of) the environment but will break when
-        # XDG_RUNTIME_DIR is set.
-        # TODO: figure out what exactly podman needs
-        sudo -E XDG_RUNTIME_DIR= pytest-3 --basetemp=/mnt/var/tmp/bib-tests
-    - name: Diskspace (after)
-      if: ${{ always() }}
-      run: |
-        df -h
-        sudo du -sh * /var/tmp /tmp /var/lib/containers | sort -sh
+  
