@@ -9,15 +9,15 @@ import textwrap
 import pytest
 
 import testutil
+from containerbuild import build_container_fixture  # noqa: F401
+from containerbuild import make_container
+from testcases import gen_testcases
 
 if not testutil.has_executable("podman"):
     pytest.skip("no podman, skipping integration tests that required podman", allow_module_level=True)
 if not testutil.can_start_rootful_containers():
     pytest.skip("tests require to be able to run rootful containers (try: sudo)", allow_module_level=True)
 
-from containerbuild import build_container_fixture  # noqa: F401
-from containerbuild import make_container
-from testcases import gen_testcases
 
 
 def find_image_size_from(manifest_str):
