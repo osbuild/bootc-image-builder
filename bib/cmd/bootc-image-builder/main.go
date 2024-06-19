@@ -391,7 +391,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot ensure the environment: %w", err)
 	}
 
-	if err := os.MkdirAll(outputDir, 0777); err != nil {
+	if err := os.MkdirAll(outputDir, 0o777); err != nil {
 		return fmt.Errorf("cannot setup build dir: %w", err)
 	}
 
