@@ -32,7 +32,7 @@ func TestValidateCanRunTargetArchUnsupportedCanary(t *testing.T) {
 func makeFakeCanary(t *testing.T, content string) {
 	tmpdir := t.TempDir()
 	t.Setenv("PATH", os.Getenv("PATH")+":"+tmpdir)
-	err := os.WriteFile(filepath.Join(tmpdir, "bib-canary-fakearch"), []byte(content), 0755)
+	err := os.WriteFile(filepath.Join(tmpdir, "bib-canary-fakearch"), []byte(content), 0o755)
 	assert.NoError(t, err)
 }
 
