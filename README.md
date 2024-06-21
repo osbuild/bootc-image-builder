@@ -25,6 +25,11 @@ $ podman machine set --rootful
 $ podman machine start
 ```
 
+## ✍ Prerequisites
+
+The package `osbuild-selinux` or equivalent osbuild SELinux policies must be installed in the system running
+`bootc-image-builder`.
+
 ## 🚀 Examples
 
 The following example builds a `centos-bootc:stream9` bootable container into a QCOW2 image for the architecture you're running
