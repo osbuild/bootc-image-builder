@@ -11,7 +11,7 @@ To work on bootc-image-builder one needs a working Go [compiler/environment?]. S
 [go.mod](bib/go.mod). 
 
 To run the testsuite install the test dependencies as outlined in the
-[github action](./.github/workflows/tests.yml) as outlined under
+[github action](./.github/workflows/tests.yml) under
 "Install test dependencies".  Many missing test dependencies will be
 auto-detected and the tests skipped. However some (like podman or
 qemu) are essential.
@@ -52,7 +52,7 @@ heavy use of the pytest fixtures feature. They are extensive and will
 take about 45min to run (dependening on hardware and connection) and
 involve building/booting multiple images.
 
-To run them go into the bootc-image-build root directory and run
+To run them, change into the bootc-image-build root directory and run
 ```
 $ pytest -s -vv
 ```
