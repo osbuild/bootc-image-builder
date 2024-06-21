@@ -3,12 +3,13 @@ package main
 import (
 	cryptorand "crypto/rand"
 	"fmt"
-	"golang.org/x/exp/slices"
 	"math"
 	"math/big"
 	"math/rand"
 	"strconv"
 	"strings"
+
+	"golang.org/x/exp/slices"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
 	"github.com/osbuild/bootc-image-builder/bib/internal/distrodef"
@@ -16,6 +17,7 @@ import (
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/container"
+	"github.com/osbuild/images/pkg/customizations/kickstart"
 	"github.com/osbuild/images/pkg/customizations/users"
 	"github.com/osbuild/images/pkg/disk"
 	"github.com/osbuild/images/pkg/image"
@@ -226,16 +228,23 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		customizations = c.Config.Customizations
 	}
 
-	img.Users = users.UsersFromBP(customizations.GetUsers())
-	img.Groups = users.GroupsFromBP(customizations.GetGroups())
-	if kopts := customizations.GetKernel(); kopts != nil && kopts.Append != "" {
-		img.KickstartKernelOptionsAppend = append(img.KickstartKernelOptionsAppend, kopts.Append)
+	img.Kickstart = &kickstart.Options{
+		Path:          "/osbuild.ks",
+		Users:         users.UsersFromBP(customizations.GetUsers()),
+		Groups:        users.GroupsFromBP(customizations.GetGroups()),
+		NetworkOnBoot: true,
+		OSTree: &kickstart.OSTree{
+			OSName: "default",
+		},
 	}
-	img.KickstartNetworkOnBoot = true
+	if kopts := customizations.GetKernel(); kopts != nil && kopts.Append != "" {
+		img.Kickstart.KernelOptionsAppend = append(img.Kickstart.KernelOptionsAppend, kopts.Append)
+	}
+
 	// XXX: this should really be done by images, the consumer should not
 	// need to know these details. so once images is fixed drop it here
 	// again.
-	if len(img.Users) > 0 || len(img.Groups) > 0 {
+	if len(img.Kickstart.Users) > 0 || len(img.Kickstart.Groups) > 0 {
 		img.AdditionalAnacondaModules = append(img.AdditionalAnacondaModules, "org.fedoraproject.Anaconda.Modules.Users")
 	}
 
@@ -261,7 +270,6 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		}
 	}
 
-	img.OSName = "default"
 	img.Filename = "install.iso"
 
 	mf := manifest.New()
