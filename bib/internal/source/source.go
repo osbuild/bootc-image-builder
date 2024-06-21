@@ -14,6 +14,7 @@ type OSRelease struct {
 	ID         string
 	VersionID  string
 	Name       string
+	VariantID  string
 }
 
 type Info struct {
@@ -22,6 +23,7 @@ type Info struct {
 }
 
 func validateOSRelease(osrelease map[string]string) error {
+	// VARIANT_ID is optional
 	for _, key := range []string{"ID", "VERSION_ID", "NAME", "PLATFORM_ID"} {
 		if _, ok := osrelease[key]; !ok {
 			return fmt.Errorf("missing %s in os-release", key)
@@ -73,6 +75,7 @@ func LoadInfo(root string) (*Info, error) {
 			VersionID:  osrelease["VERSION_ID"],
 			Name:       osrelease["NAME"],
 			PlatformID: osrelease["PLATFORM_ID"],
+			VariantID:  osrelease["VARIANT_ID"],
 		},
 
 		UEFIVendor: vendor,
