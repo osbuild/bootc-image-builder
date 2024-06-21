@@ -248,6 +248,10 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		img.AdditionalAnacondaModules = append(img.AdditionalAnacondaModules, "org.fedoraproject.Anaconda.Modules.Users")
 	}
 
+	// use lorax-templates-rhel if the source distro is not Fedora with the exception of Fedora ELN
+	img.UseRHELLoraxTemplates =
+		c.SourceInfo.OSRelease.ID != "fedora" || c.SourceInfo.OSRelease.VersionID == "eln"
+
 	switch c.Architecture {
 	case arch.ARCH_X86_64:
 		img.Platform = &platform.X86{
