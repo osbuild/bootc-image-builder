@@ -36,7 +36,7 @@ def test_manifest_smoke(build_container, testcase_ref):
         "podman", "run", "--rm",
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
-        f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "{container_ref}"]',
+        f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--rootfs", "ext4", "{container_ref}"]',
         build_container,
     ])
     manifest = json.loads(output)
@@ -71,8 +71,9 @@ def test_manifest_disksize(tmp_path, build_container, testcase_ref):
             # ensure local storage is here
             "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
             # need different entry point
-            f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--local", "localhost/{container_tag}"]',
+            "--entrypoint", "/usr/bin/bootc-image-builder",
             build_container,
+            "manifest", "--local", "--rootfs", "ext4", f"localhost/{container_tag}",
         ], encoding="utf8")
         # ensure disk size is bigger than the default 10G
         disk_size = find_image_size_from(manifest_str)
@@ -108,8 +109,9 @@ def test_manifest_local_checks_containers_storage_works(tmp_path, build_containe
             "--privileged",
             "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
             "--security-opt", "label=type:unconfined_t",
-            f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--local", "localhost/{container_tag}"]',
+            "--entrypoint", "/usr/bin/bootc-image-builder",
             build_container,
+            "manifest", "--local", "--rootfs", "ext4", f"localhost/{container_tag}",
         ], check=True, encoding="utf8")
 
 
@@ -129,7 +131,7 @@ def test_manifest_cross_arch_check(tmp_path, build_container):
                 "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
                 "--security-opt", "label=type:unconfined_t",
                 f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest",\
-                   "--target-arch=aarch64", "--local", \
+                   "--target-arch=aarch64", "--rootfs", "ext4", "--local", \
                    "localhost/{container_tag}"]',
                 build_container,
             ], check=True, capture_output=True, encoding="utf8")
@@ -147,7 +149,7 @@ def find_rootfs_type_from(manifest_str):
     raise ValueError(f"cannot find rootfs type in manifest:\n{manifest_str}")
 
 
-@pytest.mark.parametrize("testcase_ref", gen_testcases("manifest"))
+@pytest.mark.parametrize("testcase_ref", gen_testcases("default-rootfs"))
 def test_manifest_rootfs_respected(build_container, testcase_ref):
     # testcases_ref has the form "container_url,img_type1+img_type2,arch"
     container_ref = testcase_ref.split(",")[0]
@@ -163,8 +165,6 @@ def test_manifest_rootfs_respected(build_container, testcase_ref):
     rootfs_type = find_rootfs_type_from(output)
     match container_ref:
         case "quay.io/centos-bootc/centos-bootc:stream9":
-            assert rootfs_type == "xfs"
-        case "quay.io/centos-bootc/fedora-bootc:eln":
             assert rootfs_type == "xfs"
         case _:
             pytest.fail(f"unknown container_ref {container_ref} please update test")
@@ -214,7 +214,7 @@ def test_manifest_user_customizations_toml(tmp_path, build_container):
         "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
         "-v", f"{config_toml_path}:/config.toml",
         "--security-opt", "label=type:unconfined_t",
-        f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "{container_ref}"]',
+        f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--rootfs", "ext4", "{container_ref}"]',
         build_container,
     ])
     user_stage = find_user_stage_from(output)
@@ -264,7 +264,7 @@ def test_mount_ostree_error(tmpdir_factory, build_container):
             "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
             "--security-opt", "label=type:unconfined_t",
             "-v", f"{output_path}:/output",
-            f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "{container_ref}"]',
+            f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--rootfs", "ext4", "{container_ref}"]',
             build_container,
             "--config", "/output/config.json",
         ], stderr=subprocess.PIPE, encoding="utf8")
