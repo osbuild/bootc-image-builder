@@ -7,7 +7,7 @@ pytest.
 
 ## Setup
 
-To work on bootc-image-builder one needs a working go, see
+To work on bootc-image-builder one needs a working Go [compiler/environment?]. See
 [go.mod](bib/go.mod). 
 
 To run the testsuite install the test dependencies as outlined in the
