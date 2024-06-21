@@ -20,7 +20,7 @@ INSTALLER_IMAGE_TYPES = ("anaconda-iso",)
 def gen_testcases(what):
     # bootc containers that are tested by default
     CONTAINERS_TO_TEST = {
-        "fedora": "quay.io/centos-bootc/fedora-bootc:eln",
+        "fedora": "quay.io/fedora/fedora-bootc:40",
         "centos": "quay.io/centos-bootc/centos-bootc:stream9",
     }
     # allow commandline override, this is used when testing
@@ -34,6 +34,9 @@ def gen_testcases(what):
 
     if what == "manifest":
         return CONTAINERS_TO_TEST.values()
+    elif what == "default-rootfs":
+        # Fedora doesn't have a default rootfs
+        return [CONTAINERS_TO_TEST["centos"]]
     elif what == "ami-boot":
         return [cnt + ",ami" for cnt in CONTAINERS_TO_TEST.values()]
     elif what == "anaconda-iso":
