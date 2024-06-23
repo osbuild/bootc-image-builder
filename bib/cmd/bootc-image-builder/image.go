@@ -145,6 +145,13 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 			},
 			Zipl: true,
 		}
+	case arch.ARCH_PPC64LE:
+		img.Platform = &platform.PPC64LE{
+			BasePlatform: platform.BasePlatform{
+				QCOW2Compat: "1.1",
+			},
+			BIOS: true,
+		}
 	}
 
 	if kopts := customizations.GetKernel(); kopts != nil && kopts.Append != "" {
