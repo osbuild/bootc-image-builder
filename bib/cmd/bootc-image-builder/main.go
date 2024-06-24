@@ -245,9 +245,12 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	if rootFs != "" {
 		rootfsType = rootFs
 	} else {
-		rootfsType, err = container.RootfsType()
+		rootfsType, err = container.DefaultRootfsType()
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot get rootfs type for container: %w", err)
+		}
+		if rootfsType == "" {
+			return nil, nil, fmt.Errorf(`no default root filesystem type specified in container, please use "--rootfs" to set manually`)
 		}
 	}
 

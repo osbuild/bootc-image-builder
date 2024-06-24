@@ -136,7 +136,10 @@ func (c *Container) InitDNF() error {
 	return nil
 }
 
-func (c *Container) RootfsType() (string, error) {
+// DefaultRootfsType returns the default rootfs type (e.g. "ext4") as
+// specified by the bootc container install configuration. An empty
+// string is valid and means the container sets no default.
+func (c *Container) DefaultRootfsType() (string, error) {
 	output, err := exec.Command("podman", "exec", c.id, "bootc", "install", "print-configuration").Output()
 	if err != nil {
 		return "", fmt.Errorf("failed to run bootc install print-configuration: %w", util.OutputErr(err))
@@ -166,7 +169,7 @@ func (c *Container) RootfsType() (string, error) {
 	supportedFS := []string{"ext4", "xfs"}
 
 	if fsType == "" {
-		return "", fmt.Errorf("container does not include a default root filesystem type")
+		return "", nil
 	}
 	if !slices.Contains(supportedFS, fsType) {
 		return "", fmt.Errorf("unsupported root filesystem type: %s, supported: %s", fsType, strings.Join(supportedFS, ", "))

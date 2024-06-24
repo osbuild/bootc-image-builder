@@ -143,3 +143,31 @@ exec /usr/bin/podman "$@"
 	assert.ErrorContains(t, err, fmt.Sprintf("mounting %s container failed: ", testingImage))
 	assert.ErrorContains(t, err, "stderr:\nforced-crash")
 }
+
+func TestRootfsTypeHappy(t *testing.T) {
+	for _, tc := range []string{"", "ext4", "xfs"} {
+		jsonStr := "{}"
+		if tc != "" {
+			jsonStr = fmt.Sprintf(`{"filesystem": {"root": {"type": "%s"}}}`, tc)
+		}
+		makeFakePodman(t, fmt.Sprintf(`#!/bin/sh
+echo '%s'
+`, jsonStr))
+		cnt := Container{}
+		rootfs, err := cnt.DefaultRootfsType()
+		assert.NoError(t, err)
+		assert.Equal(t, tc, rootfs)
+	}
+}
+
+func TestRootfsTypeSad(t *testing.T) {
+	for _, tc := range []string{"ext1"} {
+		jsonStr := fmt.Sprintf(`{"filesystem": {"root": {"type": "%s"}}}`, tc)
+		makeFakePodman(t, fmt.Sprintf(`#!/bin/sh
+echo '%s'
+`, jsonStr))
+		cnt := Container{}
+		_, err := cnt.DefaultRootfsType()
+		assert.ErrorContains(t, err, "unsupported root filesystem type: ext1, supported: ")
+	}
+}
