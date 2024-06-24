@@ -217,8 +217,8 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	// We might want to change this behaviour in the future to match podman.
 	if !localStorage {
 		logrus.Infof("Pulling image %s (arch=%s)\n", imgref, cntArch)
-		if output, err := exec.Command("podman", "pull", "--arch", cntArch.String(), fmt.Sprintf("--tls-verify=%v", tlsVerify), imgref).CombinedOutput(); err != nil {
-			return nil, nil, fmt.Errorf("failed to pull container image: %w\n%s", err, output)
+		if _, err := exec.Command("podman", "pull", "--arch", cntArch.String(), fmt.Sprintf("--tls-verify=%v", tlsVerify), imgref).Output(); err != nil {
+			return nil, nil, fmt.Errorf("failed to pull container image: %w", util.OutputErr(err))
 		}
 	} else {
 		logrus.Debug("Using local container")
