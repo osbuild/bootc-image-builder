@@ -129,3 +129,20 @@ def test_bib_help_hides_config(tmp_path, container_storage, build_fake_container
     assert '--config' not in res.stdout
     # but other options should be
     assert '--log-level' in res.stdout
+
+
+def test_bib_errors_only_once(tmp_path, container_storage, build_fake_container):
+    output_path = tmp_path / "output"
+    output_path.mkdir(exist_ok=True)
+
+    res = subprocess.run([
+        "podman", "run", "--rm",
+        "--privileged",
+        "--security-opt", "label=type:unconfined_t",
+        "-v", f"{container_storage}:/var/lib/containers/storage",
+        "-v", f"{output_path}:/output",
+        build_fake_container,
+        "localhost/no-such-image",
+    ], check=False, capture_output=True, text=True)
+    needle = "cannot build manifest: failed to pull container image:"
+    assert res.stderr.count(needle) == 1

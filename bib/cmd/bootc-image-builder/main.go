@@ -528,6 +528,7 @@ func run() error {
 		Use:               "bootc-image-builder",
 		Long:              "create a bootable image from an ostree native container",
 		PersistentPreRunE: rootPreRunE,
+		SilenceErrors:     true,
 	}
 
 	rootCmd.PersistentFlags().StringVar(&rootLogLevel, "log-level", "", "logging level (debug, info, error); default error")
