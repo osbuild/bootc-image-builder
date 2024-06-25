@@ -248,6 +248,66 @@ def test_manifest_user_customizations_toml(tmp_path, build_container):
     }
 
 
+def test_manifest_installer_customizations(tmp_path, build_container):
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+
+    config_toml_path = tmp_path / "config.toml"
+    config_toml_path.write_text(textwrap.dedent("""\
+    [customizations.installer.kickstart]
+    contents = \"\"\"
+    autopart --type=lvm
+    \"\"\"
+    """))
+    output = subprocess.check_output([
+        "podman", "run", "--rm",
+        "--privileged",
+        "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
+        "-v", f"{config_toml_path}:/config.toml",
+        "--security-opt", "label=type:unconfined_t",
+        f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--type=anaconda-iso", "{container_ref}"]',
+        build_container,
+    ])
+    manifest = json.loads(output)
+
+    # expected values for the following inline file contents
+    #
+    # %include /run/install/repo/osbuild-base.ks
+    # autopart --type=lvm
+    expected_content_hash = "dd63f9315bb74889b2b1a23c4f283571db122f2b11cf3161ef67cea3280f78b0"
+    expected_content_id = f"sha256:{expected_content_hash}"   # hash with algo prefix
+    expected_data = "JWluY2x1ZGUgL3J1bi9pbnN0YWxsL3JlcG8vb3NidWlsZC1iYXNlLmtzCmF1dG9wYXJ0IC0tdHlwZT1sdm0K"
+
+    # check the inline source for the custom kickstart contents
+    assert expected_content_id in manifest["sources"]["org.osbuild.inline"]["items"]
+    assert manifest["sources"]["org.osbuild.inline"]["items"][expected_content_id]["data"] == expected_data
+
+    # find copy stage in bootiso-tree pipeline
+    bootiso_pipeline = {}
+    for pipeline in manifest["pipelines"]:
+        if pipeline["name"] != "bootiso-tree":
+            continue
+        bootiso_pipeline = pipeline
+        break
+    else:
+        raise ValueError("failed to find bootiso-tree pipeline in ISO manifest")
+
+    copy_stage = {}
+    for stage in bootiso_pipeline["stages"]:
+        if stage["type"] != "org.osbuild.copy":
+            continue
+        if stage["options"]["paths"][0]["to"] != "tree:///osbuild.ks":
+            continue
+        copy_stage = stage
+        break
+    else:
+        raise ValueError("failed to find copy stage for user kickstart file")
+
+    # found kickstart file copy stage: verify options and inputs
+    assert copy_stage["options"]["paths"][0]["from"] == \
+        f"input://file-{expected_content_hash}/{expected_content_id}"
+    assert copy_stage["inputs"][f"file-{expected_content_hash}"]["references"][0]["id"] == expected_content_id
+
+
 def test_mount_ostree_error(tmpdir_factory, build_container):
     # no need to parameterize this test, toml is the same for all containers
     container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
