@@ -1,3 +1,5 @@
+import base64
+import hashlib
 import json
 import pathlib
 import platform
@@ -246,6 +248,41 @@ def test_manifest_user_customizations_toml(tmp_path, build_container):
         "key": "ssh-rsa AAA ... user@email.com",
         "groups": ["wheel"],
     }
+
+
+def test_manifest_installer_customizations(tmp_path, build_container):
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+
+    config_toml_path = tmp_path / "config.toml"
+    config_toml_path.write_text(textwrap.dedent("""\
+    [customizations.installer.kickstart]
+    contents = \"\"\"
+    autopart --type=lvm
+    \"\"\"
+    """))
+    output = subprocess.check_output([
+        "podman", "run", "--rm",
+        "--privileged",
+        "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
+        "-v", f"{config_toml_path}:/config.toml",
+        "--security-opt", "label=type:unconfined_t",
+        f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--type=anaconda-iso", "{container_ref}"]',
+        build_container,
+    ])
+    manifest = json.loads(output)
+
+    # expected values for the following inline file contents
+    ks_content = textwrap.dedent("""\
+    %include /run/install/repo/osbuild-base.ks
+    autopart --type=lvm
+    """).encode("utf8")
+    expected_data = base64.b64encode(ks_content).decode()
+    expected_content_hash = hashlib.sha256(ks_content).hexdigest()
+    expected_content_id = f"sha256:{expected_content_hash}"   # hash with algo prefix
+
+    # check the inline source for the custom kickstart contents
+    assert expected_content_id in manifest["sources"]["org.osbuild.inline"]["items"]
+    assert manifest["sources"]["org.osbuild.inline"]["items"][expected_content_id]["data"] == expected_data
 
 
 def test_mount_ostree_error(tmpdir_factory, build_container):
