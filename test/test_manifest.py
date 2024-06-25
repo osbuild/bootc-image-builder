@@ -1,6 +1,6 @@
 import json
-import platform
 import pathlib
+import platform
 import subprocess
 import textwrap
 
@@ -13,7 +13,8 @@ if not testutil.has_executable("podman"):
 if not testutil.can_start_rootful_containers():
     pytest.skip("tests require to be able to run rootful containers (try: sudo)", allow_module_level=True)
 
-from containerbuild import build_container_fixture, make_container  # noqa: F401
+from containerbuild import build_container_fixture  # noqa: F401
+from containerbuild import make_container
 from testcases import gen_testcases
 
 
@@ -47,6 +48,26 @@ def test_manifest_smoke(build_container, testcase_ref):
     disk_size = find_image_size_from(output)
     # default image size is 10G
     assert int(disk_size) == 10 * 1024 * 1024 * 1024
+
+
+@pytest.mark.parametrize("testcase_ref", gen_testcases("anaconda-iso"))
+def test_iso_manifest_smoke(build_container, testcase_ref):
+    # testcases_ref has the form "container_url,img_type1+img_type2,arch"
+    container_ref = testcase_ref.split(",")[0]
+
+    output = subprocess.check_output([
+        "podman", "run", "--rm",
+        "--privileged",
+        "--security-opt", "label=type:unconfined_t",
+        ('--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--rootfs", "ext4", '
+         f'"--type=anaconda-iso", "{container_ref}"]'),
+        build_container,
+    ])
+    manifest = json.loads(output)
+    # just some basic validation
+    expected_pipeline_names = ["build", "anaconda-tree", "rootfs-image", "efiboot-tree", "bootiso-tree", "bootiso"]
+    assert manifest["version"] == "2"
+    assert [pipeline["name"] for pipeline in manifest["pipelines"]] == expected_pipeline_names
 
 
 @pytest.mark.parametrize("testcase_ref", gen_testcases("manifest"))
