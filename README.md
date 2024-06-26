@@ -358,6 +358,8 @@ network --bootproto=dhcp --device=link --activate --onboot=on
 """
 ```
 
+Note that bootc-image-builder will automatically add the command that installs the container image (`ostreecontainer ...`), so this line or any line that conflicts with it should not be included. See the relevant [Kickstart documentation](https://pykickstart.readthedocs.io/en/latest/kickstart-docs.html#ostreecontainer) for more information.
+
 ## Building
 
 To build the container locally you can run
