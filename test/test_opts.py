@@ -146,3 +146,21 @@ def test_bib_errors_only_once(tmp_path, container_storage, build_fake_container)
     ], check=False, capture_output=True, text=True)
     needle = "cannot build manifest: failed to pull container image:"
     assert res.stderr.count(needle) == 1
+
+
+def test_bib_version(tmp_path, container_storage, build_fake_container):
+    output_path = tmp_path / "output"
+    output_path.mkdir(exist_ok=True)
+
+    res = subprocess.run([
+        "podman", "run", "--rm",
+        "--privileged",
+        "--security-opt", "label=type:unconfined_t",
+        "-v", f"{container_storage}:/var/lib/containers/storage",
+        "-v", f"{output_path}:/output",
+        "--entrypoint=/usr/bin/bootc-image-builder",
+        build_fake_container,
+        "version",
+    ], check=True, capture_output=True, text=True)
+    needle = "revision: "
+    assert needle in res.stdout
