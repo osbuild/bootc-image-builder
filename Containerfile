@@ -6,6 +6,8 @@ RUN go env -w GOPROXY=$GOPROXY
 RUN cd /build/bib && go mod download
 COPY build.sh /build
 COPY bib /build/bib
+# the ".git" dir will allow go build to automatically include build info
+COPY .git /build/.git
 WORKDIR /build
 RUN ./build.sh
 
