@@ -36,8 +36,9 @@ def test_manifest_smoke(build_container, testcase_ref):
         "podman", "run", "--rm",
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
-        f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--rootfs", "ext4", "{container_ref}"]',
+        "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
+        "manifest", "--rootfs", "ext4", f"{container_ref}",
     ])
     manifest = json.loads(output)
     # just some basic validation
@@ -88,8 +89,9 @@ def test_manifest_local_checks_containers_storage_errors(build_container):
         "podman", "run", "--rm",
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
-        '--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--local", "arg-not-used"]',
+        "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
+        "manifest", "--local", f"arg-not-used",
     ], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf8")
     assert res.returncode == 1
     err = 'local storage not working, did you forget -v /var/lib/containers/storage:/var/lib/containers/storage?'
@@ -109,7 +111,7 @@ def test_manifest_local_checks_containers_storage_works(tmp_path, build_containe
             "--privileged",
             "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
             "--security-opt", "label=type:unconfined_t",
-            "--entrypoint", "/usr/bin/bootc-image-builder",
+            "--entrypoint=/usr/bin/bootc-image-builder",
             build_container,
             "manifest", "--local", "--rootfs", "ext4", f"localhost/{container_tag}",
         ], check=True, encoding="utf8")
@@ -130,10 +132,10 @@ def test_manifest_cross_arch_check(tmp_path, build_container):
                 "--privileged",
                 "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
                 "--security-opt", "label=type:unconfined_t",
-                f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest",\
-                   "--target-arch=aarch64", "--rootfs", "ext4", "--local", \
-                   "localhost/{container_tag}"]',
+                "--entrypoint=/usr/bin/bootc-image-builder",
                 build_container,
+                "manifest", "--target-arch=aarch64",
+                "--rootfs", "ext4", "--local", f"localhost/{container_tag}"
             ], check=True, capture_output=True, encoding="utf8")
         assert 'image found is for unexpected architecture "x86_64"' in exc.value.stderr
 
@@ -178,9 +180,9 @@ def test_manifest_rootfs_override(build_container):
         "podman", "run", "--rm",
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
-        f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest",\
-           "--rootfs", "ext4", "{container_ref}"]',
+        "--entrypoint=/usr/bin/bootc-image-builder", 
         build_container,
+        "manifest", "--rootfs", "ext4", f"{container_ref}",
     ])
     rootfs_type = find_rootfs_type_from(output)
     assert rootfs_type == "ext4"
@@ -214,8 +216,9 @@ def test_manifest_user_customizations_toml(tmp_path, build_container):
         "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
         "-v", f"{config_toml_path}:/config.toml",
         "--security-opt", "label=type:unconfined_t",
-        f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--rootfs", "ext4", "{container_ref}"]',
+        "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
+        "manifest", "--rootfs", "ext4", f"{container_ref}",
     ])
     user_stage = find_user_stage_from(output)
     assert user_stage["options"]["users"].get("alice") == {
@@ -264,8 +267,8 @@ def test_mount_ostree_error(tmpdir_factory, build_container):
             "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
             "--security-opt", "label=type:unconfined_t",
             "-v", f"{output_path}:/output",
-            f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "--rootfs", "ext4", "{container_ref}"]',
+            "--entrypoint=/usr/bin/bootc-image-builder",
             build_container,
-            "--config", "/output/config.json",
+            "manifest", "--rootfs", "ext4", "{container_ref}",
         ], stderr=subprocess.PIPE, encoding="utf8")
     assert 'The following custom mountpoints are not supported ["/ostree"]' in exc.value.stderr

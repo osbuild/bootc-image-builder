@@ -122,6 +122,7 @@ def test_bib_help_hides_config(tmp_path, container_storage, build_fake_container
         "--security-opt", "label=type:unconfined_t",
         "-v", f"{container_storage}:/var/lib/containers/storage",
         "-v", f"{output_path}:/output",
+        "--entrypoint=/usr/bin/bootc-image-builder",
         build_fake_container,
         "manifest", "--help",
     ], check=True, capture_output=True, text=True)
