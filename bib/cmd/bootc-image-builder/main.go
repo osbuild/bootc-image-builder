@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -523,6 +524,24 @@ func rootPreRunE(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
+// TODO: provide more version info (like actual version number) once we
+// release a real version
+func cmdVersion(_ *cobra.Command, _ []string) error {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return fmt.Errorf("cannot read build info")
+	}
+	var gitRev string
+	for _, bs := range info.Settings {
+		if bs.Key == "vcs.revision" {
+			gitRev = bs.Value
+			break
+		}
+	}
+	fmt.Printf("revision: %s\n", gitRev[:7])
+	return nil
+}
+
 func run() error {
 	rootCmd := &cobra.Command{
 		Use:               "bootc-image-builder",
@@ -550,6 +569,14 @@ func run() error {
 		RunE:                  cmdManifest,
 		SilenceUsage:          true,
 	}
+	versionCmd := &cobra.Command{
+		Use:          "version",
+		SilenceUsage: true,
+		Hidden:       true,
+		RunE:         cmdVersion,
+	}
+	rootCmd.AddCommand(versionCmd)
+
 	rootCmd.AddCommand(manifestCmd)
 	manifestCmd.Flags().Bool("tls-verify", true, "require HTTPS and verify certificates when contacting registries")
 	manifestCmd.Flags().String("rpmmd", "/rpmmd", "rpm metadata cache directory")
