@@ -46,6 +46,7 @@ jobs:
     - name: Check out code
       uses: actions/checkout@v4
       with:
+        submodules: recursive
         ref: ${{ github.event.pull_request.head.sha }}
     - name: Run the tests
       uses: sclorg/testing-farm-as-github-action@v2
