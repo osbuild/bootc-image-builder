@@ -1,20 +1,20 @@
 import json
-import platform
 import pathlib
+import platform
 import subprocess
 import textwrap
 
 import pytest
 
 import testutil
+from containerbuild import build_container_fixture  # noqa: F401
+from containerbuild import make_container
+from testcases import gen_testcases
 
 if not testutil.has_executable("podman"):
     pytest.skip("no podman, skipping integration tests that required podman", allow_module_level=True)
 if not testutil.can_start_rootful_containers():
     pytest.skip("tests require to be able to run rootful containers (try: sudo)", allow_module_level=True)
-
-from containerbuild import build_container_fixture, make_container  # noqa: F401
-from testcases import gen_testcases
 
 
 def find_image_size_from(manifest_str):
@@ -269,3 +269,28 @@ def test_mount_ostree_error(tmpdir_factory, build_container):
             "--config", "/output/config.json",
         ], stderr=subprocess.PIPE, encoding="utf8")
     assert 'The following custom mountpoints are not supported ["/ostree"]' in exc.value.stderr
+
+
+@pytest.mark.parametrize(
+    "container_ref,should_error,expected_error",
+    [
+        ("quay.io/centos/centos:stream9", True, "image quay.io/centos/centos:stream9 is not a bootc image"),
+        ("quay.io/centos-bootc/centos-bootc:stream9", False, None),
+    ],
+)
+def test_manifest_checks_build_container_is_bootc(build_container, container_ref, should_error, expected_error):
+    def check_image_ref():
+        subprocess.check_output([
+            "podman", "run", "--rm",
+            "--privileged",
+            "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
+            "--security-opt", "label=type:unconfined_t",
+            f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "{container_ref}"]',
+            build_container,
+        ], stderr=subprocess.PIPE, encoding="utf8")
+    if should_error:
+        with pytest.raises(subprocess.CalledProcessError) as exc:
+            check_image_ref()
+            assert expected_error in exc.value.stderr
+    else:
+        check_image_ref()

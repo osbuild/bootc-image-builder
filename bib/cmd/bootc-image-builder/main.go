@@ -224,6 +224,10 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		logrus.Debug("Using local container")
 	}
 
+	if err := setup.ValidateHasContainerTags(imgref); err != nil {
+		return nil, nil, err
+	}
+
 	cntSize, err := getContainerSize(imgref)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot get container size: %w", err)
@@ -380,7 +384,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot ensure the environment: %w", err)
 	}
 
-	if err := os.MkdirAll(outputDir, 0777); err != nil {
+	if err := os.MkdirAll(outputDir, 0o777); err != nil {
 		return fmt.Errorf("cannot setup build dir: %w", err)
 	}
 
