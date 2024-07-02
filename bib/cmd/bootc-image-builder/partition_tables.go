@@ -118,4 +118,39 @@ var partitionTables = distro.BasePartitionTableMap{
 			},
 		},
 	},
+        arch.ARCH_PPC64LE.String(): disk.PartitionTable{
+		UUID: "0x14fc63d2",
+		Type: "dos",
+		Partitions: []disk.Partition{
+			{
+				Size:     4 * MebiByte,
+				Type:     "41",
+				Bootable: true,
+			},
+			{
+				Size: 500 * MebiByte,
+				Type: "83",
+				Payload: &disk.Filesystem{
+					Type:         "ext4",
+					Mountpoint:   "/boot",
+					Label:        "boot",
+					FSTabOptions: BootOptions,
+					FSTabFreq:    1,
+					FSTabPassNo:  2,
+				},
+			},
+			{
+				Size: 2 * GibiByte,
+				Type: "83",
+				Payload: &disk.Filesystem{
+					Type:         "ext4",
+					Label:        "root",
+					Mountpoint:   "/",
+					FSTabOptions: RootOptions,
+					FSTabFreq:    1,
+					FSTabPassNo:  1,
+				},
+			},
+		},
+	},
 }
