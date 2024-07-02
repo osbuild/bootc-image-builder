@@ -9,6 +9,7 @@ CONTAINERS_STORAGE_THIN_TAGS="containers_image_openpgp exclude_graphdriver_btrfs
 cd bib
 set -x
 go build -tags "${CONTAINERS_STORAGE_THIN_TAGS}" -o ../bin/bootc-image-builder ./cmd/bootc-image-builder
+go build -o ../bin/adduser-ssh ./cmd/adduser-ssh
 
 # expand the list as we support more architectures
 for arch in amd64 arm64; do
