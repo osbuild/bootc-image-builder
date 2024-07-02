@@ -332,6 +332,34 @@ Example:
 
 ```
 
+### Anaconda ISO (installer) options (`installer`, mapping)
+
+```json
+{
+  "customizations": {
+    "installer": {
+      "kickstart": {
+        "contents": "text --non-interactive\nzerombr\nclearpart --all --initlabel --disklabel=gpt\nautopart --noswap --type=lvm\nnetwork --bootproto=dhcp --device=link --activate --onboot=on"
+      }
+    }
+  }
+}
+```
+
+Since multi-line strings are difficult to write and read in json, it's easier to use the toml format when adding kickstart contents:
+```toml
+[customizations.installer.kickstart]
+contents = """
+text --non-interactive
+zerombr
+clearpart --all --initlabel --disklabel=gpt
+autopart --noswap --type=lvm
+network --bootproto=dhcp --device=link --activate --onboot=on
+"""
+```
+
+Note that bootc-image-builder will automatically add the command that installs the container image (`ostreecontainer ...`), so this line or any line that conflicts with it should not be included. See the relevant [Kickstart documentation](https://pykickstart.readthedocs.io/en/latest/kickstart-docs.html#ostreecontainer) for more information.
+
 ## Building
 
 To build the container locally you can run
