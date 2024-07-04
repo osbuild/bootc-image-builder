@@ -11,10 +11,10 @@ metadata:
       == "main"
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: bootc-c9s
-    appstudio.openshift.io/component: bootc-image-builder-c9s
+    appstudio.openshift.io/application: bootc-image-builder
+    appstudio.openshift.io/component: bootc-image-builder
     pipelines.appstudio.openshift.io/type: build
-  name: bootc-image-builder-c9s-on-push
+  name: bootc-image-builder-on-push
   namespace: centos-bootc-tenant
 spec:
   params:
@@ -23,7 +23,7 @@ spec:
     - name: git-url
       value: "{{repo_url}}"
     - name: output-image
-      value: quay.io/redhat-user-workloads/centos-bootc-tenant/bootc-c9s/bootc-image-builder-c9s:{{revision}}
+      value: quay.io/redhat-user-workloads/centos-bootc-tenant/bootc-image-builder/bootc-image-builder:{{revision}}
     - name: path-context
       value: .
     - name: revision
