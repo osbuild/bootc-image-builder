@@ -7,9 +7,9 @@ import subprocess
 import textwrap
 
 import pytest
-
 import testutil
-from containerbuild import build_container_fixture  # noqa: F401
+
+from containerbuild import build_container_fixture  # pylint: disable=unused-import
 from containerbuild import make_container
 from testcases import gen_testcases
 
@@ -291,7 +291,7 @@ def test_mount_ostree_error(tmpdir_factory, build_container):
     # no need to parameterize this test, toml is the same for all containers
     container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
 
-    CFG = {
+    cfg = {
         "blueprint": {
             "customizations": {
                 "filesystem": [
@@ -315,7 +315,7 @@ def test_mount_ostree_error(tmpdir_factory, build_container):
     output_path = pathlib.Path(tmpdir_factory.mktemp("data")) / "output"
     output_path.mkdir(exist_ok=True)
     config_json_path = output_path / "config.json"
-    config_json_path.write_text(json.dumps(CFG), encoding="utf-8")
+    config_json_path.write_text(json.dumps(cfg), encoding="utf-8")
 
     with pytest.raises(subprocess.CalledProcessError) as exc:
         subprocess.check_output([

@@ -3,8 +3,8 @@ import platform
 import subprocess
 
 import pytest
-
-from containerbuild import build_container_fixture, build_fake_container_fixture  # noqa: F401
+# pylint: disable=unused-import
+from containerbuild import build_container_fixture, build_fake_container_fixture
 
 
 @pytest.fixture(name="container_storage", scope="session")
