@@ -1,6 +1,5 @@
 import abc
 import os
-import paramiko
 import pathlib
 import platform
 import subprocess
@@ -10,9 +9,9 @@ import uuid
 from io import StringIO
 
 import boto3
+import paramiko
 from botocore.exceptions import ClientError
 from paramiko.client import AutoAddPolicy, SSHClient
-
 from testutil import AWS_REGION, get_free_port, wait_ssh_ready
 
 
@@ -163,6 +162,7 @@ class QEMU(VM):
         self._address = "localhost"
 
         # XXX: use systemd-run to ensure cleanup?
+        # pylint: disable=consider-using-with
         self._qemu_p = subprocess.Popen(
             self._gen_qemu_cmdline(snapshot, use_ovmf),
             stdout=sys.stdout,
@@ -185,11 +185,11 @@ class QEMU(VM):
             if os.path.exists(self._qmp_socket):
                 return True
             time.sleep(1)
-        raise Exception(f"no {self._qmp_socket} after {timeout_sec} seconds")
+        raise TimeoutError(f"no {self._qmp_socket} after {timeout_sec} seconds")
 
     def wait_qmp_event(self, qmp_event):
         # import lazy to avoid requiring it for all operations
-        import qmp
+        import qmp  # pylint: disable=import-outside-toplevel
         self._wait_qmp_socket(30)
         mon = qmp.QEMUMonitorProtocol(os.fspath(self._qmp_socket))
         mon.connect()

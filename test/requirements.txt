@@ -3,3 +3,4 @@ flake8==6.1.0
 paramiko==2.12.0
 boto3==1.33.13
 qmp==1.1.0
+pylint==3.2.5

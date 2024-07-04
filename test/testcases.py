@@ -56,17 +56,17 @@ class TestCaseCentos(TestCase):
         "quay.io/centos-bootc/centos-bootc:stream9")
 
 
-def gen_testcases(what):
+def gen_testcases(what):  # pylint: disable=too-many-return-statements
     if what == "manifest":
         return [TestCaseCentos(), TestCaseFedora()]
-    elif what == "default-rootfs":
+    if what == "default-rootfs":
         # Fedora doesn't have a default rootfs
         return [TestCaseCentos()]
-    elif what == "ami-boot":
+    if what == "ami-boot":
         return [TestCaseCentos(image="ami"), TestCaseFedora(image="ami")]
-    elif what == "anaconda-iso":
+    if what == "anaconda-iso":
         return [TestCaseCentos(image="anaconda-iso"), TestCaseFedora(image="anaconda-iso")]
-    elif what == "qemu-boot":
+    if what == "qemu-boot":
         test_cases = [
             klass(image=img)
             for klass in (TestCaseCentos, TestCaseFedora)
@@ -81,13 +81,13 @@ def gen_testcases(what):
             # TODO: add arm64->x86_64 cross build test too
             pass
         return test_cases
-    elif what == "all":
+    if what == "all":
         return [
             klass(image=img)
             for klass in (TestCaseCentos, TestCaseFedora)
             for img in ("ami", "anaconda-iso", "qcow2", "raw", "vmdk")
         ]
-    elif what == "multidisk":
+    if what == "multidisk":
         # single test that specifies all image types
         image = "+".join(DISK_IMAGE_TYPES)
         return [
@@ -96,7 +96,7 @@ def gen_testcases(what):
         ]
     # Smoke test that all supported --target-arch architecture can
     # create a manifest
-    elif what == "target-arch-smoke":
+    if what == "target-arch-smoke":
         return [
             TestCaseCentos(target_arch="arm64"),
             # TODO: merge with TestCaseFedora once the arches are build there

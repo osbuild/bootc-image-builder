@@ -22,7 +22,7 @@ def run_journalctl(*args):
 
 def journal_cursor():
     output = run_journalctl("-n0", "--show-cursor")
-    cursor = output.split("\n")[-1]
+    cursor = output.rsplit("\n", maxsplit=1)[-1]
     return cursor.split("cursor: ")[-1]
 
 
@@ -43,7 +43,7 @@ def get_free_port() -> int:
 
 
 def wait_ssh_ready(address, port, sleep, max_wait_sec):
-    for i in range(int(max_wait_sec / sleep)):
+    for _ in range(int(max_wait_sec / sleep)):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(sleep)
             try:
@@ -61,7 +61,7 @@ def has_x86_64_v3_cpu():
     # x86_64-v3 has multiple features, see
     # https://en.wikipedia.org/wiki/X86-64#Microarchitecture_levels
     # but "avx2" is probably a good enough proxy
-    return " avx2 " in pathlib.Path("/proc/cpuinfo").read_text()
+    return " avx2 " in pathlib.Path("/proc/cpuinfo").read_text("utf8")
 
 
 def can_start_rootful_containers():
@@ -70,7 +70,7 @@ def can_start_rootful_containers():
         # on linux we need to run "podman" with sudo to get full
         # root containers
         return os.getuid() == 0
-    elif system == "Darwin":
+    if system == "Darwin":
         # on darwin a container is root if the podman machine runs
         # in "rootful" mode, i.e. no need to run "podman" as root
         # as it's just proxying to the VM
@@ -78,8 +78,7 @@ def can_start_rootful_containers():
             "podman", "machine", "inspect", "--format={{.Rootful}}",
         ], capture_output=True, encoding="utf8", check=True)
         return res.stdout.strip() == "true"
-    else:
-        raise ValueError(f"unknown platform {system}")
+    raise ValueError(f"unknown platform {system}")
 
 
 def write_aws_creds(path):

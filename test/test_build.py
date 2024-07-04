@@ -5,18 +5,17 @@ import platform
 import random
 import re
 import shutil
-import subprocess
 import string
+import subprocess
 import tempfile
 import uuid
 from contextlib import contextmanager
 from typing import NamedTuple
 
 import pytest
-
 # local test utils
 import testutil
-from containerbuild import build_container_fixture  # noqa: F401
+from containerbuild import build_container_fixture    # pylint: disable=unused-import
 from testcases import CLOUD_BOOT_IMAGE_TYPES, DISK_IMAGE_TYPES, gen_testcases
 from vm import AWS, QEMU
 
@@ -46,8 +45,8 @@ class ImageBuildResult(NamedTuple):
     metadata: dict = {}
 
 
-@pytest.fixture(scope='session')
-def shared_tmpdir(tmpdir_factory):
+@pytest.fixture(name="shared_tmpdir", scope='session')
+def shared_tmpdir_fixture(tmpdir_factory):
     tmp_path = pathlib.Path(tmpdir_factory.mktemp("shared"))
     yield tmp_path
 
@@ -89,6 +88,8 @@ def images_fixture(shared_tmpdir, build_container, request, force_aws_upload):
         yield build_results
 
 
+# XXX: refactor
+# pylint: disable=too-many-locals,too-many-branches,too-many-statements
 @contextmanager
 def build_images(shared_tmpdir, build_container, request, force_aws_upload):
     """
@@ -391,8 +392,8 @@ def test_ami_boots_in_aws(image_type, force_aws_upload):
 
 
 def log_has_osbuild_selinux_denials(log):
-    OSBUID_SELINUX_DENIALS_RE = re.compile(r"(?ms)avc:\ +denied.*osbuild")
-    return re.search(OSBUID_SELINUX_DENIALS_RE, log)
+    osbuid_selinux_denials_re = re.compile(r"(?ms)avc:\ +denied.*osbuild")
+    return re.search(osbuid_selinux_denials_re, log)
 
 
 def parse_ami_id_from_log(log_output):
@@ -420,7 +421,7 @@ def test_osbuild_selinux_denials_re_works():
 
 
 def has_selinux():
-    return testutil.has_executable("selinuxenabled") and subprocess.run("selinuxenabled").returncode == 0
+    return testutil.has_executable("selinuxenabled") and subprocess.run("selinuxenabled", check=False).returncode == 0
 
 
 @pytest.mark.skipif(not has_selinux(), reason="selinux not enabled")
@@ -437,7 +438,7 @@ def test_image_build_without_se_linux_denials(image_type):
 def test_iso_installs(image_type):
     installer_iso_path = image_type.img_path
     test_disk_path = installer_iso_path.with_name("test-disk.img")
-    with open(test_disk_path, "w") as fp:
+    with open(test_disk_path, "w", encoding="utf8") as fp:
         fp.truncate(10_1000_1000_1000)
     # install to test disk
     with QEMU(test_disk_path, cdrom=installer_iso_path) as vm:

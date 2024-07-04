@@ -16,7 +16,7 @@ def force_aws_upload_fixture(request):
 
 # see https://hackebrot.github.io/pytest-tricks/param_id_func/ and
 # https://docs.pytest.org/en/7.1.x/reference/reference.html#pytest.hookspec.pytest_make_parametrize_id
-def pytest_make_parametrize_id(config, val):
+def pytest_make_parametrize_id(config, val):  # pylint: disable=W0613
     if isinstance(val, TestCase):
         return f"{val}"
     return None

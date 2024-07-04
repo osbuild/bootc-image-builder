@@ -79,7 +79,7 @@ jobs:
     - name: Install test dependencies
       run: |
         sudo apt update
-        sudo apt install -y podman python3-pytest python3-paramiko python3-boto3 flake8 qemu-system-x86 qemu-efi-aarch64 qemu-system-arm qemu-user-static
+        sudo apt install -y podman python3-pytest python3-paramiko python3-boto3 flake8 qemu-system-x86 qemu-efi-aarch64 qemu-system-arm qemu-user-static pylint
     - name: Diskspace (before)
       run: |
         df -h
