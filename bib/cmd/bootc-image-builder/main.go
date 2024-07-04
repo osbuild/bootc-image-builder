@@ -76,6 +76,16 @@ func canChownInPath(path string) (bool, error) {
 	return checkFile.Chown(osGetuid(), osGetgid()) == nil, nil
 }
 
+func inContainerOrUnknown() bool {
+	// no systemd-detect-virt, err on the side of container
+	if _, err := exec.LookPath("systemd-detect-virt"); err != nil {
+		return true
+	}
+	// exit code "0" means the container is detected
+	err := exec.Command("systemd-detect-virt", "-c", "-q").Run()
+	return err == nil
+}
+
 // getContainerSize returns the size of an already pulled container image in bytes
 func getContainerSize(imgref string) (uint64, error) {
 	output, err := exec.Command("podman", "image", "inspect", imgref, "--format", "{{.Size}}").Output()
@@ -387,8 +397,13 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot validate the setup: %w", err)
 	}
 	logrus.Debug("Ensuring environment setup")
-	if err := setup.EnsureEnvironment(osbuildStore); err != nil {
-		return fmt.Errorf("cannot ensure the environment: %w", err)
+	switch inContainerOrUnknown() {
+	case false:
+		fmt.Fprintf(os.Stderr, "WARNING: running outside a container, this is an unsupported configuration\n")
+	case true:
+		if err := setup.EnsureEnvironment(osbuildStore); err != nil {
+			return fmt.Errorf("cannot ensure the environment: %w", err)
+		}
 	}
 
 	if err := os.MkdirAll(outputDir, 0o777); err != nil {

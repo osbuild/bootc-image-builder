@@ -165,3 +165,19 @@ def test_bib_version(tmp_path, container_storage, build_fake_container):
     ], check=True, capture_output=True, text=True)
     needle = "revision: "
     assert needle in res.stdout
+
+
+def test_bib_no_outside_container_warning_in_container(tmp_path, container_storage, build_fake_container):
+    output_path = tmp_path / "output"
+    output_path.mkdir(exist_ok=True)
+
+    res = subprocess.run([
+        "podman", "run", "--rm",
+        "--privileged",
+        "--security-opt", "label=type:unconfined_t",
+        "-v", f"{container_storage}:/var/lib/containers/storage",
+        "-v", f"{output_path}:/output",
+        build_fake_container,
+        "quay.io/centos-bootc/centos-bootc:stream9"
+    ], check=True, capture_output=True, text=True)
+    assert "running outside a container" not in res.stderr
