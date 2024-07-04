@@ -29,18 +29,17 @@ def find_image_size_from(manifest_str):
     raise ValueError(f"cannot find disk size in manifest:\n{manifest_str}")
 
 
-@pytest.mark.parametrize("testcase_ref", gen_testcases("manifest"))
-def test_manifest_smoke(build_container, testcase_ref):
-    # testcases_ref has the form "container_url,img_type1+img_type2,arch"
-    container_ref = testcase_ref.split(",")[0]
-
+@pytest.mark.parametrize("tc", gen_testcases("manifest"))
+def test_manifest_smoke(build_container, tc):
     output = subprocess.check_output([
         "podman", "run", "--rm",
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
-        "manifest", "--rootfs", "ext4", f"{container_ref}",
+        "manifest",
+        *tc.rootfs_args(),
+        f"{tc.container_ref}",
     ])
     manifest = json.loads(output)
     # just some basic validation
@@ -52,19 +51,17 @@ def test_manifest_smoke(build_container, testcase_ref):
     assert int(disk_size) == 10 * 1024 * 1024 * 1024
 
 
-@pytest.mark.parametrize("testcase_ref", gen_testcases("anaconda-iso"))
-def test_iso_manifest_smoke(build_container, testcase_ref):
-    # testcases_ref has the form "container_url,img_type1+img_type2,arch"
-    container_ref = testcase_ref.split(",")[0]
-
+@pytest.mark.parametrize("tc", gen_testcases("anaconda-iso"))
+def test_iso_manifest_smoke(build_container, tc):
     output = subprocess.check_output([
         "podman", "run", "--rm",
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
-        "manifest", "--rootfs", "ext4",
-        "--type=anaconda-iso", f"{container_ref}",
+        "manifest",
+        *tc.rootfs_args(),
+        "--type=anaconda-iso", f"{tc.container_ref}",
     ])
     manifest = json.loads(output)
     # just some basic validation
@@ -73,19 +70,19 @@ def test_iso_manifest_smoke(build_container, testcase_ref):
     assert [pipeline["name"] for pipeline in manifest["pipelines"]] == expected_pipeline_names
 
 
-@pytest.mark.parametrize("testcase_ref", gen_testcases("manifest"))
-def test_manifest_disksize(tmp_path, build_container, testcase_ref):
+@pytest.mark.parametrize("tc", gen_testcases("manifest"))
+def test_manifest_disksize(tmp_path, build_container, tc):
     # create derrived container with 6G silly file to ensure that
     # bib doubles the size to 12G+
     cntf_path = tmp_path / "Containerfile"
     cntf_path.write_text(textwrap.dedent(f"""\n
-    FROM {testcase_ref}
+    FROM {tc.container_ref}
     RUN truncate -s 2G /big-file1
     RUN truncate -s 2G /big-file2
     RUN truncate -s 2G /big-file3
     """), encoding="utf8")
 
-    print(f"building big size container from {testcase_ref}")
+    print(f"building big size container from {tc.container_ref}")
     with make_container(tmp_path) as container_tag:
         print(f"using {container_tag}")
         manifest_str = subprocess.check_output([
@@ -97,7 +94,9 @@ def test_manifest_disksize(tmp_path, build_container, testcase_ref):
             # need different entry point
             "--entrypoint", "/usr/bin/bootc-image-builder",
             build_container,
-            "manifest", "--local", "--rootfs", "ext4", f"localhost/{container_tag}",
+            "manifest", "--local",
+            *tc.rootfs_args(),
+            f"localhost/{container_tag}",
         ], encoding="utf8")
         # ensure disk size is bigger than the default 10G
         disk_size = find_image_size_from(manifest_str)
@@ -121,11 +120,11 @@ def test_manifest_local_checks_containers_storage_errors(build_container):
     assert err in res.stderr
 
 
-@pytest.mark.parametrize("testcase_ref", gen_testcases("manifest"))
-def test_manifest_local_checks_containers_storage_works(tmp_path, build_container, testcase_ref):
+@pytest.mark.parametrize("tc", gen_testcases("manifest"))
+def test_manifest_local_checks_containers_storage_works(tmp_path, build_container, tc):
     cntf_path = tmp_path / "Containerfile"
     cntf_path.write_text(textwrap.dedent(f"""\n
-    FROM {testcase_ref}
+    FROM {tc.container_ref}
     """), encoding="utf8")
 
     with make_container(tmp_path) as container_tag:
@@ -136,7 +135,9 @@ def test_manifest_local_checks_containers_storage_works(tmp_path, build_containe
             "--security-opt", "label=type:unconfined_t",
             "--entrypoint=/usr/bin/bootc-image-builder",
             build_container,
-            "manifest", "--local", "--rootfs", "ext4", f"localhost/{container_tag}",
+            "manifest", "--local",
+            *tc.rootfs_args(),
+            f"localhost/{container_tag}",
         ], check=True, encoding="utf8")
 
 
@@ -158,7 +159,7 @@ def test_manifest_cross_arch_check(tmp_path, build_container):
                 "--entrypoint=/usr/bin/bootc-image-builder",
                 build_container,
                 "manifest", "--target-arch=aarch64",
-                "--rootfs", "ext4", "--local", f"localhost/{container_tag}"
+                "--local", f"localhost/{container_tag}"
             ], check=True, capture_output=True, encoding="utf8")
         assert 'image found is for unexpected architecture "x86_64"' in exc.value.stderr
 
@@ -174,11 +175,8 @@ def find_rootfs_type_from(manifest_str):
     raise ValueError(f"cannot find rootfs type in manifest:\n{manifest_str}")
 
 
-@pytest.mark.parametrize("testcase_ref", gen_testcases("default-rootfs"))
-def test_manifest_rootfs_respected(build_container, testcase_ref):
-    # testcases_ref has the form "container_url,img_type1+img_type2,arch"
-    container_ref = testcase_ref.split(",")[0]
-
+@pytest.mark.parametrize("tc", gen_testcases("default-rootfs"))
+def test_manifest_rootfs_respected(build_container, tc):
     # TODO: derive container and fake "bootc install print-configuration"?
     output = subprocess.check_output([
         "podman", "run", "--rm",
@@ -186,14 +184,14 @@ def test_manifest_rootfs_respected(build_container, testcase_ref):
         "--security-opt", "label=type:unconfined_t",
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
-        "manifest", f"{container_ref}",
+        "manifest", f"{tc.container_ref}",
     ])
     rootfs_type = find_rootfs_type_from(output)
-    match container_ref:
+    match tc.container_ref:
         case "quay.io/centos-bootc/centos-bootc:stream9":
             assert rootfs_type == "xfs"
         case _:
-            pytest.fail(f"unknown container_ref {container_ref} please update test")
+            pytest.fail(f"unknown container_ref {tc.container_ref} please update test")
 
 
 def test_manifest_rootfs_override(build_container):
@@ -242,7 +240,7 @@ def test_manifest_user_customizations_toml(tmp_path, build_container):
         "--security-opt", "label=type:unconfined_t",
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
-        "manifest", "--rootfs", "ext4", f"{container_ref}",
+        "manifest", f"{container_ref}",
     ])
     user_stage = find_user_stage_from(output)
     assert user_stage["options"]["users"].get("alice") == {
@@ -329,7 +327,7 @@ def test_mount_ostree_error(tmpdir_factory, build_container):
             "-v", f"{output_path}:/output",
             "--entrypoint=/usr/bin/bootc-image-builder",
             build_container,
-            "manifest", "--rootfs", "ext4", f"{container_ref}",
+            "manifest", f"{container_ref}",
             "--config", "/output/config.json",
         ], stderr=subprocess.PIPE, encoding="utf8")
     assert 'The following custom mountpoints are not supported ["/ostree"]' in exc.value.stderr
