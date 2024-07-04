@@ -46,24 +46,6 @@ class ImageBuildResult(NamedTuple):
     metadata: dict = {}
 
 
-def parse_request_params(request):
-    # image_type is passed via special pytest parameter fixture
-    testcase_ref = request.param
-    if testcase_ref.count(",") == 3:
-        container_ref, images, target_arch, local = testcase_ref.split(",")
-        local = local is not None
-    elif testcase_ref.count(",") == 2:
-        container_ref, images, target_arch = testcase_ref.split(",")
-        local = False
-    elif testcase_ref.count(",") == 1:
-        container_ref, images = testcase_ref.split(",")
-        target_arch = None
-        local = False
-    else:
-        raise ValueError(f"cannot parse {testcase_ref.count}")
-    return container_ref, images, target_arch, local
-
-
 @pytest.fixture(scope='session')
 def shared_tmpdir(tmpdir_factory):
     tmp_path = pathlib.Path(tmpdir_factory.mktemp("shared"))
@@ -78,13 +60,13 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
     In the case an image is being built from a local container, the
     function will build the required local container for the test.
     """
-    container_ref, images, target_arch, local = parse_request_params(request)
+    container_ref = request.param.container_ref
 
-    if local:
+    if request.param.local:
         cont_tag = "localhost/cont-base-" + "".join(random.choices(string.digits, k=12))
 
         # we are not cross-building local images (for now)
-        request.param = ",".join([cont_tag, images, "", "true"])
+        request.param.target_arch = ""
 
         # copy the container into containers-storage
         subprocess.check_call([
@@ -117,11 +99,12 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
 
     :request.param: has the form "container_url,img_type1+img_type2,arch,local"
     """
-    container_ref, images, target_arch, local = parse_request_params(request)
+    # the testcases.TestCase comes from the request.parameter
+    tc = request.param
 
     # images might be multiple --type args
     # split and check each one
-    image_types = images.split("+")
+    image_types = request.param.image.split("+")
 
     username = "test"
     password = "password"
@@ -131,7 +114,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
     # AF_UNIX) is derived from the path
     # hash the container_ref+target_arch, but exclude the image_type so that the output path is shared between calls to
     # different image type combinations
-    output_path = shared_tmpdir / format(abs(hash(container_ref + str(target_arch))), "x")
+    output_path = shared_tmpdir / format(abs(hash(tc.container_ref + str(tc.target_arch))), "x")
     output_path.mkdir(exist_ok=True)
 
     # make sure that the test store exists, because podman refuses to start if the source directory for a volume
@@ -151,7 +134,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
         "vmdk": pathlib.Path(output_path) / "vmdk/disk.vmdk",
         "anaconda-iso": pathlib.Path(output_path) / "bootiso/install.iso",
     }
-    assert len(artifact) == len(set(t.split(",")[1] for t in gen_testcases("all"))), \
+    assert len(artifact) == len(set(tc.image for tc in gen_testcases("all"))), \
         "please keep artifact mapping and supported images in sync"
 
     # this helper checks the cache
@@ -175,7 +158,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             journal_output = journal_log_path.read_text(encoding="utf8")
             bib_output = bib_output_path.read_text(encoding="utf8")
             results.append(ImageBuildResult(
-                image_type, generated_img, target_arch, container_ref,
+                image_type, generated_img, tc.target_arch, tc.container_ref,
                 username, password, ssh_keyfile_private_path,
                 kargs, bib_output, journal_output))
 
@@ -237,8 +220,8 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
     upload_args = []
     creds_args = []
     target_arch_args = []
-    if target_arch:
-        target_arch_args = ["--target-arch", target_arch]
+    if tc.target_arch:
+        target_arch_args = ["--target-arch", tc.target_arch]
 
     with tempfile.TemporaryDirectory() as tempdir:
         if "ami" in image_types:
@@ -274,7 +257,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
         ]
 
         # we need to mount the host's container store
-        if local:
+        if tc.local:
             cmd.extend(["-v", "/var/lib/containers/storage:/var/lib/containers/storage"])
 
         # fedora has no default roofs, pick "brfs" for testing here
@@ -287,12 +270,12 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
         cmd.extend([
             *creds_args,
             build_container,
-            container_ref,
+            tc.container_ref,
             *types_arg,
             *upload_args,
             *target_arch_args,
-            "--local" if local else "--local=false",
-            *rootfs_args,
+            *tc.rootfs_args(),
+            "--local" if tc.local else "--local=false",
         ])
 
         # print the build command for easier tracing
@@ -325,7 +308,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
     results = []
     for image_type in image_types:
         results.append(ImageBuildResult(
-            image_type, artifact[image_type], target_arch, container_ref,
+            image_type, artifact[image_type], tc.target_arch, tc.container_ref,
             username, password, ssh_keyfile_private_path,
             kargs, bib_output, journal_output, metadata))
     yield results
@@ -343,7 +326,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
                 img.unlink()
         else:
             print("does not exist")
-    subprocess.run(["podman", "rmi", container_ref], check=False)
+    subprocess.run(["podman", "rmi", tc.container_ref], check=False)
     return
 
 
