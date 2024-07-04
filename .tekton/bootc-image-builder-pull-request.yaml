@@ -12,10 +12,10 @@ metadata:
       == "main"
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: bootc-c9s
-    appstudio.openshift.io/component: bootc-image-builder-c9s
+    appstudio.openshift.io/application: bootc-image-builder
+    appstudio.openshift.io/component: bootc-image-builder
     pipelines.appstudio.openshift.io/type: build
-  name: bootc-image-builder-c9s-on-pull-request
+  name: bootc-image-builder-on-pull-request
   namespace: centos-bootc-tenant
 spec:
   params:
@@ -26,7 +26,7 @@ spec:
     - name: image-expires-after
       value: 5d
     - name: output-image
-      value: quay.io/redhat-user-workloads/centos-bootc-tenant/bootc-c9s/bootc-image-builder-c9s:on-pr-{{revision}}
+      value: quay.io/redhat-user-workloads/centos-bootc-tenant/bootc-image-builder/bootc-image-builder:on-pr-{{revision}}
     - name: path-context
       value: .
     - name: revision
