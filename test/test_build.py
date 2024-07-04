@@ -277,6 +277,13 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
         if local:
             cmd.extend(["-v", "/var/lib/containers/storage:/var/lib/containers/storage"])
 
+        # fedora has no default roofs, pick "brfs" for testing here
+        # TODO: make part of testcase instead of hacking it in here
+        if "fedora" in container_ref:
+            rootfs_args = ["--rootfs", "btrfs"]
+        else:
+            rootfs_args = []
+
         cmd.extend([
             *creds_args,
             build_container,
@@ -285,7 +292,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             *upload_args,
             *target_arch_args,
             "--local" if local else "--local=false",
-            "--rootfs", "ext4",
+            *rootfs_args,
         ])
 
         # print the build command for easier tracing
