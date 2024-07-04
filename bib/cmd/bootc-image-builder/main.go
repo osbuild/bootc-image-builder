@@ -27,6 +27,7 @@ import (
 	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
 	podman_container "github.com/osbuild/bootc-image-builder/bib/internal/container"
 	"github.com/osbuild/bootc-image-builder/bib/internal/imagetypes"
+	"github.com/osbuild/bootc-image-builder/bib/internal/osbuildprogress"
 	"github.com/osbuild/bootc-image-builder/bib/internal/setup"
 	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 	"github.com/osbuild/bootc-image-builder/bib/internal/util"
@@ -387,6 +388,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	osbuildStore, _ := cmd.Flags().GetString("store")
 	outputDir, _ := cmd.Flags().GetString("output")
 	targetArch, _ := cmd.Flags().GetString("target-arch")
+	progress, _ := cmd.Flags().GetString("progress")
 
 	logrus.Debug("Validating environment")
 	if err := setup.Validate(targetArch); err != nil {
@@ -457,7 +459,12 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		osbuildEnv = append(osbuildEnv, envVars...)
 	}
 
-	_, err = osbuild.RunOSBuild(mf, osbuildStore, outputDir, exports, nil, osbuildEnv, false, os.Stderr)
+	switch progress {
+	case "text":
+		err = osbuildprogress.RunOSBuild(mf, osbuildStore, outputDir, exports, osbuildEnv)
+	default:
+		_, err = osbuild.RunOSBuild(mf, osbuildStore, outputDir, exports, nil, osbuildEnv, false, os.Stderr)
+	}
 	if err != nil {
 		return fmt.Errorf("cannot run osbuild: %w", err)
 	}
@@ -611,7 +618,8 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	buildCmd.Flags().String("aws-region", "", "target region for AWS uploads (only for type=ami)")
 	buildCmd.Flags().String("chown", "", "chown the ouput directory to match the specified UID:GID")
 	buildCmd.Flags().String("output", ".", "artifact output directory")
-	buildCmd.Flags().String("progress", "text", "type of progress bar to use")
+	// XXX: make this a proper type
+	buildCmd.Flags().String("progress", "none", "type of progress bar to use")
 	buildCmd.Flags().String("store", "/store", "osbuild store for intermediate pipeline trees")
 	// flag rules
 	for _, dname := range []string{"output", "store", "rpmmd"} {
