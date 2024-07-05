@@ -267,7 +267,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             *types_arg,
             *upload_args,
             *target_arch_args,
-            *tc.rootfs_args(),
+            *tc.bib_rootfs_args(),
             "--local" if tc.local else "--local=false",
         ])
 
