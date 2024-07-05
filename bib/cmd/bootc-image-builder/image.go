@@ -220,6 +220,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.SquashfsCompression = "zstd"
 
 	img.Product = c.SourceInfo.OSRelease.Name
+	img.OSVersion = c.SourceInfo.OSRelease.VersionID
 
 	img.ExtraBasePackages = rpmmd.PackageSet{
 		Include: imageDef.Packages,
