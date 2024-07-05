@@ -3,37 +3,30 @@ import inspect
 import os
 import platform
 
-# supported images that can be directly booted
-QEMU_BOOT_IMAGE_TYPES = ("qcow2", "raw")
-
-# images that can *not* be booted directly from qemu
-NON_QEMU_BOOT_IMAGE_TYPES = ("vmdk",)
-
 # disk image types can be build from a single manifest
-DISK_IMAGE_TYPES = QEMU_BOOT_IMAGE_TYPES + NON_QEMU_BOOT_IMAGE_TYPES
+DISK_IMAGE_TYPES = ("qcow2", "raw", "vmdk")
 
 # supported images that can be booted in a cloud
 CLOUD_BOOT_IMAGE_TYPES = ("ami",)
 
-# supported images that require an install
-INSTALLER_IMAGE_TYPES = ("anaconda-iso",)
 
-
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class TestCase:
     # container_ref to the bootc image, e.g. quay.io/fedora/fedora-bootc:40
-    container_ref: str
+    container_ref: str = ""
     # image is the image type, e.g. "ami"
     image: str = ""
     # target_arch is the target archicture, empty means current arch
     target_arch: str = ""
     # local means that the container should be pulled locally ("--local" flag)
     local: bool = False
+    # rootfs to use (e.g. ext4), some containers like fedora do not
+    # have a default rootfs. If unset the container default is used.
+    rootfs: str = ""
 
-    def rootfs_args(self):
-        # fedora has no default rootfs so it must be specified
-        if "fedora-bootc" in self.container_ref:
-            return ["--rootfs", "btrfs"]
+    def bib_rootfs_args(self):
+        if self.rootfs:
+            return ["--rootfs", self.rootfs]
         return []
 
     def __str__(self):
@@ -44,74 +37,70 @@ class TestCase:
         ])
 
 
-def gen_testcases(what):
-    # bootc containers that are tested by default
-    CONTAINERS_TO_TEST = {
-        "fedora": "quay.io/fedora/fedora-bootc:40",
-        "centos": "quay.io/centos-bootc/centos-bootc:stream9",
-    }
-    # allow commandline override, this is used when testing
-    # custom images
-    if os.getenv("BIB_TEST_BOOTC_CONTAINER_TAG"):
-        # TODO: make this more elegant
-        CONTAINERS_TO_TEST = {
-            "centos": os.getenv("BIB_TEST_BOOTC_CONTAINER_TAG"),
-            "fedora": [],
-        }
+@dataclasses.dataclass
+class TestCaseFedora(TestCase):
+    container_ref: str = "quay.io/fedora/fedora-bootc:40"
+    rootfs: str = "btrfs"
 
+
+@dataclasses.dataclass
+class TestCaseFedora41(TestCase):
+    container_ref: str = "quay.io/fedora/fedora-bootc:41"
+    rootfs: str = "btrfs"
+
+
+@dataclasses.dataclass
+class TestCaseCentos(TestCase):
+    container_ref: str = os.getenv(
+        "BIB_TEST_BOOTC_CONTAINER_TAG",
+        "quay.io/centos-bootc/centos-bootc:stream9")
+
+
+def gen_testcases(what):
     if what == "manifest":
-        return [TestCase(container_ref=ref)
-                for ref in CONTAINERS_TO_TEST.values()]
+        return [TestCaseCentos(), TestCaseFedora()]
     elif what == "default-rootfs":
         # Fedora doesn't have a default rootfs
-        return [TestCase(container_ref=CONTAINERS_TO_TEST["centos"])]
+        return [TestCaseCentos()]
     elif what == "ami-boot":
-        test_cases = []
-        for ref in CONTAINERS_TO_TEST.values():
-            test_cases.append(TestCase(container_ref=ref, image="ami"))
-        return test_cases
+        return [TestCaseCentos(image="ami"), TestCaseFedora(image="ami")]
     elif what == "anaconda-iso":
-        test_cases = []
-        for ref in CONTAINERS_TO_TEST.values():
-            for img_type in INSTALLER_IMAGE_TYPES:
-                test_cases.append(TestCase(container_ref=ref, image=img_type))
-        return test_cases
+        return [TestCaseCentos(image="anaconda-iso"), TestCaseFedora(image="anaconda-iso")]
     elif what == "qemu-boot":
-        test_cases = []
-        for distro, ref in CONTAINERS_TO_TEST.items():
-            for img_type in QEMU_BOOT_IMAGE_TYPES:
-                test_cases.append(
-                    TestCase(container_ref=ref, image=img_type))
+        test_cases = [
+            klass(image=img)
+            for klass in (TestCaseCentos, TestCaseFedora)
+            for img in ("raw", "qcow2")
+        ]
         # do a cross arch test too
         if platform.machine() == "x86_64":
             # todo: add fedora:eln
-            test_cases.append(TestCase(container_ref=ref, image="raw", target_arch="arm64"))
+            test_cases.append(
+                TestCaseCentos(image="raw", target_arch="arm64"))
         elif platform.machine() == "arm64":
             # TODO: add arm64->x86_64 cross build test too
             pass
         return test_cases
     elif what == "all":
-        test_cases = []
-        for ref in CONTAINERS_TO_TEST.values():
-            for img_type in QEMU_BOOT_IMAGE_TYPES + \
-                    CLOUD_BOOT_IMAGE_TYPES + \
-                    NON_QEMU_BOOT_IMAGE_TYPES + \
-                    INSTALLER_IMAGE_TYPES:
-                test_cases.append(TestCase(container_ref=ref, image=img_type))
-        return test_cases
+        return [
+            klass(image=img)
+            for klass in (TestCaseCentos, TestCaseFedora)
+            for img in ("ami", "anaconda-iso", "qcow2", "raw", "vmdk")
+        ]
     elif what == "multidisk":
         # single test that specifies all image types
-        test_cases = []
-        for ref in CONTAINERS_TO_TEST.values():
-            test_cases.append(TestCase(container_ref=ref, image="+".join(DISK_IMAGE_TYPES)))
-        return test_cases
+        image = "+".join(DISK_IMAGE_TYPES)
+        return [
+            TestCaseCentos(image=image),
+            TestCaseFedora(image=image),
+        ]
     # Smoke test that all supported --target-arch architecture can
     # create a manifest
     elif what == "target-arch-smoke":
         return [
-            TestCase(container_ref=CONTAINERS_TO_TEST["centos"], target_arch="arm64"),
-            # TODO: merge with CONTAINERS_TO_TEST once that moves to :41 too
-            TestCase(container_ref="quay.io/fedora/fedora-bootc:41", target_arch="ppc64le"),
-            TestCase(container_ref="quay.io/fedora/fedora-bootc:41", target_arch="s390x"),
+            TestCaseCentos(target_arch="arm64"),
+            # TODO: merge with TestCaseFedora once the arches are build there
+            TestCaseFedora41(target_arch="ppc64le"),
+            TestCaseFedora41(target_arch="s390x"),
         ]
     raise ValueError(f"unknown test-case type {what}")

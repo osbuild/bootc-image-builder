@@ -38,7 +38,7 @@ def test_manifest_smoke(build_container, tc):
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest",
-        *tc.rootfs_args(),
+        *tc.bib_rootfs_args(),
         f"{tc.container_ref}",
     ])
     manifest = json.loads(output)
@@ -60,7 +60,7 @@ def test_iso_manifest_smoke(build_container, tc):
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest",
-        *tc.rootfs_args(),
+        *tc.bib_rootfs_args(),
         "--type=anaconda-iso", f"{tc.container_ref}",
     ])
     manifest = json.loads(output)
@@ -95,7 +95,7 @@ def test_manifest_disksize(tmp_path, build_container, tc):
             "--entrypoint", "/usr/bin/bootc-image-builder",
             build_container,
             "manifest", "--local",
-            *tc.rootfs_args(),
+            *tc.bib_rootfs_args(),
             f"localhost/{container_tag}",
         ], encoding="utf8")
         # ensure disk size is bigger than the default 10G
@@ -136,7 +136,7 @@ def test_manifest_local_checks_containers_storage_works(tmp_path, build_containe
             "--entrypoint=/usr/bin/bootc-image-builder",
             build_container,
             "manifest", "--local",
-            *tc.rootfs_args(),
+            *tc.bib_rootfs_args(),
             f"localhost/{container_tag}",
         ], check=True, encoding="utf8")
 
@@ -369,7 +369,7 @@ def test_manifest_target_arch_smoke(build_container, tc):
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest",
-        *tc.rootfs_args(),
+        *tc.bib_rootfs_args(),
         f"--target-arch={tc.target_arch}",
         tc.container_ref,
     ])
