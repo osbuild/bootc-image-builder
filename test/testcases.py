@@ -33,10 +33,7 @@ class TestCase:
     def rootfs_args(self):
         # fedora has no default rootfs so it must be specified
         if "fedora-bootc" in self.container_ref:
-            # TODO: switch to "btrfs" once
-            # https://github.com/osbuild/bootc-image-builder/pull/439
-            # is merged
-            return ["--rootfs", "ext4"]
+            return ["--rootfs", "btrfs"]
         return []
 
     def __str__(self):
