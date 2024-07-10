@@ -310,17 +310,19 @@ Example:
 
 ```json
 {
-  "user": [
-    {
-      "name": "alice",
-      "password": "bob",
-      "key": "ssh-rsa AAA ... user@email.com",
-      "groups": [
-        "wheel",
-        "admins"
-      ]
-    }
-  ]
+  "customizations": {
+    "user": [
+      {
+        "name": "alice",
+        "password": "bob",
+        "key": "ssh-rsa AAA ... user@email.com",
+        "groups": [
+          "wheel",
+          "admins"
+        ]
+      }
+    ]
+  }
 }
 ```
 
