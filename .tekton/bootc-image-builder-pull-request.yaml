@@ -18,6 +18,10 @@ metadata:
   name: bootc-image-builder-on-pull-request
   namespace: centos-bootc-tenant
 spec:
+  timeouts:
+    pipeline: "6h0m0s"
+    tasks: "4h0m0s"
+    finally: "2h0m0s"
   params:
     - name: dockerfile
       value: Containerfile
