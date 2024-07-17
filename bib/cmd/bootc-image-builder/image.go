@@ -242,7 +242,11 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		img.Kickstart.KernelOptionsAppend = append(img.Kickstart.KernelOptionsAppend, kopts.Append)
 	}
 	img.Kickstart.NetworkOnBoot = true
-	img.AdditionalAnacondaModules = append(img.AdditionalAnacondaModules, "org.fedoraproject.Anaconda.Modules.Users")
+	img.AdditionalAnacondaModules = append(img.AdditionalAnacondaModules,
+		"org.fedoraproject.Anaconda.Modules.Users",
+		"org.fedoraproject.Anaconda.Modules.Services",
+		"org.fedoraproject.Anaconda.Modules.Security",
+	)
 
 	img.Kickstart.OSTree = &kickstart.OSTree{
 		OSName: "default",
