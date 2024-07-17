@@ -271,7 +271,7 @@ As an example, let's show how you can add a user to the image:
 
 Firstly create a file `./config.toml` and put the following content into it:
 
-```json
+```toml
 [[customizations.user]]
 name = "alice"
 password = "bob"
