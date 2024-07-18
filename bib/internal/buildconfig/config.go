@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pelletier/go-toml"
+	"github.com/BurntSushi/toml"
 	"github.com/sirupsen/logrus"
 
 	"github.com/osbuild/images/pkg/blueprint"
@@ -59,7 +59,7 @@ func decodeTomlBuildConfig(r io.Reader, what string) (*BuildConfig, error) {
 	dec := toml.NewDecoder(r)
 
 	var conf BuildConfig
-	if err := dec.Decode(&conf); err != nil {
+	if _, err := dec.Decode(&conf); err != nil {
 		return nil, fmt.Errorf("cannot decode %q: %w", what, err)
 	}
 	return &conf, nil
