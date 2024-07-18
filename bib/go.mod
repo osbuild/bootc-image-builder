@@ -3,11 +3,11 @@ module github.com/osbuild/bootc-image-builder/bib
 go 1.21
 
 require (
+	github.com/BurntSushi/toml v1.4.0
 	github.com/aws/aws-sdk-go v1.55.3
 	github.com/cheggaaa/pb/v3 v3.1.5
 	github.com/google/uuid v1.6.0
 	github.com/osbuild/images v0.72.0
-	github.com/pelletier/go-toml v1.9.5
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
@@ -19,7 +19,6 @@ require (
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
-	github.com/BurntSushi/toml v1.4.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/Microsoft/hcsshim v0.12.3 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
