@@ -118,4 +118,36 @@ var partitionTables = distro.BasePartitionTableMap{
 			},
 		},
 	},
+	arch.ARCH_S390X.String(): disk.PartitionTable{
+		UUID: "D209C89E-EA5E-4FBD-B161-B461CCE297E0",
+		Type: "gpt",
+		Partitions: []disk.Partition{
+			{
+				Size: 1 * GibiByte,
+				Type: disk.FilesystemDataGUID,
+				UUID: disk.FilesystemDataUUID,
+				Payload: &disk.Filesystem{
+					Type:         "ext4",
+					Mountpoint:   "/boot",
+					Label:        "boot",
+					FSTabOptions: BootOptions,
+					FSTabFreq:    1,
+					FSTabPassNo:  2,
+				},
+			},
+			{
+				Size: 2 * GibiByte,
+				Type: disk.FilesystemDataGUID,
+				UUID: disk.RootPartitionUUID,
+				Payload: &disk.Filesystem{
+					Type:         "ext4",
+					Label:        "root",
+					Mountpoint:   "/",
+					FSTabOptions: RootOptions,
+					FSTabFreq:    1,
+					FSTabPassNo:  1,
+				},
+			},
+		},
+	},
 }
