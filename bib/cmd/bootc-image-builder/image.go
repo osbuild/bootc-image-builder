@@ -138,6 +138,13 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 				QCOW2Compat: "1.1",
 			},
 		}
+	case arch.ARCH_S390X:
+		img.Platform = &platform.S390X{
+			BasePlatform: platform.BasePlatform{
+				QCOW2Compat: "1.1",
+			},
+			Zipl: true,
+		}
 	}
 
 	if kopts := customizations.GetKernel(); kopts != nil && kopts.Append != "" {
