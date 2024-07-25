@@ -286,14 +286,15 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		rootfsType = ""
 	}
 
-	if err := container.CopyInto("/usr/libexec/osbuild-depsolve-dnf", "/osbuild-depsolve-dnf"); err != nil {
-		return nil, nil, fmt.Errorf("cannot prepare depsolve in the container: %w", err)
-	}
-
 	// This is needed just for RHEL and RHSM in most cases, but let's run it every time in case
 	// the image has some non-standard dnf plugins.
 	if err := container.InitDNF(); err != nil {
 		return nil, nil, err
+	}
+
+	// Install osbuild-depsolve-dnf into the container using dnf
+	if err := container.InstallPackages([]string{"osbuild-depsolve-dnf"}); err != nil {
+		return nil, nil, fmt.Errorf("cannot install osbuild-depsolve-dnf in the container: %w", err)
 	}
 
 	sourceinfo, err := source.LoadInfo(container.Root())
@@ -310,7 +311,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		Filesystems:    filesystems,
 		DistroDefPaths: distroDefPaths,
 		SourceInfo:     sourceinfo,
-		DepsolverCmd:   append(container.ExecArgv(), "/osbuild-depsolve-dnf"),
+		DepsolverCmd:   append(container.ExecArgv(), "/usr/libexec/osbuild-depsolve-dnf"),
 		RootFSType:     rootfsType,
 	}
 

@@ -136,6 +136,17 @@ func (c *Container) InitDNF() error {
 	return nil
 }
 
+// InstallPackages uses dnf in the container to install packages
+func (c *Container) InstallPackages(pkgs []string) error {
+	args := []string{"exec", c.id, "dnf", "install", "-y"}
+	args = append(args, pkgs...)
+	if output, err := exec.Command("podman", args...).CombinedOutput(); err != nil {
+		return fmt.Errorf("installing packages in %s container failed: %w\noutput:\n%s", c.id, err, string(output))
+	}
+
+	return nil
+}
+
 // DefaultRootfsType returns the default rootfs type (e.g. "ext4") as
 // specified by the bootc container install configuration. An empty
 // string is valid and means the container sets no default.
