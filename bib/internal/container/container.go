@@ -83,9 +83,9 @@ func (c *Container) Stop() error {
 	if output, err := exec.Command("podman", "stop", c.id).CombinedOutput(); err != nil {
 		return fmt.Errorf("stopping %s container failed: %w\noutput:\n%s", c.id, err, output)
 	}
-	// when the container is stopped by podman it will not honor the "--rm"
-	// that was passed in `New()` so manually remove the container here.
-	if output, err := exec.Command("podman", "rm", c.id).CombinedOutput(); err != nil {
+	// when the container is stopped by podman it may not honor the "--rm"
+	// that was passed in `New()` so manually remove the container here if it is still available
+	if output, err := exec.Command("podman", "rm", "--ignore", c.id).CombinedOutput(); err != nil {
 		return fmt.Errorf("removing %s container failed: %w\noutput:\n%s", c.id, err, output)
 	}
 
