@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const testingImage = "registry.access.redhat.com/ubi9-micro:latest"
+const testingImage = "quay.io/centos/centos:stream9"
 
 type containerInfo struct {
 	State string `json:"State"`
@@ -77,7 +77,7 @@ func TestNew(t *testing.T) {
 	osRelease, err := os.ReadFile(path.Join(root, "etc/os-release"))
 	require.NoError(t, err)
 
-	assert.Contains(t, string(osRelease), `ID="rhel"`)
+	assert.Contains(t, string(osRelease), `ID="centos"`)
 }
 
 func TestReadFile(t *testing.T) {
@@ -94,7 +94,7 @@ func TestReadFile(t *testing.T) {
 
 	content, err := c.ReadFile("/etc/os-release")
 	require.NoError(t, err)
-	require.Contains(t, string(content), `ID="rhel"`)
+	require.Contains(t, string(content), `ID="centos"`)
 }
 
 func TestCopyInto(t *testing.T) {
@@ -130,6 +130,7 @@ func makeFakePodman(t *testing.T, content string) {
 	err := os.WriteFile(filepath.Join(tmpdir, "podman"), []byte(content), 0755)
 	assert.NoError(t, err)
 }
+
 func TestNewFakedUnhappy(t *testing.T) {
 	fakePodman := `#!/bin/sh
 if [ "$1" = "mount" ]; then
