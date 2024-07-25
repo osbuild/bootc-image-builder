@@ -123,6 +123,27 @@ func TestCopyInto(t *testing.T) {
 	require.Equal(t, "Hello, world!", string(testfileContent))
 }
 
+func TestInstallPackages(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("skipping test; not running as root")
+	}
+
+	c, err := New(testingImage)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err = c.Stop()
+		assert.NoError(t, err)
+	})
+
+	err = c.InstallPackages([]string{"osbuild-depsolve-dnf"})
+	require.NoError(t, err)
+
+	root := c.Root()
+	testfileInContainer := path.Join(root, "usr/libexec/osbuild-depsolve-dnf")
+	_, err = os.ReadFile(testfileInContainer)
+	require.NoError(t, err)
+}
+
 func makeFakePodman(t *testing.T, content string) {
 	tmpdir := t.TempDir()
 	t.Setenv("PATH", tmpdir+":"+os.Getenv("PATH"))
