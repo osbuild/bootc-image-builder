@@ -114,8 +114,7 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 		c.Architecture.String(),
 		fmt.Sprintf("%s-%s", c.SourceInfo.OSRelease.ID, c.SourceInfo.OSRelease.VersionID),
 		cacheRoot)
-	solver.SetDNFJSONPath(c.DepsolverCmd[0], c.DepsolverCmd[1:]...)
-	solver.SetRootDir("/")
+	solver.SetRootDir(c.DepsolverRootDir)
 	depsolvedSets := make(map[string][]rpmmd.PackageSpec)
 	depsolvedRepos := make(map[string][]rpmmd.RepoConfig)
 	for name, pkgSet := range manifest.GetPackageSetChains() {
@@ -286,10 +285,6 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		rootfsType = ""
 	}
 
-	if err := container.CopyInto("/usr/libexec/osbuild-depsolve-dnf", "/osbuild-depsolve-dnf"); err != nil {
-		return nil, nil, fmt.Errorf("cannot prepare depsolve in the container: %w", err)
-	}
-
 	// This is needed just for RHEL and RHSM in most cases, but let's run it every time in case
 	// the image has some non-standard dnf plugins.
 	if err := container.InitDNF(); err != nil {
@@ -302,16 +297,16 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	}
 
 	manifestConfig := &ManifestConfig{
-		Architecture:   cntArch,
-		Config:         config,
-		BuildType:      buildType,
-		Imgref:         imgref,
-		TLSVerify:      tlsVerify,
-		Filesystems:    filesystems,
-		DistroDefPaths: distroDefPaths,
-		SourceInfo:     sourceinfo,
-		DepsolverCmd:   append(container.ExecArgv(), "/osbuild-depsolve-dnf"),
-		RootFSType:     rootfsType,
+		Architecture:     cntArch,
+		Config:           config,
+		BuildType:        buildType,
+		Imgref:           imgref,
+		TLSVerify:        tlsVerify,
+		Filesystems:      filesystems,
+		DistroDefPaths:   distroDefPaths,
+		SourceInfo:       sourceinfo,
+		RootFSType:       rootfsType,
+		DepsolverRootDir: container.Root(),
 	}
 
 	manifest, repos, err := makeManifest(manifestConfig, rpmCacheRoot)

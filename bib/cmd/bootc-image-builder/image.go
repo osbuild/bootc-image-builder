@@ -57,8 +57,8 @@ type ManifestConfig struct {
 	// Extracted information about the source container image
 	SourceInfo *source.Info
 
-	// Command to run the depsolver
-	DepsolverCmd []string
+	// Path to the tree that contains /etc used for osbuild-depsolve-dnf
+	DepsolverRootDir string
 
 	// RootFSType specifies the filesystem type for the root partition
 	RootFSType string
