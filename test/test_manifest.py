@@ -356,3 +356,25 @@ def test_manifest_checks_build_container_is_bootc(build_container, container_ref
             assert expected_error in exc.value.stderr
     else:
         check_image_ref()
+
+
+@pytest.mark.parametrize("tc", gen_testcases("target-arch-smoke"))
+def test_manifest_target_arch_smoke(build_container, tc):
+    # TODO: actually build an image too
+    output = subprocess.check_output([
+        "podman", "run", "--rm",
+        "--privileged",
+        "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
+        "--security-opt", "label=type:unconfined_t",
+        "--entrypoint=/usr/bin/bootc-image-builder",
+        build_container,
+        "manifest",
+        *tc.rootfs_args(),
+        f"--target-arch={tc.target_arch}",
+        tc.container_ref,
+    ])
+    manifest = json.loads(output)
+    # just minimal validation, we could in theory look at the partition
+    # table be beside this there is relatively little that is different
+    assert manifest["version"] == "2"
+    assert manifest["pipelines"][0]["name"] == "build"
