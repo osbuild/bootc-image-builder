@@ -105,4 +105,13 @@ def gen_testcases(what):
         for ref in CONTAINERS_TO_TEST.values():
             test_cases.append(TestCase(container_ref=ref, image="+".join(DISK_IMAGE_TYPES)))
         return test_cases
+    # Smoke test that all supported --target-arch architecture can
+    # create a manifest
+    elif what == "target-arch-smoke":
+        return [
+            TestCase(container_ref=CONTAINERS_TO_TEST["centos"], target_arch="arm64"),
+            # TODO: merge with CONTAINERS_TO_TEST once that moves to :41 too
+            TestCase(container_ref="quay.io/fedora/fedora-bootc:41", target_arch="ppc64le"),
+            TestCase(container_ref="quay.io/fedora/fedora-bootc:41", target_arch="s390x"),
+        ]
     raise ValueError(f"unknown test-case type {what}")
