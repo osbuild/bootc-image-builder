@@ -107,3 +107,12 @@ def deregister_ami(ami_id):
         err_msg = err.response["Error"]["Message"]
         print(f"Couldn't deregister image {ami_id}.")
         print(f"Error {err_code}: {err_msg}")
+
+
+# podman_run_common has the common prefix for the podman run invocations
+podman_run_common = [
+    "podman", "run", "--rm",
+    "--privileged",
+    "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
+    "--security-opt", "label=type:unconfined_t",
+]

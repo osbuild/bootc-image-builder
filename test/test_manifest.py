@@ -32,9 +32,7 @@ def find_image_size_from(manifest_str):
 @pytest.mark.parametrize("tc", gen_testcases("manifest"))
 def test_manifest_smoke(build_container, tc):
     output = subprocess.check_output([
-        "podman", "run", "--rm",
-        "--privileged",
-        "--security-opt", "label=type:unconfined_t",
+        *testutil.podman_run_common,
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest",
@@ -54,9 +52,7 @@ def test_manifest_smoke(build_container, tc):
 @pytest.mark.parametrize("tc", gen_testcases("anaconda-iso"))
 def test_iso_manifest_smoke(build_container, tc):
     output = subprocess.check_output([
-        "podman", "run", "--rm",
-        "--privileged",
-        "--security-opt", "label=type:unconfined_t",
+        *testutil.podman_run_common,
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest",
@@ -85,12 +81,7 @@ def test_manifest_disksize(tmp_path, build_container, tc):
     with make_container(tmp_path) as container_tag:
         print(f"using {container_tag}")
         manifest_str = subprocess.check_output([
-            "podman", "run", "--rm",
-            "--privileged",
-            "--security-opt", "label=type:unconfined_t",
-            # ensure local storage is here
-            "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
-            # need different entry point
+            *testutil.podman_run_common,
             "--entrypoint", "/usr/bin/bootc-image-builder",
             build_container,
             "manifest", "--local",
@@ -107,6 +98,7 @@ def test_manifest_local_checks_containers_storage_errors(build_container):
     #   "-v /var/lib/containers/storage:/var/lib/containers/storage"
     # is missing here
     res = subprocess.run([
+        # not using *testutil.podman_run_common to test bad usage
         "podman", "run", "--rm",
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
@@ -128,10 +120,7 @@ def test_manifest_local_checks_containers_storage_works(tmp_path, build_containe
 
     with make_container(tmp_path) as container_tag:
         subprocess.run([
-            "podman", "run", "--rm",
-            "--privileged",
-            "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
-            "--security-opt", "label=type:unconfined_t",
+            *testutil.podman_run_common,
             "--entrypoint=/usr/bin/bootc-image-builder",
             build_container,
             "manifest", "--local",
@@ -151,10 +140,7 @@ def test_manifest_cross_arch_check(tmp_path, build_container):
     with make_container(tmp_path, arch="x86_64") as container_tag:
         with pytest.raises(subprocess.CalledProcessError) as exc:
             subprocess.run([
-                "podman", "run", "--rm",
-                "--privileged",
-                "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
-                "--security-opt", "label=type:unconfined_t",
+                *testutil.podman_run_common,
                 "--entrypoint=/usr/bin/bootc-image-builder",
                 build_container,
                 "manifest", "--target-arch=aarch64",
@@ -178,9 +164,7 @@ def find_rootfs_type_from(manifest_str):
 def test_manifest_rootfs_respected(build_container, tc):
     # TODO: derive container and fake "bootc install print-configuration"?
     output = subprocess.check_output([
-        "podman", "run", "--rm",
-        "--privileged",
-        "--security-opt", "label=type:unconfined_t",
+        *testutil.podman_run_common,
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest", f"{tc.container_ref}",
@@ -198,9 +182,7 @@ def test_manifest_rootfs_override(build_container):
     container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
 
     output = subprocess.check_output([
-        "podman", "run", "--rm",
-        "--privileged",
-        "--security-opt", "label=type:unconfined_t",
+        *testutil.podman_run_common,
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest", "--rootfs", "btrfs", f"{container_ref}",
@@ -232,11 +214,8 @@ def test_manifest_user_customizations_toml(tmp_path, build_container):
     groups = ["wheel"]
     """))
     output = subprocess.check_output([
-        "podman", "run", "--rm",
-        "--privileged",
-        "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
+        *testutil.podman_run_common,
         "-v", f"{config_toml_path}:/config.toml:ro",
-        "--security-opt", "label=type:unconfined_t",
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest", f"{container_ref}",
@@ -262,11 +241,8 @@ def test_manifest_installer_customizations(tmp_path, build_container):
     \"\"\"
     """))
     output = subprocess.check_output([
-        "podman", "run", "--rm",
-        "--privileged",
-        "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
+        *testutil.podman_run_common,
         "-v", f"{config_toml_path}:/config.toml:ro",
-        "--security-opt", "label=type:unconfined_t",
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest", "--type=anaconda-iso", f"{container_ref}",
@@ -319,10 +295,7 @@ def test_mount_ostree_error(tmpdir_factory, build_container):
 
     with pytest.raises(subprocess.CalledProcessError) as exc:
         subprocess.check_output([
-            "podman", "run", "--rm",
-            "--privileged",
-            "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
-            "--security-opt", "label=type:unconfined_t",
+            *testutil.podman_run_common,
             "-v", f"{output_path}:/output",
             "--entrypoint=/usr/bin/bootc-image-builder",
             build_container,
@@ -342,10 +315,7 @@ def test_mount_ostree_error(tmpdir_factory, build_container):
 def test_manifest_checks_build_container_is_bootc(build_container, container_ref, should_error, expected_error):
     def check_image_ref():
         subprocess.check_output([
-            "podman", "run", "--rm",
-            "--privileged",
-            "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
-            "--security-opt", "label=type:unconfined_t",
+            *testutil.podman_run_common,
             f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "{container_ref}"]',
             build_container,
         ], stderr=subprocess.PIPE, encoding="utf8")
@@ -361,10 +331,7 @@ def test_manifest_checks_build_container_is_bootc(build_container, container_ref
 def test_manifest_target_arch_smoke(build_container, tc):
     # TODO: actually build an image too
     output = subprocess.check_output([
-        "podman", "run", "--rm",
-        "--privileged",
-        "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
-        "--security-opt", "label=type:unconfined_t",
+        *testutil.podman_run_common,
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest",

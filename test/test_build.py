@@ -248,10 +248,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
 
         # run container to deploy an image into a bootable disk and upload to a cloud service if applicable
         cmd = [
-            "podman", "run", "--rm",
-            "--privileged",
-            "--security-opt", "label=type:unconfined_t",
-            "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
+            *testutil.podman_run_common,
             "-v", f"{config_json_path}:/config.json:ro",
             "-v", f"{output_path}:/output",
             "-v", "/var/tmp/osbuild-test-store:/store",  # share the cache between builds
