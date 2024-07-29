@@ -23,7 +23,6 @@ const (
 
 var partitionTables = distro.BasePartitionTableMap{
 	arch.ARCH_X86_64.String(): disk.PartitionTable{
-		UUID: "D209C89E-EA5E-4FBD-B161-B461CCE297E0",
 		Type: "gpt",
 		Partitions: []disk.Partition{
 			{
@@ -75,7 +74,6 @@ var partitionTables = distro.BasePartitionTableMap{
 		},
 	},
 	arch.ARCH_AARCH64.String(): disk.PartitionTable{
-		UUID: "0xc1748067",
 		Type: "dos",
 		Partitions: []disk.Partition{
 			{
@@ -119,7 +117,6 @@ var partitionTables = distro.BasePartitionTableMap{
 		},
 	},
 	arch.ARCH_S390X.String(): disk.PartitionTable{
-		UUID: "D209C89E-EA5E-4FBD-B161-B461CCE297E0",
 		Type: "gpt",
 		Partitions: []disk.Partition{
 			{
