@@ -91,7 +91,7 @@ func TestReadUserConfigErrorWrongFormat(t *testing.T) {
 		expectedErr    string
 	}{
 		// wrong content, json in a toml file and vice-versa
-		{"config.toml", fakeConfigJSON, "parsing error"},
+		{"config.toml", fakeConfigJSON, "cannot decode"},
 		{"config.json", fakeConfigToml, "cannot decode"},
 	} {
 		fakeCnfPath := makeFakeConfig(t, tc.fname, tc.content)
