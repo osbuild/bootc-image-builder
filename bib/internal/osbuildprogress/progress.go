@@ -174,6 +174,10 @@ func RunOSBuild(manifest []byte, store, outputDirectory string, exports, extraEn
 		"--monitor-fd=3",
 		"-",
 	)
+	for _, export := range exports {
+		cmd.Args = append(cmd.Args, "--export", export)
+	}
+
 	cmd.Env = append(os.Environ(), extraEnv...)
 	cmd.Stdin = bytes.NewBuffer(manifest)
 	cmd.Stderr = os.Stderr
@@ -181,11 +185,8 @@ func RunOSBuild(manifest []byte, store, outputDirectory string, exports, extraEn
 	// exported here
 	cmd.Stdout = nil
 	cmd.ExtraFiles = []*os.File{wp}
-	go AttachProgress(wg, rp, os.Stdout)
 
-	for _, export := range exports {
-		cmd.Args = append(cmd.Args, "--export", export)
-	}
+	go AttachProgress(wg, rp, os.Stdout)
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("error starting osbuild: %v", err)
 	}
