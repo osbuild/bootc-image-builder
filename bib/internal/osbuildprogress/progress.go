@@ -149,30 +149,38 @@ func AttachProgress(r io.Reader, w io.Writer) {
 
 // XXX: merge back into images/pkg/osbuild/osbuild-exec.go(?)
 func RunOSBuild(manifest []byte, store, outputDirectory string, exports, extraEnv []string) error {
+	rp, wp, err := os.Pipe()
+	if err != nil {
+		return fmt.Errorf("cannot create pipe for osbuild: %w", err)
+	}
+	defer rp.Close()
+	defer wp.Close()
+
 	cmd := exec.Command(
 		"osbuild",
 		"--store", store,
 		"--output-directory", outputDirectory,
 		"--monitor=JSONSeqMonitor",
+		"--monitor-fd=3",
 		"-",
 	)
 	cmd.Env = append(os.Environ(), extraEnv...)
 	cmd.Stdin = bytes.NewBuffer(manifest)
 	cmd.Stderr = os.Stderr
+	// we could use "--json" here and would get the build-result
+	// exported here
+	cmd.Stdout = nil
+	cmd.ExtraFiles = []*os.File{wp}
+	go AttachProgress(rp, os.Stdout)
 
 	for _, export := range exports {
 		cmd.Args = append(cmd.Args, "--export", export)
 	}
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-	go AttachProgress(stdout, os.Stdout)
-
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("error starting osbuild: %v", err)
 	}
+	wp.Close()
+
 	// XXX: add WaitGroup
 	return cmd.Wait()
 }
