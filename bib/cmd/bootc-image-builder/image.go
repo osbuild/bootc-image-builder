@@ -216,7 +216,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		return nil, fmt.Errorf("pipeline: no base image defined")
 	}
 
-	imageDef, err := distrodef.LoadImageDef(c.DistroDefPaths, c.SourceInfo.OSRelease.ID, "anaconda-iso")
+	imageDef, err := distrodef.LoadImageDef(c.DistroDefPaths, c.SourceInfo.OSRelease.ID, c.SourceInfo.OSRelease.VersionID, "anaconda-iso")
 	if err != nil {
 		return nil, err
 	}
