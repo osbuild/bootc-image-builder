@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"golang.org/x/exp/maps"
@@ -17,21 +18,62 @@ type ImageDef struct {
 	Packages []string `yaml:"packages"`
 }
 
-func loadFile(defDirs []string, distro, ver string) ([]byte, error) {
-	for _, loc := range defDirs {
-		p := filepath.Join(loc, fmt.Sprintf("%s-%s.yaml", distro, ver))
-		content, err := os.ReadFile(p)
-		if os.IsNotExist(err) {
-			continue
-		}
-		if err != nil {
-			return nil, fmt.Errorf("could not read def file %s for distro %s-%s: %v", p, distro, ver, err)
-		}
+func findDistroDef(defDirs []string, distro, wantedVerStr string) (string, error) {
+	var bestFuzzyMatch string
+	var bestFuzzyVer int
 
-		return content, nil
+	wantedVer, err := strconv.Atoi(wantedVerStr)
+	if err != nil {
+		return "", fmt.Errorf("cannot parse wanted version string: %w", err)
 	}
 
-	return nil, fmt.Errorf("could not find def file for distro %s-%s", distro, ver)
+	for _, defDir := range defDirs {
+		// exact match
+		matches, err := filepath.Glob(filepath.Join(defDir, fmt.Sprintf("%s-%s.yaml", distro, wantedVerStr)))
+		if err != nil {
+			return "", err
+		}
+		if len(matches) == 1 {
+			return matches[0], nil
+		}
+
+		// fuzzy match
+		matches, err = filepath.Glob(filepath.Join(defDir, fmt.Sprintf("%s-[0-9]*.yaml", distro)))
+		if err != nil {
+			return "", err
+		}
+		for _, m := range matches {
+			baseNoExt := strings.TrimSuffix(filepath.Base(m), ".yaml")
+			haveVerStr := strings.SplitN(baseNoExt, "-", 2)[1]
+			// this should never error (because of the glob above) but be defensive
+			haveVer, err := strconv.Atoi(haveVerStr)
+			if err != nil {
+				return "", fmt.Errorf("cannot parse distro version from %q: %w", m, err)
+			}
+			if wantedVer > haveVer && haveVer > bestFuzzyVer {
+				bestFuzzyVer = haveVer
+				bestFuzzyMatch = m
+			}
+		}
+	}
+	if bestFuzzyMatch == "" {
+		return "", fmt.Errorf("could not find def file for distro %s-%s", distro, wantedVerStr)
+	}
+
+	return bestFuzzyMatch, nil
+}
+
+func loadFile(defDirs []string, distro, ver string) ([]byte, error) {
+	defPath, err := findDistroDef(defDirs, distro, ver)
+	if err != nil {
+		return nil, err
+	}
+
+	content, err := os.ReadFile(defPath)
+	if err != nil {
+		return nil, fmt.Errorf("could not read def file %s for distro %s-%s: %v", defPath, distro, ver, err)
+	}
+	return content, nil
 }
 
 // Loads a definition file for a given distro and image type
