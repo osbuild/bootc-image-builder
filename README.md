@@ -60,6 +60,10 @@ sudo podman run \
     quay.io/centos-bootc/centos-bootc:stream9
 ```
 
+Note that some images (like fedora) do not have a default root
+filesystem type. In this case adds the switch `--rootfs <type>`,
+e.g. `--rootfs btrfs`.
+
 ### Running the resulting QCOW2 file on Linux (x86_64)
 
 A virtual machine can be launched using `qemu-system-x86_64` or with `virt-install` as shown below;
@@ -130,13 +134,13 @@ Flags:
 
 ### Detailed description of optional flags
 
-| Argument          | Description                                                                                        | Default Value |
-|-------------------|----------------------------------------------------------------------------------------------------|:-------------:|
-| **--chown**       | chown the output directory to match the specified UID:GID                                          |       ❌      |
-| **--rootfs**      | Root filesystem type. Overrides the default from the source container. Supported values: ext4, xfs |
-| **--tls-verify**  | Require HTTPS and verify certificates when contacting registries                                   |    `true`     |
-| **--type**        | [Image type](#-image-types) to build                                                               |    `qcow2`    |
-| **--target-arch** | [Target arch](#-target-architecture) to build                                                      |       ❌      |
+| Argument          | Description                                                                                               | Default Value |
+|-------------------|-----------------------------------------------------------------------------------------------------------|:-------------:|
+| **--chown**       | chown the output directory to match the specified UID:GID                                                 |       ❌      |
+| **--rootfs**      | Root filesystem type. Overrides the default from the source container. Supported values: ext4, xfs, btrfs |       ❌      |
+| **--tls-verify**  | Require HTTPS and verify certificates when contacting registries                                          |    `true`     |
+| **--type**        | [Image type](#-image-types) to build                                                                      |    `qcow2`    |
+| **--target-arch** | [Target arch](#-target-architecture) to build                                                             |       ❌      |
 
 The `--type` parameter can be given multiple times and multiple outputs will
 be produced.
