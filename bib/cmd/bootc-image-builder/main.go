@@ -262,27 +262,29 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	}()
 
 	var rootfsType string
-	if rootFs != "" {
-		rootfsType = rootFs
-	} else {
-		rootfsType, err = container.DefaultRootfsType()
-		if err != nil {
-			return nil, nil, fmt.Errorf("cannot get rootfs type for container: %w", err)
+	if buildType != BuildTypeISO {
+		if rootFs != "" {
+			rootfsType = rootFs
+		} else {
+			rootfsType, err = container.DefaultRootfsType()
+			if err != nil {
+				return nil, nil, fmt.Errorf("cannot get rootfs type for container: %w", err)
+			}
+			if rootfsType == "" {
+				return nil, nil, fmt.Errorf(`no default root filesystem type specified in container, please use "--rootfs" to set manually`)
+			}
 		}
-		if rootfsType == "" {
-			return nil, nil, fmt.Errorf(`no default root filesystem type specified in container, please use "--rootfs" to set manually`)
-		}
-	}
 
-	// TODO: on a cross arch build we need to be conservative,
-	// i.e.  we can only use the default ext4 because if xfs is
-	// select we run into the issue that mkfs.xfs calls
-	// "ioctl(BLKBSZSET)" which is missing in qemu-user, once
-	// https://www.mail-archive.com/qemu-devel@nongnu.org/msg1037409.html
-	// is merged we can remove the following code
-	if cntArch != arch.Current() && rootfsType != "ext4" {
-		logrus.Warningf("container prefered root filesystem %q cannot be used during cross arch build", rootfsType)
-		rootfsType = ""
+		// TODO: on a cross arch build we need to be conservative,
+		// i.e.  we can only use the default ext4 because if xfs is
+		// select we run into the issue that mkfs.xfs calls
+		// "ioctl(BLKBSZSET)" which is missing in qemu-user, once
+		// https://www.mail-archive.com/qemu-devel@nongnu.org/msg1037409.html
+		// is merged we can remove the following code
+		if cntArch != arch.Current() && rootfsType != "ext4" {
+			logrus.Warningf("container prefered root filesystem %q cannot be used during cross arch build", rootfsType)
+			rootfsType = ""
+		}
 	}
 
 	// This is needed just for RHEL and RHSM in most cases, but let's run it every time in case
