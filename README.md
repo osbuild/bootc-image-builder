@@ -405,6 +405,14 @@ The contents of the file `$(pwd)/wheel-passwordless-sudo` should be
 %wheel ALL=(ALL) NOPASSWD: ALL
 ```
 
+## Reporting bugs
+
+Please report bugs to the [Bug Tracker](https://github.com/osbuild/bootc-image-builder/issues) and include instructions to reproduce and the output of:
+```
+$ sudo podman run --rm -it --entrypoint=/usr/bin/bootc-image-builder \
+    quay.io/centos-bootc/bootc-image-builder:latest version
+```
+
 ## 📊 Project
 
 - **Website**: <https://www.osbuild.org>
