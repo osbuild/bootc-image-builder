@@ -23,22 +23,18 @@ const (
 
 var partitionTables = distro.BasePartitionTableMap{
 	arch.ARCH_X86_64.String(): disk.PartitionTable{
-		UUID: "D209C89E-EA5E-4FBD-B161-B461CCE297E0",
 		Type: "gpt",
 		Partitions: []disk.Partition{
 			{
 				Size:     1 * MebiByte,
 				Bootable: true,
 				Type:     disk.BIOSBootPartitionGUID,
-				UUID:     disk.BIOSBootPartitionUUID,
 			},
 			{
 				Size: 501 * MebiByte,
 				Type: disk.EFISystemPartitionGUID,
-				UUID: disk.EFISystemPartitionUUID,
 				Payload: &disk.Filesystem{
 					Type:         "vfat",
-					UUID:         disk.EFIFilesystemUUID,
 					Mountpoint:   "/boot/efi",
 					Label:        "EFI-SYSTEM",
 					FSTabOptions: "umask=0077,shortname=winnt",
@@ -49,7 +45,6 @@ var partitionTables = distro.BasePartitionTableMap{
 			{
 				Size: 1 * GibiByte,
 				Type: disk.FilesystemDataGUID,
-				UUID: disk.FilesystemDataUUID,
 				Payload: &disk.Filesystem{
 					Type:         "ext4",
 					Mountpoint:   "/boot",
@@ -62,7 +57,6 @@ var partitionTables = distro.BasePartitionTableMap{
 			{
 				Size: 2 * GibiByte,
 				Type: disk.FilesystemDataGUID,
-				UUID: disk.RootPartitionUUID,
 				Payload: &disk.Filesystem{
 					Type:         "ext4",
 					Label:        "root",
@@ -75,7 +69,6 @@ var partitionTables = distro.BasePartitionTableMap{
 		},
 	},
 	arch.ARCH_AARCH64.String(): disk.PartitionTable{
-		UUID: "0xc1748067",
 		Type: "dos",
 		Partitions: []disk.Partition{
 			{
@@ -84,7 +77,6 @@ var partitionTables = distro.BasePartitionTableMap{
 				Bootable: true,
 				Payload: &disk.Filesystem{
 					Type:         "vfat",
-					UUID:         disk.EFIFilesystemUUID,
 					Mountpoint:   "/boot/efi",
 					Label:        "EFI-SYSTEM",
 					FSTabOptions: "umask=0077,shortname=winnt",
@@ -119,13 +111,11 @@ var partitionTables = distro.BasePartitionTableMap{
 		},
 	},
 	arch.ARCH_S390X.String(): disk.PartitionTable{
-		UUID: "D209C89E-EA5E-4FBD-B161-B461CCE297E0",
 		Type: "gpt",
 		Partitions: []disk.Partition{
 			{
 				Size: 1 * GibiByte,
 				Type: disk.FilesystemDataGUID,
-				UUID: disk.FilesystemDataUUID,
 				Payload: &disk.Filesystem{
 					Type:         "ext4",
 					Mountpoint:   "/boot",
@@ -138,7 +128,6 @@ var partitionTables = distro.BasePartitionTableMap{
 			{
 				Size: 2 * GibiByte,
 				Type: disk.FilesystemDataGUID,
-				UUID: disk.RootPartitionUUID,
 				Payload: &disk.Filesystem{
 					Type:         "ext4",
 					Label:        "root",
@@ -151,7 +140,6 @@ var partitionTables = distro.BasePartitionTableMap{
 		},
 	},
 	arch.ARCH_PPC64LE.String(): disk.PartitionTable{
-		UUID: "D209C89E-EA5E-4FBD-B161-B461CCE297E0",
 		Type: "gpt",
 		Partitions: []disk.Partition{
 			{
@@ -162,7 +150,6 @@ var partitionTables = distro.BasePartitionTableMap{
 			{
 				Size: 500 * MebiByte,
 				Type: disk.FilesystemDataGUID,
-				UUID: disk.FilesystemDataUUID,
 				Payload: &disk.Filesystem{
 					Type:         "ext4",
 					Mountpoint:   "/boot",
@@ -175,7 +162,6 @@ var partitionTables = distro.BasePartitionTableMap{
 			{
 				Size: 2 * GibiByte,
 				Type: disk.FilesystemDataGUID,
-				UUID: disk.FilesystemDataUUID,
 				Payload: &disk.Filesystem{
 					Type:         "ext4",
 					Label:        "root",
