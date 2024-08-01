@@ -60,7 +60,6 @@ def test_iso_manifest_smoke(build_container, tc):
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest",
-        *tc.bib_rootfs_args(),
         "--type=anaconda-iso", f"{tc.container_ref}",
     ])
     manifest = json.loads(output)
