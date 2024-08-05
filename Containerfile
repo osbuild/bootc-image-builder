@@ -4,10 +4,9 @@ COPY bib/go.mod bib/go.sum /build/bib/
 ARG GOPROXY=https://proxy.golang.org,direct
 RUN go env -w GOPROXY=$GOPROXY
 RUN cd /build/bib && go mod download
-COPY build.sh /build
-COPY bib /build/bib
-# the ".git" dir will allow go build to automatically include build info
-COPY .git /build/.git
+# Copy the entire dir to avoid having to conditionally include ".git" as that
+# will not be available when tests are run under tmt
+COPY . /build
 WORKDIR /build
 RUN ./build.sh
 
