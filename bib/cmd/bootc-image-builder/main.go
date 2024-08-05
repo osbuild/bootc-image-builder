@@ -560,7 +560,11 @@ func cmdVersion(_ *cobra.Command, _ []string) error {
 			break
 		}
 	}
-	fmt.Printf("revision: %s\n", gitRev[:7])
+	if gitRev != "" {
+		fmt.Printf("revision: %s\n", gitRev[:7])
+	} else {
+		fmt.Printf("revision: unknown\n")
+	}
 	return nil
 }
 

@@ -163,7 +163,14 @@ def test_bib_version(tmp_path, container_storage, build_fake_container):
         build_fake_container,
         "version",
     ], check=True, capture_output=True, text=True)
-    needle = "revision: "
+
+    expected_rev = "unknown"
+    git_res = subprocess.run(
+        ["git", "describe", "--always"],
+        capture_output=True, text=True, check=False)
+    if git_res.returncode == 0:
+        expected_rev = git_res.stdout.strip()
+    needle = f"revision: {expected_rev}"
     assert needle in res.stdout
 
 
