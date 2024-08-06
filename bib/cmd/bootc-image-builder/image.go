@@ -17,6 +17,7 @@ import (
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/container"
+	"github.com/osbuild/images/pkg/customizations/anaconda"
 	"github.com/osbuild/images/pkg/customizations/kickstart"
 	"github.com/osbuild/images/pkg/customizations/users"
 	"github.com/osbuild/images/pkg/disk"
@@ -256,10 +257,19 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		img.Kickstart.KernelOptionsAppend = append(img.Kickstart.KernelOptionsAppend, kopts.Append)
 	}
 	img.Kickstart.NetworkOnBoot = true
+
+	instCust, err := customizations.GetInstaller()
+	if err != nil {
+		return nil, err
+	}
+	if instCust != nil && instCust.Modules != nil {
+		img.AdditionalAnacondaModules = append(img.AdditionalAnacondaModules, instCust.Modules.Enable...)
+		img.DisabledAnacondaModules = append(img.DisabledAnacondaModules, instCust.Modules.Disable...)
+	}
 	img.AdditionalAnacondaModules = append(img.AdditionalAnacondaModules,
-		"org.fedoraproject.Anaconda.Modules.Users",
-		"org.fedoraproject.Anaconda.Modules.Services",
-		"org.fedoraproject.Anaconda.Modules.Security",
+		anaconda.ModuleUsers,
+		anaconda.ModuleServices,
+		anaconda.ModuleSecurity,
 	)
 
 	img.Kickstart.OSTree = &kickstart.OSTree{
