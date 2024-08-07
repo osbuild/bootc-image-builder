@@ -266,6 +266,7 @@ The following volumes can be mounted inside the container:
 | `/output` | Used for storing the resulting artifacts               |    ✅     |
 | `/store`  | Used for the [osbuild store](https://www.osbuild.org/) |    No    |
 | `/rpmmd`  | Used for the DNF cache                                 |    No    |
+| `/auth.json`| Used with `-e REGISTRY_AUTH_FILE=/auth.json` to mount credentials for private repos|    No    |
 
 ## 📝 Build config
 
