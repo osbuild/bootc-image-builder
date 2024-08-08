@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/osbuild/images/pkg/blueprint"
+	"github.com/osbuild/images/pkg/disk"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/runner"
 
@@ -58,9 +59,10 @@ func TestGetDistroAndRunner(t *testing.T) {
 	}
 }
 
-func TestApplyFilesystemCustomizationsValidates(t *testing.T) {
+func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 	for _, tc := range []struct {
 		fsCust      []blueprint.FilesystemCustomization
+		ptmode      disk.PartitioningMode
 		expectedErr string
 	}{
 		// happy
@@ -69,8 +71,30 @@ func TestApplyFilesystemCustomizationsValidates(t *testing.T) {
 			expectedErr: "",
 		},
 		{
+			fsCust:      []blueprint.FilesystemCustomization{},
+			ptmode:      disk.BtrfsPartitioningMode,
+			expectedErr: "",
+		},
+		{
 			fsCust: []blueprint.FilesystemCustomization{
 				{Mountpoint: "/"}, {Mountpoint: "/boot"},
+			},
+			ptmode:      disk.RawPartitioningMode,
+			expectedErr: "",
+		},
+		{
+			fsCust: []blueprint.FilesystemCustomization{
+				{Mountpoint: "/"}, {Mountpoint: "/boot"},
+			},
+			ptmode:      disk.BtrfsPartitioningMode,
+			expectedErr: "",
+		},
+		{
+			fsCust: []blueprint.FilesystemCustomization{
+				{Mountpoint: "/"},
+				{Mountpoint: "/boot"},
+				{Mountpoint: "/var/log"},
+				{Mountpoint: "/var/data"},
 			},
 			expectedErr: "",
 		},
@@ -80,29 +104,39 @@ func TestApplyFilesystemCustomizationsValidates(t *testing.T) {
 				{Mountpoint: "/"},
 				{Mountpoint: "/ostree"},
 			},
+			ptmode:      disk.RawPartitioningMode,
 			expectedErr: `The following custom mountpoints are not supported ["/ostree"]`,
 		},
 		{
 			fsCust: []blueprint.FilesystemCustomization{
 				{Mountpoint: "/"},
-				{Mountpoint: "/var/log"},
+				{Mountpoint: "/var"},
 			},
-			expectedErr: "cannot use custom mount points yet, found: /var/log",
+			ptmode:      disk.RawPartitioningMode,
+			expectedErr: `The following custom mountpoints are not supported ["/var"]`,
+		},
+		{
+			fsCust: []blueprint.FilesystemCustomization{
+				{Mountpoint: "/"},
+				{Mountpoint: "/var/data"},
+			},
+			ptmode:      disk.BtrfsPartitioningMode,
+			expectedErr: `The following custom mountpoints are not supported ["/var/data"]`,
 		},
 	} {
-		conf := &bib.ManifestConfig{}
 		cust := &blueprint.Customizations{
 			Filesystem: tc.fsCust,
 		}
 		if tc.expectedErr == "" {
-			assert.NoError(t, bib.ApplyFilesystemCustomizations(cust, conf))
+			assert.NoError(t, bib.CheckFilesystemCustomizations(cust, tc.ptmode))
 		} else {
-			assert.ErrorContains(t, bib.ApplyFilesystemCustomizations(cust, conf), tc.expectedErr)
+			assert.ErrorContains(t, bib.CheckFilesystemCustomizations(cust, tc.ptmode), tc.expectedErr)
 		}
 	}
 }
 
 func TestLocalMountpointPolicy(t *testing.T) {
+	// extended testing of the general mountpoint policy (non-minimal)
 	type testCase struct {
 		path    string
 		allowed bool
@@ -152,7 +186,10 @@ func TestLocalMountpointPolicy(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.path, func(t *testing.T) {
-			err := bib.CheckMountpoints([]blueprint.FilesystemCustomization{{Mountpoint: tc.path}})
+			customizations := &blueprint.Customizations{
+				Filesystem: []blueprint.FilesystemCustomization{{Mountpoint: tc.path}},
+			}
+			err := bib.CheckFilesystemCustomizations(customizations, disk.RawPartitioningMode)
 			if err != nil && tc.allowed {
 				t.Errorf("expected %s to be allowed, but got error: %v", tc.path, err)
 			} else if err == nil && !tc.allowed {

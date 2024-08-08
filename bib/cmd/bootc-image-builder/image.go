@@ -76,7 +76,7 @@ func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
 	}
 }
 
-func checkMountpoints(filesystems []blueprint.FilesystemCustomization) error {
+var (
 	// The mountpoint policy for bootc images is more restrictive than the
 	// ostree mountpoint policy defined in osbuild/images. It only allows /
 	// (for sizing the root partition) and custom mountpoints under /var but
@@ -86,15 +86,14 @@ func checkMountpoints(filesystems []blueprint.FilesystemCustomization) error {
 	// its subpaths (only the opposite), we augment the standard policy check
 	// with a simple search through the custom mountpoints to deny /var
 	// specifically.
-
-	policy := pathpolicy.NewPathPolicies(map[string]pathpolicy.PathPolicy{
+	mountpointPolicy = pathpolicy.NewPathPolicies(map[string]pathpolicy.PathPolicy{
 		// allow all existing mountpoints (but no subdirs) to support size customizations
 		"/":     {Deny: false, Exact: true},
 		"/boot": {Deny: false, Exact: true},
 
 		// /var is not allowed, but we need to allow any subdirectories that
 		// are not denied below, so we allow it initially and then check it
-		// separately (below)
+		// separately (in checkMountpoints())
 		"/var": {Deny: false},
 
 		// /var subdir denials
@@ -108,6 +107,14 @@ func checkMountpoints(filesystems []blueprint.FilesystemCustomization) error {
 		"/var/usrlocal": {Deny: true},
 	})
 
+	mountpointMinimalPolicy = pathpolicy.NewPathPolicies(map[string]pathpolicy.PathPolicy{
+		// allow all existing mountpoints to support size customizations
+		"/":     {Deny: false, Exact: true},
+		"/boot": {Deny: false, Exact: true},
+	})
+)
+
+func checkMountpoints(filesystems []blueprint.FilesystemCustomization, policy *pathpolicy.PathTrie) error {
 	invalid := make([]string, 0)
 	for _, fs := range filesystems {
 		if err := policy.Check(fs.Mountpoint); err != nil {
@@ -123,12 +130,21 @@ func checkMountpoints(filesystems []blueprint.FilesystemCustomization) error {
 	return nil
 }
 
-func applyFilesystemCustomizations(customizations *blueprint.Customizations, c *ManifestConfig) error {
+func checkFilesystemCustomizations(customizations *blueprint.Customizations, ptmode disk.PartitioningMode) error {
 	customFS := customizations.GetFilesystems()
-	if err := checkMountpoints(customFS); err != nil {
+	var policy *pathpolicy.PathTrie
+	switch ptmode {
+	case disk.BtrfsPartitioningMode:
+		// btrfs subvolumes are not supported at build time yet, so we only
+		// allow / and /boot to be customized when building a btrfs disk (the
+		// minimal policy)
+		policy = mountpointMinimalPolicy
+	default:
+		policy = mountpointPolicy
+	}
+	if err := checkMountpoints(customFS, policy); err != nil {
 		return err
 	}
-	c.Filesystems = customFS
 	return nil
 }
 
@@ -199,17 +215,16 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 	if !ok {
 		return nil, fmt.Errorf("pipelines: no partition tables defined for %s", c.Architecture)
 	}
-	// XXX: extract into helper
+
 	partitioningMode := disk.RawPartitioningMode
 	if c.RootFSType == "btrfs" {
 		partitioningMode = disk.BtrfsPartitioningMode
 	}
-
-	if err := applyFilesystemCustomizations(customizations, c); err != nil {
+	if err := checkFilesystemCustomizations(customizations, partitioningMode); err != nil {
 		return nil, err
 	}
 
-	pt, err := disk.NewPartitionTable(&basept, c.Filesystems, DEFAULT_SIZE, partitioningMode, nil, rng)
+	pt, err := disk.NewPartitionTable(&basept, customizations.GetFilesystems(), DEFAULT_SIZE, partitioningMode, nil, rng)
 	if err != nil {
 		return nil, err
 	}

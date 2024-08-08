@@ -2,9 +2,10 @@ package main
 
 var (
 	CanChownInPath                = canChownInPath
-	ApplyFilesystemCustomizations = applyFilesystemCustomizations
+	CheckFilesystemCustomizations = checkFilesystemCustomizations
 	GetDistroAndRunner            = getDistroAndRunner
 	CheckMountpoints              = checkMountpoints
+	PartitionTables               = partitionTables
 )
 
 func MockOsGetuid(new func() int) (restore func()) {
