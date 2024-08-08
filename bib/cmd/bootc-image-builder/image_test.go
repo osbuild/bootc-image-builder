@@ -161,3 +161,18 @@ func TestLocalMountpointPolicy(t *testing.T) {
 		})
 	}
 }
+
+func TestBasePartitionTablesHaveRoot(t *testing.T) {
+	// make sure that all base partition tables have at least a root partition defined
+	for arch, pt := range bib.PartitionTables {
+		rootMountable := pt.FindMountable("/")
+		if rootMountable == nil {
+			t.Errorf("partition table %q does not define a root filesystem", arch)
+		}
+		_, isFS := rootMountable.(*disk.Filesystem)
+		if !isFS {
+			t.Errorf("root mountable for %q is not an ordinary filesystem", arch)
+		}
+	}
+
+}

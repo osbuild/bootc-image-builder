@@ -201,17 +201,7 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 	}
 	// XXX: extract into helper
 	partitioningMode := disk.RawPartitioningMode
-	if c.RootFSType != "" && c.RootFSType != "btrfs" {
-		rootMountable := basept.FindMountable("/")
-		if rootMountable == nil {
-			return nil, fmt.Errorf("no root filesystem defined in the partition table")
-		}
-		rootFS, isFS := rootMountable.(*disk.Filesystem)
-		if !isFS {
-			return nil, fmt.Errorf("root mountable is not an ordinary filesystem (btrfs is not yet supported)")
-		}
-		rootFS.Type = c.RootFSType
-	} else if c.RootFSType == "btrfs" {
+	if c.RootFSType == "btrfs" {
 		partitioningMode = disk.BtrfsPartitioningMode
 	}
 
