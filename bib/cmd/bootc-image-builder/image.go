@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"golang.org/x/exp/slices"
-
 	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
 	"github.com/osbuild/bootc-image-builder/bib/internal/distrodef"
 	"github.com/osbuild/bootc-image-builder/bib/internal/source"
@@ -24,8 +22,8 @@ import (
 	"github.com/osbuild/images/pkg/image"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/osbuild"
+	"github.com/osbuild/images/pkg/pathpolicy"
 	"github.com/osbuild/images/pkg/platform"
-	"github.com/osbuild/images/pkg/policies"
 	"github.com/osbuild/images/pkg/rpmmd"
 	"github.com/osbuild/images/pkg/runner"
 	"github.com/sirupsen/logrus"
@@ -78,21 +76,59 @@ func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
 	}
 }
 
+func checkMountpoints(filesystems []blueprint.FilesystemCustomization) error {
+	// The mountpoint policy for bootc images is more restrictive than the
+	// ostree mountpoint policy defined in osbuild/images. It only allows /
+	// (for sizing the root partition) and custom mountpoints under /var but
+	// not /var itself.
+
+	// Since our policy library doesn't support denying a path while allowing
+	// its subpaths (only the opposite), we augment the standard policy check
+	// with a simple search through the custom mountpoints to deny /var
+	// specifically.
+
+	policy := pathpolicy.NewPathPolicies(map[string]pathpolicy.PathPolicy{
+		// allow all existing mountpoints (but no subdirs) to support size customizations
+		"/":     {Deny: false, Exact: true},
+		"/boot": {Deny: false, Exact: true},
+
+		// /var is not allowed, but we need to allow any subdirectories that
+		// are not denied below, so we allow it initially and then check it
+		// separately (below)
+		"/var": {Deny: false},
+
+		// /var subdir denials
+		"/var/home":     {Deny: true},
+		"/var/lock":     {Deny: true}, // symlink to ../run/lock which is on tmpfs
+		"/var/mail":     {Deny: true}, // symlink to spool/mail
+		"/var/mnt":      {Deny: true},
+		"/var/roothome": {Deny: true},
+		"/var/run":      {Deny: true}, // symlink to ../run which is on tmpfs
+		"/var/srv":      {Deny: true},
+		"/var/usrlocal": {Deny: true},
+	})
+
+	invalid := make([]string, 0)
+	for _, fs := range filesystems {
+		if err := policy.Check(fs.Mountpoint); err != nil {
+			invalid = append(invalid, fs.Mountpoint)
+		}
+		if fs.Mountpoint == "/var" {
+			invalid = append(invalid, "/var")
+		}
+	}
+	if len(invalid) > 0 {
+		return fmt.Errorf("The following custom mountpoints are not supported %+q", invalid)
+	}
+	return nil
+}
+
 func applyFilesystemCustomizations(customizations *blueprint.Customizations, c *ManifestConfig) error {
-	// Check the filesystem customizations against the policy and set
-	// if user configured
-	if err := blueprint.CheckMountpointsPolicy(customizations.GetFilesystems(), policies.OstreeMountpointPolicies); err != nil {
+	customFS := customizations.GetFilesystems()
+	if err := checkMountpoints(customFS); err != nil {
 		return err
 	}
-	if customFS := customizations.GetFilesystems(); len(customFS) != 0 {
-		allowedMounts := []string{"/", "/boot"}
-		for _, mp := range customFS {
-			if !slices.Contains(allowedMounts, mp.Mountpoint) {
-				return fmt.Errorf("cannot use custom mount points yet, found: %v", mp.Mountpoint)
-			}
-		}
-		c.Filesystems = customFS
-	}
+	c.Filesystems = customFS
 	return nil
 }
 
