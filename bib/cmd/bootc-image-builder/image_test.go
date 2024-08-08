@@ -101,3 +101,63 @@ func TestApplyFilesystemCustomizationsValidates(t *testing.T) {
 		}
 	}
 }
+
+func TestLocalMountpointPolicy(t *testing.T) {
+	type testCase struct {
+		path    string
+		allowed bool
+	}
+
+	testCases := []testCase{
+		// existing mountpoints / and /boot are fine for sizing
+		{"/", true},
+		{"/boot", true},
+
+		// root mountpoints are not allowed
+		{"/data", false},
+		{"/opt", false},
+		{"/stuff", false},
+		{"/usr", false},
+
+		// /var explicitly is not allowed
+		{"/var", false},
+
+		// subdirs of /boot are not allowed
+		{"/boot/stuff", false},
+		{"/boot/loader", false},
+
+		// /var subdirectories are allowed
+		{"/var/data", true},
+		{"/var/scratch", true},
+		{"/var/log", true},
+		{"/var/opt", true},
+		{"/var/opt/application", true},
+
+		// but not these
+		{"/var/home", false},
+		{"/var/lock", false}, // symlink to ../run/lock which is on tmpfs
+		{"/var/mail", false}, // symlink to spool/mail
+		{"/var/mnt", false},
+		{"/var/roothome", false},
+		{"/var/run", false}, // symlink to ../run which is on tmpfs
+		{"/var/srv", false},
+		{"/var/usrlocal", false},
+
+		// nor their subdirs
+		{"/var/run/subrun", false},
+		{"/var/srv/test", false},
+		{"/var/home/user", false},
+		{"/var/usrlocal/bin", false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.path, func(t *testing.T) {
+			err := bib.CheckMountpoints([]blueprint.FilesystemCustomization{{Mountpoint: tc.path}})
+			if err != nil && tc.allowed {
+				t.Errorf("expected %s to be allowed, but got error: %v", tc.path, err)
+			} else if err == nil && !tc.allowed {
+				t.Errorf("expected %s to be denied, but got no error", tc.path)
+			}
+		})
+	}
+}
