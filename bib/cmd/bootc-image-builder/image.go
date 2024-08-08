@@ -176,7 +176,7 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		}
 		rootFS.Type = c.RootFSType
 	} else if c.RootFSType == "btrfs" {
-		partitioningMode = disk.BtfrsPartitioningMode
+		partitioningMode = disk.BtrfsPartitioningMode
 	}
 
 	if err := applyFilesystemCustomizations(customizations, c); err != nil {
