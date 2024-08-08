@@ -202,12 +202,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
                     "groups": ["wheel"],
                 },
             ],
-            "filesystem": [
-                {
-                    "mountpoint": "/",
-                    "minsize": "12GiB"
-                },
-            ],
+            "filesystem": testutil.create_filesystem_customizations(tc.rootfs),
             "kernel": {
                 "append": kargs,
             },

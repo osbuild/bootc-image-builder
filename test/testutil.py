@@ -109,6 +109,37 @@ def deregister_ami(ami_id):
         print(f"Error {err_code}: {err_msg}")
 
 
+def create_filesystem_customizations(rootfs: str):
+    if rootfs == "btrfs":
+        # only minimal customizations are supported for btrfs currently
+        return [
+            {
+                "mountpoint": "/",
+                "minsize": "12 GiB"
+            },
+        ]
+
+    # add some custom mountpoints
+    return [
+        {
+            "mountpoint": "/",
+            "minsize": "12 GiB"
+        },
+        {
+            "mountpoint": "/var/data",
+            "minsize": "3 GiB"
+        },
+        {
+            "mountpoint": "/var/data/test",
+            "minsize": "1 GiB"
+        },
+        {
+            "mountpoint": "/var/opt",
+            "minsize": "2 GiB"
+        },
+    ]
+
+
 # podman_run_common has the common prefix for the podman run invocations
 podman_run_common = [
     "podman", "run", "--rm",
