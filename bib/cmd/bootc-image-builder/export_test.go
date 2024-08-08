@@ -4,6 +4,7 @@ var (
 	CanChownInPath                = canChownInPath
 	ApplyFilesystemCustomizations = applyFilesystemCustomizations
 	GetDistroAndRunner            = getDistroAndRunner
+	CheckMountpoints              = checkMountpoints
 )
 
 func MockOsGetuid(new func() int) (restore func()) {
