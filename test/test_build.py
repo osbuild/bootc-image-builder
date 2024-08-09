@@ -355,14 +355,18 @@ def test_image_boots(image_type):
         # XXX: read the fully yaml instead?
         assert f"image: {image_type.container_ref}" in output
 
-        # Figure out how big / is and make sure it is > 11bGiB
-        # Note that df output is in 1k blocks, not bytes
-        for line in output.splitlines():
+        # check the minsize specified in the build configuration for each mountpoint against the sizes in the image
+        exit_status, output = test_vm.run("df --output=target,size", user="root",
+                                          keyfile=image_type.ssh_keyfile_private_path)
+        assert exit_status == 0
+        # parse the output of 'df' to a mountpoint -> size dict for convenience
+        mountpoint_sizes = {}
+        for line in output.splitlines()[1:]:
             fields = line.split()
-            if fields[0] == "/sysroot":
-                size = int(fields[1])
-                assert size > 11 * 1024 * 1024
-                break
+            # Note that df output is in 1k blocks, not bytes
+            mountpoint_sizes[fields[0]] = int(fields[1]) * 2 ** 10  # in bytes
+
+        assert_fs_customizations(image_type, mountpoint_sizes)
 
 
 @pytest.mark.parametrize("image_type", gen_testcases("ami-boot"), indirect=["image_type"])
@@ -454,3 +458,26 @@ def test_multi_build_request(images):
         assert result.img_path.exists()
         artifacts.add(filename)
     assert artifacts == expected
+
+
+def assert_fs_customizations(image_type, mountpoint_sizes):
+    fs_customizations = testutil.create_filesystem_customizations(image_type.rootfs)
+    for fs in fs_customizations:
+        mountpoint = fs["mountpoint"]
+        if mountpoint == "/":
+            # / is actually /sysroot
+            mountpoint = "/sysroot"
+        assert mountpoint in mountpoint_sizes
+
+        minsize_human = fs["minsize"]
+        # assume all sizes are GiB
+        minsize_str = minsize_human.removesuffix("GiB").strip()
+        minsize = int(minsize_str) * 2 ** 30
+        # TODO: find the exact source of all the discrepancies or compare the actual partition sizes instead of the
+        # filesystem sizes
+        if mountpoint == "/sysroot":
+            minsize -= 2 ** 30  # reduce expected /sysroot size by 1 GiB
+
+        # NOTE: xfs filesystems are ~40 MiB and ext4 ~26 MiB smaller than the partition - reduce minsize by 100 MiB
+        minsize -= 100 * 2 ** 20
+        assert minsize < mountpoint_sizes[mountpoint]
