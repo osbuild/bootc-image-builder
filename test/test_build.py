@@ -36,6 +36,7 @@ class ImageBuildResult(NamedTuple):
     img_path: str
     img_arch: str
     container_ref: str
+    rootfs: str
     username: str
     password: str
     ssh_keyfile_private_path: str
@@ -159,7 +160,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             journal_output = journal_log_path.read_text(encoding="utf8")
             bib_output = bib_output_path.read_text(encoding="utf8")
             results.append(ImageBuildResult(
-                image_type, generated_img, tc.target_arch, tc.container_ref,
+                image_type, generated_img, tc.target_arch, tc.container_ref, tc.rootfs,
                 username, password, ssh_keyfile_private_path,
                 kargs, bib_output, journal_output))
 
@@ -299,7 +300,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
     results = []
     for image_type in image_types:
         results.append(ImageBuildResult(
-            image_type, artifact[image_type], tc.target_arch, tc.container_ref,
+            image_type, artifact[image_type], tc.target_arch, tc.container_ref, tc.rootfs,
             username, password, ssh_keyfile_private_path,
             kargs, bib_output, journal_output, metadata))
     yield results
