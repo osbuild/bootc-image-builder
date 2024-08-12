@@ -105,7 +105,7 @@ func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 				{Mountpoint: "/ostree"},
 			},
 			ptmode:      disk.RawPartitioningMode,
-			expectedErr: `The following custom mountpoints are not supported ["/ostree"]`,
+			expectedErr: "The following errors occurred while validating custom mountpoints:\npath '/ostree ' is not allowed",
 		},
 		{
 			fsCust: []blueprint.FilesystemCustomization{
@@ -113,7 +113,7 @@ func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 				{Mountpoint: "/var"},
 			},
 			ptmode:      disk.RawPartitioningMode,
-			expectedErr: `The following custom mountpoints are not supported ["/var"]`,
+			expectedErr: "The following errors occurred while validating custom mountpoints:\npath '/var ' is not allowed",
 		},
 		{
 			fsCust: []blueprint.FilesystemCustomization{
@@ -121,7 +121,24 @@ func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 				{Mountpoint: "/var/data"},
 			},
 			ptmode:      disk.BtrfsPartitioningMode,
-			expectedErr: `The following custom mountpoints are not supported ["/var/data"]`,
+			expectedErr: "The following errors occurred while validating custom mountpoints:\npath '/var/data ' is not allowed",
+		},
+		{
+			fsCust: []blueprint.FilesystemCustomization{
+				{Mountpoint: "/"},
+				{Mountpoint: "/boot/"},
+			},
+			ptmode:      disk.BtrfsPartitioningMode,
+			expectedErr: "The following errors occurred while validating custom mountpoints:\npath must be canonical",
+		},
+		{
+			fsCust: []blueprint.FilesystemCustomization{
+				{Mountpoint: "/"},
+				{Mountpoint: "/boot/"},
+				{Mountpoint: "/opt"},
+			},
+			ptmode:      disk.BtrfsPartitioningMode,
+			expectedErr: "The following errors occurred while validating custom mountpoints:\npath must be canonical\npath '/opt ' is not allowed",
 		},
 	} {
 		cust := &blueprint.Customizations{

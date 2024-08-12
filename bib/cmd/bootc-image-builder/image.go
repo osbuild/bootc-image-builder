@@ -2,6 +2,7 @@ package main
 
 import (
 	cryptorand "crypto/rand"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -115,17 +116,19 @@ var (
 )
 
 func checkMountpoints(filesystems []blueprint.FilesystemCustomization, policy *pathpolicy.PathTrie) error {
-	invalid := make([]string, 0)
+	errs := []error{}
 	for _, fs := range filesystems {
 		if err := policy.Check(fs.Mountpoint); err != nil {
-			invalid = append(invalid, fs.Mountpoint)
+			errs = append(errs, err)
 		}
 		if fs.Mountpoint == "/var" {
-			invalid = append(invalid, "/var")
+			// this error message is consistent with the errors returned by policy.Check()
+			// TODO: remove trailing space inside the quoted path when the function is fixed in osbuild/images.
+			errs = append(errs, fmt.Errorf("path '/var ' is not allowed"))
 		}
 	}
-	if len(invalid) > 0 {
-		return fmt.Errorf("The following custom mountpoints are not supported %+q", invalid)
+	if len(errs) > 0 {
+		return fmt.Errorf("The following errors occurred while validating custom mountpoints:\n%w", errors.Join(errs...))
 	}
 	return nil
 }
