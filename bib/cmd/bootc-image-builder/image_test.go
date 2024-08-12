@@ -141,13 +141,10 @@ func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 			expectedErr: "The following errors occurred while validating custom mountpoints:\npath must be canonical\npath '/opt ' is not allowed",
 		},
 	} {
-		cust := &blueprint.Customizations{
-			Filesystem: tc.fsCust,
-		}
 		if tc.expectedErr == "" {
-			assert.NoError(t, bib.CheckFilesystemCustomizations(cust, tc.ptmode))
+			assert.NoError(t, bib.CheckFilesystemCustomizations(tc.fsCust, tc.ptmode))
 		} else {
-			assert.ErrorContains(t, bib.CheckFilesystemCustomizations(cust, tc.ptmode), tc.expectedErr)
+			assert.ErrorContains(t, bib.CheckFilesystemCustomizations(tc.fsCust, tc.ptmode), tc.expectedErr)
 		}
 	}
 }
@@ -203,10 +200,7 @@ func TestLocalMountpointPolicy(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.path, func(t *testing.T) {
-			customizations := &blueprint.Customizations{
-				Filesystem: []blueprint.FilesystemCustomization{{Mountpoint: tc.path}},
-			}
-			err := bib.CheckFilesystemCustomizations(customizations, disk.RawPartitioningMode)
+			err := bib.CheckFilesystemCustomizations([]blueprint.FilesystemCustomization{{Mountpoint: tc.path}}, disk.RawPartitioningMode)
 			if err != nil && tc.allowed {
 				t.Errorf("expected %s to be allowed, but got error: %v", tc.path, err)
 			} else if err == nil && !tc.allowed {
