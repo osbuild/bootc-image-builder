@@ -343,6 +343,51 @@ Example:
 
 ```
 
+### Filesystems (`filesystem`, array)
+
+The filesystem section of the customizations can be used to set the minimum size of the base partitions (`/` and `/boot`) as well as to create extra partitions with mountpoints under `/var`.
+
+```toml
+[[customizations.filesystem]]
+mountpoint = "/"
+minsize = "10 GiB"
+
+[[customizations.filesystem]]
+mountpoint = "/var/data"
+minsize = "20 GiB"
+```
+
+```json
+{
+  "customizations": {
+    "filesystem": [
+      {
+        "mountpoint": "/",
+        "minsize": "10 GiB"
+      },
+      {
+        "mountpoint": "/var/data",
+        "minsize": "20 GiB"
+      }
+    ]
+  }
+}
+```
+
+#### Interaction with `rootfs`
+
+
+#### Allowed mountpoints and sizes
+
+The following restrictions and rules apply, unless the rootfs is `btrfs`:
+- `/` can be specified to set the desired (minimum) size of the root filesystem. The final size of the filesystem, mounted at `/sysroot` on a booted system, is the value specified in this configuration or 2x the size of the base container, whichever is largest.
+- `/boot`can be specified to set the desired size of the boot partition.
+- Subdirectories of `/var` are supported, but symlinks in `/var` are not. For example, `/var/home` and `/var/run` are symlinks and cannot be filesystems on their own.
+- `/var` itself cannot be a mountpoint.
+
+The `rootfs` option (or source container config, see [Detailed description of optional flags](#detailed-description-of-optional-flags) section) defines the filesystem type for the root filesystem. Currently, creation of btrfs subvolumes at build time is not supported. Therefore, if the `rootfs` is `btrfs`, no custom mountpoints are supported under `/var`.  Only `/` and `/boot` can be configured.
+
+
 ### Anaconda ISO (installer) options (`installer`, mapping)
 
 Users can include kickstart file content that will be added to an ISO build to configure the installation process.
