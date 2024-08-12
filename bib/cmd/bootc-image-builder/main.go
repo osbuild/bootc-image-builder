@@ -16,7 +16,6 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/osbuild/images/pkg/arch"
-	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 	"github.com/osbuild/images/pkg/container"
 	"github.com/osbuild/images/pkg/dnfjson"
@@ -248,9 +247,6 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot get container size: %w", err)
 	}
-	filesystems := []blueprint.FilesystemCustomization{
-		{Mountpoint: "/", MinSize: cntSize * containerSizeToDiskSizeMultiplier},
-	}
 	container, err := podman_container.New(imgref)
 	if err != nil {
 		return nil, nil, err
@@ -304,7 +300,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		BuildType:        buildType,
 		Imgref:           imgref,
 		TLSVerify:        tlsVerify,
-		Filesystems:      filesystems,
+		RootfsMinsize:    cntSize * containerSizeToDiskSizeMultiplier,
 		DistroDefPaths:   distroDefPaths,
 		SourceInfo:       sourceinfo,
 		RootFSType:       rootfsType,

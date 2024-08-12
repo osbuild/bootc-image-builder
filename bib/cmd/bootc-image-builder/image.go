@@ -48,8 +48,9 @@ type ManifestConfig struct {
 	// TLSVerify specifies whether HTTPS and a valid TLS certificate are required
 	TLSVerify bool
 
-	// Only the "/" filesystem size is configured here right now
-	Filesystems []blueprint.FilesystemCustomization
+	// The minimum size required for the root fs in order to fit the container
+	// contents
+	RootfsMinsize uint64
 
 	// Paths to the directory with the distro definitions
 	DistroDefPaths []string
@@ -150,6 +151,46 @@ func checkFilesystemCustomizations(fsCustomizations []blueprint.FilesystemCustom
 	return nil
 }
 
+// updateFilesystemSizes updates the size of the root filesystem customization
+// based on the minRootSize. The new min size whichever is larger between the
+// existing size and the minRootSize. If the root filesystem is not already
+// configured, a new customization is added.
+func updateFilesystemSizes(fsCustomizations []blueprint.FilesystemCustomization, minRootSize uint64) []blueprint.FilesystemCustomization {
+	updated := make([]blueprint.FilesystemCustomization, len(fsCustomizations), len(fsCustomizations)+1)
+	hasRoot := false
+	for idx, fsc := range fsCustomizations {
+		updated[idx] = fsc
+		if updated[idx].Mountpoint == "/" {
+			updated[idx].MinSize = max(updated[idx].MinSize, minRootSize)
+			hasRoot = true
+		}
+	}
+
+	if !hasRoot {
+		// no root customization found: add it
+		updated = append(updated, blueprint.FilesystemCustomization{Mountpoint: "/", MinSize: minRootSize})
+	}
+	return updated
+}
+
+// setRootfsType sets the filesystem type for the mountable entity with target
+// '/'.
+func setRootfsType(pt *disk.PartitionTable, rootfs string) error {
+	rootMountable := pt.FindMountable("/")
+	if rootMountable == nil {
+		// this should be caught by tests and never actually happen but let's
+		// print the entire partition table in case it does due to a
+		// programming mistake or bug to make troubleshooting easier
+		return fmt.Errorf("internal partition table does not define a root filesystem: %+v", pt)
+	}
+	rootFsEntity, isfs := rootMountable.(*disk.Filesystem)
+	if !isfs {
+		return fmt.Errorf("the root mountable disk entity of the base partition table is not an ordinary filesystem but %T", rootMountable)
+	}
+	rootFsEntity.Type = rootfs
+	return nil
+}
+
 func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, error) {
 	if c.Imgref == "" {
 		return nil, fmt.Errorf("pipeline: no base image defined")
@@ -225,8 +266,12 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 	if err := checkFilesystemCustomizations(customizations.GetFilesystems(), partitioningMode); err != nil {
 		return nil, err
 	}
+	fsCustomizations := updateFilesystemSizes(customizations.GetFilesystems(), c.RootfsMinsize)
+	if err := setRootfsType(&basept, c.RootFSType); err != nil {
+		return nil, fmt.Errorf("error setting root filesystem type: %w", err)
+	}
 
-	pt, err := disk.NewPartitionTable(&basept, customizations.GetFilesystems(), DEFAULT_SIZE, partitioningMode, nil, rng)
+	pt, err := disk.NewPartitionTable(&basept, fsCustomizations, DEFAULT_SIZE, partitioningMode, nil, rng)
 	if err != nil {
 		return nil, err
 	}
