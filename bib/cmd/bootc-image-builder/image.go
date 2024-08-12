@@ -133,8 +133,7 @@ func checkMountpoints(filesystems []blueprint.FilesystemCustomization, policy *p
 	return nil
 }
 
-func checkFilesystemCustomizations(customizations *blueprint.Customizations, ptmode disk.PartitioningMode) error {
-	customFS := customizations.GetFilesystems()
+func checkFilesystemCustomizations(fsCustomizations []blueprint.FilesystemCustomization, ptmode disk.PartitioningMode) error {
 	var policy *pathpolicy.PathTrie
 	switch ptmode {
 	case disk.BtrfsPartitioningMode:
@@ -145,7 +144,7 @@ func checkFilesystemCustomizations(customizations *blueprint.Customizations, ptm
 	default:
 		policy = mountpointPolicy
 	}
-	if err := checkMountpoints(customFS, policy); err != nil {
+	if err := checkMountpoints(fsCustomizations, policy); err != nil {
 		return err
 	}
 	return nil
@@ -223,7 +222,7 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 	if c.RootFSType == "btrfs" {
 		partitioningMode = disk.BtrfsPartitioningMode
 	}
-	if err := checkFilesystemCustomizations(customizations, partitioningMode); err != nil {
+	if err := checkFilesystemCustomizations(customizations.GetFilesystems(), partitioningMode); err != nil {
 		return nil, err
 	}
 
