@@ -6,6 +6,7 @@ var (
 	GetDistroAndRunner            = getDistroAndRunner
 	CheckMountpoints              = checkMountpoints
 	PartitionTables               = partitionTables
+	UpdateFilesystemSizes         = updateFilesystemSizes
 )
 
 func MockOsGetuid(new func() int) (restore func()) {

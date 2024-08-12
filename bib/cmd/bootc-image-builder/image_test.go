@@ -224,3 +224,126 @@ func TestBasePartitionTablesHaveRoot(t *testing.T) {
 	}
 
 }
+
+func TestUpdateFilesystemSizes(t *testing.T) {
+	type testCase struct {
+		customizations []blueprint.FilesystemCustomization
+		minRootSize    uint64
+		expected       []blueprint.FilesystemCustomization
+	}
+
+	testCases := map[string]testCase{
+		"simple": {
+			customizations: nil,
+			minRootSize:    999,
+			expected: []blueprint.FilesystemCustomization{
+				{
+					Mountpoint: "/",
+					MinSize:    999,
+				},
+			},
+		},
+		"container-is-larger": {
+			customizations: []blueprint.FilesystemCustomization{
+				{
+					Mountpoint: "/",
+					MinSize:    10,
+				},
+			},
+			minRootSize: 999,
+			expected: []blueprint.FilesystemCustomization{
+				{
+					Mountpoint: "/",
+					MinSize:    999,
+				},
+			},
+		},
+		"container-is-smaller": {
+			customizations: []blueprint.FilesystemCustomization{
+				{
+					Mountpoint: "/",
+					MinSize:    1000,
+				},
+			},
+			minRootSize: 892,
+			expected: []blueprint.FilesystemCustomization{
+				{
+					Mountpoint: "/",
+					MinSize:    1000,
+				},
+			},
+		},
+		"customizations-noroot": {
+			customizations: []blueprint.FilesystemCustomization{
+				{
+					Mountpoint: "/var/data",
+					MinSize:    1_000_000,
+				},
+			},
+			minRootSize: 9000,
+			expected: []blueprint.FilesystemCustomization{
+				{
+					Mountpoint: "/var/data",
+					MinSize:    1_000_000,
+				},
+				{
+					Mountpoint: "/",
+					MinSize:    9000,
+				},
+			},
+		},
+		"customizations-withroot-smallcontainer": {
+			customizations: []blueprint.FilesystemCustomization{
+				{
+					Mountpoint: "/var/data",
+					MinSize:    1_000_000,
+				},
+				{
+					Mountpoint: "/",
+					MinSize:    2_000_000,
+				},
+			},
+			minRootSize: 9000,
+			expected: []blueprint.FilesystemCustomization{
+				{
+					Mountpoint: "/var/data",
+					MinSize:    1_000_000,
+				},
+				{
+					Mountpoint: "/",
+					MinSize:    2_000_000,
+				},
+			},
+		},
+		"customizations-withroot-largecontainer": {
+			customizations: []blueprint.FilesystemCustomization{
+				{
+					Mountpoint: "/var/data",
+					MinSize:    1_000_000,
+				},
+				{
+					Mountpoint: "/",
+					MinSize:    2_000_000,
+				},
+			},
+			minRootSize: 9_000_000,
+			expected: []blueprint.FilesystemCustomization{
+				{
+					Mountpoint: "/var/data",
+					MinSize:    1_000_000,
+				},
+				{
+					Mountpoint: "/",
+					MinSize:    9_000_000,
+				},
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			assert.ElementsMatch(t, bib.UpdateFilesystemSizes(tc.customizations, tc.minRootSize), tc.expected)
+		})
+	}
+
+}
