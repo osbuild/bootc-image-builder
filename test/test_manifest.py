@@ -397,3 +397,70 @@ def test_manifest_anaconda_module_customizations(tmpdir_factory, build_container
     assert "org.fedoraproject.Anaconda.Modules.Localization" in st["options"]["activatable-modules"]
     assert "org.fedoraproject.Anaconda.Modules.Users" not in st["options"]["activatable-modules"]
     assert "org.fedoraproject.Anaconda.Modules.Timezone" not in st["options"]["activatable-modules"]
+
+
+def find_fstab_stage_from(manifest_str):
+    manifest = json.loads(manifest_str)
+    for pipeline in manifest["pipelines"]:
+        # the fstab stage in cross-arch manifests is in the "ostree-deployment" pipeline
+        if pipeline["name"] in ("image", "ostree-deployment"):
+            for st in pipeline["stages"]:
+                if st["type"] == "org.osbuild.fstab":
+                    return st
+    raise ValueError(f"cannot find fstab stage in manifest:\n{manifest_str}")
+
+
+@pytest.mark.parametrize("fscustomizations,rootfs", [
+    ({"/var/data": "2 GiB", "/var/stuff": "10 GiB"}, "xfs"),
+    ({"/var/data": "2 GiB", "/var/stuff": "10 GiB"}, "ext4"),
+    ({"/": "2 GiB", "/boot": "1 GiB"}, "ext4"),
+    ({"/": "2 GiB", "/boot": "1 GiB", "/var/data": "42 GiB"}, "ext4"),
+    ({"/": "2 GiB"}, "btrfs"),
+    ({}, "ext4"),
+    ({}, "xfs"),
+    ({}, "btrfs"),
+])
+def test_manifest_fs_customizations(tmp_path, build_container, fscustomizations, rootfs):
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+
+    config = {
+        "customizations": {
+            "filesystem": [{"mountpoint": mnt, "minsize": minsize} for mnt, minsize in fscustomizations.items()],
+        },
+    }
+    config_path = tmp_path / "config.json"
+    with config_path.open("w") as config_file:
+        json.dump(config, config_file)
+    output = subprocess.check_output([
+        *testutil.podman_run_common,
+        "-v", f"{config_path}:/config.json:ro",
+        "--entrypoint=/usr/bin/bootc-image-builder",
+        build_container,
+        f"--rootfs={rootfs}",
+        "manifest", f"{container_ref}",
+    ])
+    assert_fs_customizations(fscustomizations, rootfs, output)
+
+
+def assert_fs_customizations(customizations, fstype, manifest):
+    # use the fstab stage to get filesystem types for each mountpoint
+    fstab_stage = find_fstab_stage_from(manifest)
+    filesystems = fstab_stage["options"]["filesystems"]
+
+    manifest_mountpoints = set()
+    for fs in filesystems:
+        manifest_mountpoints.add(fs["path"])
+        if fs["path"] == "/boot/efi":
+            assert fs["vfs_type"] == "vfat"
+            continue
+
+        if fstype == "btrfs" and fs["path"] == "/boot":
+            # /boot keeps its default fstype when using btrfs
+            assert fs["vfs_type"] == "ext4"
+            continue
+
+        assert fs["vfs_type"] == fstype, f"incorrect filesystem type for {fs['path']}"
+
+    # check that all fs customizations appear in fstab
+    for custom_mountpoint in customizations:
+        assert custom_mountpoint in manifest_mountpoints
