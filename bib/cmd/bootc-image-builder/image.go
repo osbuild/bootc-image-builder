@@ -173,25 +173,37 @@ func updateFilesystemSizes(fsCustomizations []blueprint.FilesystemCustomization,
 	return updated
 }
 
-// setRootfsType sets the filesystem type for the mountable entity with target
-// '/'.
-func setRootfsType(pt *disk.PartitionTable, rootfs string) error {
+// setFSTypes sets the filesystem types for all mountable entities to match the
+// selected rootfs type.
+// If rootfs is 'btrfs', the function will keep '/boot' to its default.
+func setFSTypes(pt *disk.PartitionTable, rootfs string) error {
 	if rootfs == "" {
 		return fmt.Errorf("root filesystem type is empty")
 	}
-	rootMountable := pt.FindMountable("/")
-	if rootMountable == nil {
-		// this should be caught by tests and never actually happen but let's
-		// print the entire partition table in case it does due to a
-		// programming mistake or bug to make troubleshooting easier
-		return fmt.Errorf("internal partition table does not define a root filesystem: %+v", pt)
-	}
-	rootFsEntity, isfs := rootMountable.(*disk.Filesystem)
-	if !isfs {
-		return fmt.Errorf("the root mountable disk entity of the base partition table is not an ordinary filesystem but %T", rootMountable)
-	}
-	rootFsEntity.Type = rootfs
-	return nil
+
+	return pt.ForEachMountable(func(mnt disk.Mountable, _ []disk.Entity) error {
+		switch mnt.GetMountpoint() {
+		case "/boot/efi":
+			// never change the efi partition's type
+			return nil
+		case "/boot":
+			// change only if we're not doing btrfs
+			if rootfs == "btrfs" {
+				return nil
+			}
+			fallthrough
+		default:
+			switch elem := mnt.(type) {
+			case *disk.Filesystem:
+				elem.Type = rootfs
+			case *disk.BtrfsSubvolume:
+				// nothing to do
+			default:
+				return fmt.Errorf("the mountable disk entity for %q of the base partition table is not an ordinary filesystem but %T", mnt.GetMountpoint(), mnt)
+			}
+			return nil
+		}
+	})
 }
 
 func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, error) {
@@ -270,13 +282,14 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		return nil, err
 	}
 	fsCustomizations := updateFilesystemSizes(customizations.GetFilesystems(), c.RootfsMinsize)
-	if err := setRootfsType(&basept, c.RootFSType); err != nil {
-		return nil, fmt.Errorf("error setting root filesystem type: %w", err)
-	}
 
 	pt, err := disk.NewPartitionTable(&basept, fsCustomizations, DEFAULT_SIZE, partitioningMode, nil, rng)
 	if err != nil {
 		return nil, err
+	}
+
+	if err := setFSTypes(pt, c.RootFSType); err != nil {
+		return nil, fmt.Errorf("error setting root filesystem type: %w", err)
 	}
 	img.PartitionTable = pt
 
