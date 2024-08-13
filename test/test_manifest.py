@@ -464,3 +464,39 @@ def assert_fs_customizations(customizations, fstype, manifest):
     # check that all fs customizations appear in fstab
     for custom_mountpoint in customizations:
         assert custom_mountpoint in manifest_mountpoints
+
+
+@pytest.mark.skipif(platform.uname().machine != "x86_64", reason="cross arch test only runs on x86")
+@pytest.mark.parametrize("fscustomizations,rootfs", [
+    ({"/var/data": "2 GiB", "/var/stuff": "10 GiB"}, "xfs"),
+    ({"/var/data": "2 GiB", "/var/stuff": "10 GiB"}, "ext4"),
+    ({"/": "2 GiB", "/boot": "1 GiB"}, "ext4"),
+    ({"/": "2 GiB", "/boot": "1 GiB", "/var/data": "42 GiB"}, "ext4"),
+    ({"/": "2 GiB"}, "btrfs"),
+    ({}, "ext4"),
+    ({}, "xfs"),
+    ({}, "btrfs"),
+])
+def test_manifest_fs_customizations_xarch(tmp_path, build_container, fscustomizations, rootfs):
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+
+    config = {
+        "customizations": {
+            "filesystem": [{"mountpoint": mnt, "minsize": minsize} for mnt, minsize in fscustomizations.items()],
+        },
+    }
+    config_path = tmp_path / "config.json"
+    with config_path.open("w") as config_file:
+        json.dump(config, config_file)
+    output = subprocess.check_output([
+        *testutil.podman_run_common,
+        "-v", f"{config_path}:/config.json:ro",
+        "--entrypoint=/usr/bin/bootc-image-builder",
+        build_container,
+        f"--rootfs={rootfs}",
+        "--target-arch=aarch64",
+        "manifest", f"{container_ref}",
+    ])
+
+    # cross-arch builds only support ext4 (for now)
+    assert_fs_customizations(fscustomizations, "ext4", output)
