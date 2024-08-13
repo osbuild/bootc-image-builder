@@ -344,3 +344,55 @@ def test_manifest_target_arch_smoke(build_container, tc):
     # table be beside this there is relatively little that is different
     assert manifest["version"] == "2"
     assert manifest["pipelines"][0]["name"] == "build"
+
+
+def find_image_anaconda_stage(manifest_str):
+    manifest = json.loads(manifest_str)
+    for pipl in manifest["pipelines"]:
+        if pipl["name"] == "anaconda-tree":
+            for st in pipl["stages"]:
+                if st["type"] == "org.osbuild.anaconda":
+                    return st
+    raise ValueError(f"cannot find disk size in manifest:\n{manifest_str}")
+
+
+@pytest.mark.parametrize("tc", gen_testcases("anaconda-iso"))
+def test_manifest_anaconda_module_customizations(tmpdir_factory, build_container, tc):
+    cfg = {
+        "customizations": {
+            "installer": {
+                "modules": {
+                    "enable": [
+                        "org.fedoraproject.Anaconda.Modules.Localization",
+                        # disable takes precedence
+                        "org.fedoraproject.Anaconda.Modules.Timezone",
+                    ],
+                    "disable": [
+                        # defaults can be disabled as well
+                        "org.fedoraproject.Anaconda.Modules.Users",
+                        # disable takes precedence
+                        "org.fedoraproject.Anaconda.Modules.Timezone",
+                    ]
+                },
+            },
+        },
+    }
+    output_path = pathlib.Path(tmpdir_factory.mktemp("data")) / "output"
+    output_path.mkdir(exist_ok=True)
+    config_json_path = output_path / "config.json"
+    config_json_path.write_text(json.dumps(cfg), encoding="utf-8")
+
+    output = subprocess.check_output([
+        *testutil.podman_run_common,
+        "-v", f"{output_path}:/output",
+        "--entrypoint=/usr/bin/bootc-image-builder",
+        build_container,
+        "manifest",
+        "--config", "/output/config.json",
+        *tc.bib_rootfs_args(),
+        "--type=anaconda-iso", tc.container_ref,
+    ])
+    st = find_image_anaconda_stage(output)
+    assert "org.fedoraproject.Anaconda.Modules.Localization" in st["options"]["activatable-modules"]
+    assert "org.fedoraproject.Anaconda.Modules.Users" not in st["options"]["activatable-modules"]
+    assert "org.fedoraproject.Anaconda.Modules.Timezone" not in st["options"]["activatable-modules"]
