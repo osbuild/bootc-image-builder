@@ -376,6 +376,10 @@ minsize = "20 GiB"
 
 #### Interaction with `rootfs`
 
+#### Filesystem types
+
+The `--rootfs` option also sets the filesystem types for all additional mountpoints, where appropriate. See the see [Detailed description of optional flags](#detailed-description-of-optional-flags).
+
 
 #### Allowed mountpoints and sizes
 
