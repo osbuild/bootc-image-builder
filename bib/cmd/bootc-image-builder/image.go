@@ -176,6 +176,9 @@ func updateFilesystemSizes(fsCustomizations []blueprint.FilesystemCustomization,
 // setRootfsType sets the filesystem type for the mountable entity with target
 // '/'.
 func setRootfsType(pt *disk.PartitionTable, rootfs string) error {
+	if rootfs == "" {
+		return fmt.Errorf("root filesystem type is empty")
+	}
 	rootMountable := pt.FindMountable("/")
 	if rootMountable == nil {
 		// this should be caught by tests and never actually happen but let's

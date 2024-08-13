@@ -81,6 +81,9 @@ func getBaseConfig() *main.ManifestConfig {
 
 		// We need the real path here, because we are creating real manifests
 		DistroDefPaths: []string{"../../data/defs"},
+
+		// RootFSType is required to create a Manifest
+		RootFSType: "ext4",
 	}
 }
 
@@ -115,6 +118,9 @@ func getUserConfig() *main.ManifestConfig {
 
 		// We need the real path here, because we are creating real manifests
 		DistroDefPaths: []string{"../../data/defs"},
+
+		// RootFSType is required to create a Manifest
+		RootFSType: "ext4",
 	}
 }
 
