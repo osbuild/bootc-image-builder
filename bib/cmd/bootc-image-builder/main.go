@@ -278,7 +278,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		// https://www.mail-archive.com/qemu-devel@nongnu.org/msg1037409.html
 		// is merged we can remove the following code
 		if cntArch != arch.Current() && rootfsType != "ext4" {
-			logrus.Warningf("container prefered root filesystem %q cannot be used during cross arch build", rootfsType)
+			logrus.Warningf("container preferred root filesystem %q cannot be used during cross arch build", rootfsType)
 			rootfsType = ""
 		}
 	}
