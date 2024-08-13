@@ -271,12 +271,13 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 			}
 		}
 
-		// TODO: on a cross arch build we need to be conservative,
-		// i.e.  we can only use the default ext4 because if xfs is
-		// select we run into the issue that mkfs.xfs calls
-		// "ioctl(BLKBSZSET)" which is missing in qemu-user, once
-		// https://www.mail-archive.com/qemu-devel@nongnu.org/msg1037409.html
-		// is merged we can remove the following code
+		// TODO: on a cross arch build we need to be conservative, i.e. we can
+		// only use the default ext4 because if xfs is select we run into the
+		// issue that mkfs.xfs calls "ioctl(BLKBSZSET)" which is missing in
+		// qemu-user.
+		// The fix has been merged upstream https://www.mail-archive.com/qemu-devel@nongnu.org/msg1037409.html
+		// and is expected to be included in v9.1.0 https://github.com/qemu/qemu/commit/e6e903db6a5e960e595f9f1fd034adb942dd9508
+		// Remove the following condition once we update to qemu-user v9.1.0.
 		if cntArch != arch.Current() && rootfsType != "ext4" {
 			logrus.Warningf("container preferred root filesystem %q cannot be used during cross arch build", rootfsType)
 			rootfsType = "ext4"
