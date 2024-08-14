@@ -623,7 +623,6 @@ func run() error {
 	buildCmd.Flags().String("output", ".", "artifact output directory")
 	buildCmd.Flags().String("progress", "text", "type of progress bar to use")
 	buildCmd.Flags().String("store", "/store", "osbuild store for intermediate pipeline trees")
-
 	// flag rules
 	for _, dname := range []string{"output", "store", "rpmmd"} {
 		if err := buildCmd.MarkFlagDirname(dname); err != nil {
@@ -635,6 +634,17 @@ func run() error {
 	}
 	buildCmd.MarkFlagsRequiredTogether("aws-region", "aws-bucket", "aws-ami-name")
 
+	// If no subcommand is given, assume the user wants to use the build subcommand
+	// See https://github.com/spf13/cobra/issues/823#issuecomment-870027246
+	// which cannot be used verbatim because the arguments for "build" like
+	// "quay.io" will create an "err != nil". Ideally we could check err
+	// for something like cobra.UnknownCommandError but cobra just gives
+	// us an error string
+	_, _, err := rootCmd.Find(os.Args[1:])
+	if err != nil && !slices.Contains([]string{"help", "completion"}, os.Args[1]) {
+		args := append([]string{buildCmd.Name()}, os.Args[1:]...)
+		rootCmd.SetArgs(args)
+	}
 	return rootCmd.Execute()
 }
 

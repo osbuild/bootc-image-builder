@@ -27,9 +27,8 @@ COPY --from=osbuild-builder /build/rpmbuild/RPMS/noarch/*.rpm /rpms/
 COPY ./package-requires.txt .
 RUN grep -vE '^#' package-requires.txt | xargs dnf install -y && rm -f package-requires.txt && dnf install -y /rpms/*.rpm && dnf clean all
 COPY --from=bib-builder /build/bin/bootc-image-builder /usr/bin/bootc-image-builder
-COPY entrypoint.sh /entrypoint.sh
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/bootc-image-builder"]
 VOLUME /output
 WORKDIR /output
 VOLUME /store

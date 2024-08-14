@@ -16,10 +16,9 @@ COPY ./group_osbuild-osbuild-fedora.repo /etc/yum.repos.d/
 COPY ./package-requires.txt .
 RUN grep -vE '^#' package-requires.txt | xargs dnf install -y && rm -f package-requires.txt && dnf clean all
 COPY --from=builder /build/bin/* /usr/bin/
-COPY entrypoint.sh /
 COPY bib/data /usr/share/bootc-image-builder
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/bootc-image-builder"]
 VOLUME /output
 WORKDIR /output
 VOLUME /store
