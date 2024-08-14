@@ -33,7 +33,6 @@ def find_image_size_from(manifest_str):
 def test_manifest_smoke(build_container, tc):
     output = subprocess.check_output([
         *testutil.podman_run_common,
-        "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest",
         *tc.bib_rootfs_args(),
@@ -53,7 +52,6 @@ def test_manifest_smoke(build_container, tc):
 def test_iso_manifest_smoke(build_container, tc):
     output = subprocess.check_output([
         *testutil.podman_run_common,
-        "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest",
         "--type=anaconda-iso", f"{tc.container_ref}",
@@ -82,7 +80,6 @@ def test_manifest_disksize(tmp_path, build_container, tc):
         print(f"using {container_tag}")
         manifest_str = subprocess.check_output([
             *testutil.podman_run_common,
-            "--entrypoint", "/usr/bin/bootc-image-builder",
             build_container,
             "manifest", "--local",
             *tc.bib_rootfs_args(),
@@ -102,7 +99,6 @@ def test_manifest_local_checks_containers_storage_errors(build_container):
         "podman", "run", "--rm",
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
-        "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest", "--local", "arg-not-used",
     ], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf8")
@@ -121,7 +117,6 @@ def test_manifest_local_checks_containers_storage_works(tmp_path, build_containe
     with make_container(tmp_path) as container_tag:
         subprocess.run([
             *testutil.podman_run_common,
-            "--entrypoint=/usr/bin/bootc-image-builder",
             build_container,
             "manifest", "--local",
             *tc.bib_rootfs_args(),
@@ -141,7 +136,6 @@ def test_manifest_cross_arch_check(tmp_path, build_container):
         with pytest.raises(subprocess.CalledProcessError) as exc:
             subprocess.run([
                 *testutil.podman_run_common,
-                "--entrypoint=/usr/bin/bootc-image-builder",
                 build_container,
                 "manifest", "--target-arch=aarch64",
                 "--local", f"localhost/{container_tag}"
@@ -165,7 +159,6 @@ def test_manifest_rootfs_respected(build_container, tc):
     # TODO: derive container and fake "bootc install print-configuration"?
     output = subprocess.check_output([
         *testutil.podman_run_common,
-        "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest", f"{tc.container_ref}",
     ])
@@ -183,7 +176,6 @@ def test_manifest_rootfs_override(build_container):
 
     output = subprocess.check_output([
         *testutil.podman_run_common,
-        "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest", "--rootfs", "btrfs", f"{container_ref}",
     ])
@@ -216,7 +208,6 @@ def test_manifest_user_customizations_toml(tmp_path, build_container):
     output = subprocess.check_output([
         *testutil.podman_run_common,
         "-v", f"{config_toml_path}:/config.toml:ro",
-        "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest", f"{container_ref}",
     ])
@@ -243,7 +234,6 @@ def test_manifest_installer_customizations(tmp_path, build_container):
     output = subprocess.check_output([
         *testutil.podman_run_common,
         "-v", f"{config_toml_path}:/config.toml:ro",
-        "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest", "--type=anaconda-iso", f"{container_ref}",
     ])
@@ -297,7 +287,6 @@ def test_mount_ostree_error(tmpdir_factory, build_container):
         subprocess.check_output([
             *testutil.podman_run_common,
             "-v", f"{output_path}:/output",
-            "--entrypoint=/usr/bin/bootc-image-builder",
             build_container,
             "manifest", f"{container_ref}",
             "--config", "/output/config.json",
@@ -317,8 +306,9 @@ def test_manifest_checks_build_container_is_bootc(build_container, container_ref
     def check_image_ref():
         subprocess.check_output([
             *testutil.podman_run_common,
-            f'--entrypoint=["/usr/bin/bootc-image-builder", "manifest", "{container_ref}"]',
             build_container,
+            "manifest",
+            container_ref,
         ], stderr=subprocess.PIPE, encoding="utf8")
     if should_error:
         with pytest.raises(subprocess.CalledProcessError) as exc:
@@ -333,7 +323,6 @@ def test_manifest_target_arch_smoke(build_container, tc):
     # TODO: actually build an image too
     output = subprocess.check_output([
         *testutil.podman_run_common,
-        "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest",
         *tc.bib_rootfs_args(),
@@ -386,7 +375,6 @@ def test_manifest_anaconda_module_customizations(tmpdir_factory, build_container
     output = subprocess.check_output([
         *testutil.podman_run_common,
         "-v", f"{output_path}:/output",
-        "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         "manifest",
         "--config", "/output/config.json",
