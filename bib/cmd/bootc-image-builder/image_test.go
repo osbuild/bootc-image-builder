@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/disk"
 	"github.com/osbuild/images/pkg/manifest"
@@ -346,4 +347,79 @@ func TestUpdateFilesystemSizes(t *testing.T) {
 		})
 	}
 
+}
+
+func findMountableSizeableFor(pt *disk.PartitionTable, needle string) (disk.Mountable, disk.Sizeable) {
+	var foundMnt disk.Mountable
+	var foundParent disk.Sizeable
+	err := pt.ForEachMountable(func(mnt disk.Mountable, path []disk.Entity) error {
+		if mnt.GetMountpoint() == needle {
+			foundMnt = mnt
+			for idx := len(path) - 1; idx >= 0; idx-- {
+				if sz, ok := path[idx].(disk.Sizeable); ok {
+					foundParent = sz
+					break
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		panic(err)
+	}
+	return foundMnt, foundParent
+}
+
+func TestGenPartitionTableSetsRootfsForAllFilesystemsXFS(t *testing.T) {
+	rng := bib.CreateRand()
+
+	cnf := &bib.ManifestConfig{
+		Architecture: arch.FromString("amd64"),
+		RootFSType:   "xfs",
+	}
+	cus := &blueprint.Customizations{
+		Filesystem: []blueprint.FilesystemCustomization{
+			{Mountpoint: "/var/data", MinSize: 2_000_000},
+			{Mountpoint: "/var/stuff", MinSize: 10_000_000},
+		},
+	}
+	pt, err := bib.GenPartitionTable(cnf, cus, rng)
+	assert.NoError(t, err)
+
+	for _, mntPoint := range []string{"/", "/boot", "/var/data"} {
+		mnt, _ := findMountableSizeableFor(pt, mntPoint)
+		assert.Equal(t, "xfs", mnt.GetFSType())
+	}
+	_, parent := findMountableSizeableFor(pt, "/var/data")
+	assert.True(t, parent.GetSize() >= 2_000_000)
+
+	_, parent = findMountableSizeableFor(pt, "/var/stuff")
+	assert.True(t, parent.GetSize() >= 10_000_000)
+
+	// ESP is always vfat
+	mnt, _ := findMountableSizeableFor(pt, "/boot/efi")
+	assert.Equal(t, "vfat", mnt.GetFSType())
+}
+
+func TestGenPartitionTableSetsRootfsForAllFilesystemsBtrfs(t *testing.T) {
+	rng := bib.CreateRand()
+
+	cnf := &bib.ManifestConfig{
+		Architecture: arch.FromString("amd64"),
+		RootFSType:   "btrfs",
+	}
+	cus := &blueprint.Customizations{}
+	pt, err := bib.GenPartitionTable(cnf, cus, rng)
+	assert.NoError(t, err)
+
+	mnt, _ := findMountableSizeableFor(pt, "/")
+	assert.Equal(t, "btrfs", mnt.GetFSType())
+
+	// btrfs has a default (ext4) /boot
+	mnt, _ = findMountableSizeableFor(pt, "/boot")
+	assert.Equal(t, "ext4", mnt.GetFSType())
+
+	// ESP is always vfat
+	mnt, _ = findMountableSizeableFor(pt, "/boot/efi")
+	assert.Equal(t, "vfat", mnt.GetFSType())
 }

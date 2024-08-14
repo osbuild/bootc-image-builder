@@ -206,6 +206,32 @@ func setFSTypes(pt *disk.PartitionTable, rootfs string) error {
 	})
 }
 
+func genPartitionTable(c *ManifestConfig, customizations *blueprint.Customizations, rng *rand.Rand) (*disk.PartitionTable, error) {
+	basept, ok := partitionTables[c.Architecture.String()]
+	if !ok {
+		return nil, fmt.Errorf("pipelines: no partition tables defined for %s", c.Architecture)
+	}
+
+	partitioningMode := disk.RawPartitioningMode
+	if c.RootFSType == "btrfs" {
+		partitioningMode = disk.BtrfsPartitioningMode
+	}
+	if err := checkFilesystemCustomizations(customizations.GetFilesystems(), partitioningMode); err != nil {
+		return nil, err
+	}
+	fsCustomizations := updateFilesystemSizes(customizations.GetFilesystems(), c.RootfsMinsize)
+
+	pt, err := disk.NewPartitionTable(&basept, fsCustomizations, DEFAULT_SIZE, partitioningMode, nil, rng)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := setFSTypes(pt, c.RootFSType); err != nil {
+		return nil, fmt.Errorf("error setting root filesystem type: %w", err)
+	}
+	return pt, nil
+}
+
 func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, error) {
 	if c.Imgref == "" {
 		return nil, fmt.Errorf("pipeline: no base image defined")
@@ -269,27 +295,9 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		img.KernelOptionsAppend = append(img.KernelOptionsAppend, kopts.Append)
 	}
 
-	basept, ok := partitionTables[c.Architecture.String()]
-	if !ok {
-		return nil, fmt.Errorf("pipelines: no partition tables defined for %s", c.Architecture)
-	}
-
-	partitioningMode := disk.RawPartitioningMode
-	if c.RootFSType == "btrfs" {
-		partitioningMode = disk.BtrfsPartitioningMode
-	}
-	if err := checkFilesystemCustomizations(customizations.GetFilesystems(), partitioningMode); err != nil {
-		return nil, err
-	}
-	fsCustomizations := updateFilesystemSizes(customizations.GetFilesystems(), c.RootfsMinsize)
-
-	pt, err := disk.NewPartitionTable(&basept, fsCustomizations, DEFAULT_SIZE, partitioningMode, nil, rng)
+	pt, err := genPartitionTable(c, customizations, rng)
 	if err != nil {
 		return nil, err
-	}
-
-	if err := setFSTypes(pt, c.RootFSType); err != nil {
-		return nil, fmt.Errorf("error setting root filesystem type: %w", err)
 	}
 	img.PartitionTable = pt
 

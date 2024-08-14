@@ -7,6 +7,8 @@ var (
 	CheckMountpoints              = checkMountpoints
 	PartitionTables               = partitionTables
 	UpdateFilesystemSizes         = updateFilesystemSizes
+	GenPartitionTable             = genPartitionTable
+	CreateRand                    = createRand
 )
 
 func MockOsGetuid(new func() int) (restore func()) {
