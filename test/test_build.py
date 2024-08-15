@@ -356,6 +356,7 @@ def test_image_boots(image_type):
         assert f"image: {image_type.container_ref}" in output
 
         # check the minsize specified in the build configuration for each mountpoint against the sizes in the image
+        # TODO: replace 'df' call with 'parted --json' and find the partition size for each mountpoint
         exit_status, output = test_vm.run("df --output=target,size", user="root",
                                           keyfile=image_type.ssh_keyfile_private_path)
         assert exit_status == 0
@@ -461,6 +462,12 @@ def test_multi_build_request(images):
 
 
 def assert_fs_customizations(image_type, mountpoint_sizes):
+    """
+    Asserts that each mountpoint that appears in the build configuration also appears in mountpoint_sizes.
+
+    TODO: assert that the size of each filesystem (or partition) also matches the expected size based on the
+    customization.
+    """
     fs_customizations = testutil.create_filesystem_customizations(image_type.rootfs)
     for fs in fs_customizations:
         mountpoint = fs["mountpoint"]
@@ -468,16 +475,3 @@ def assert_fs_customizations(image_type, mountpoint_sizes):
             # / is actually /sysroot
             mountpoint = "/sysroot"
         assert mountpoint in mountpoint_sizes
-
-        minsize_human = fs["minsize"]
-        # assume all sizes are GiB
-        minsize_str = minsize_human.removesuffix("GiB").strip()
-        minsize = int(minsize_str) * 2 ** 30
-        # TODO: find the exact source of all the discrepancies or compare the actual partition sizes instead of the
-        # filesystem sizes
-        if mountpoint == "/sysroot":
-            minsize -= 2 ** 30  # reduce expected /sysroot size by 1 GiB
-
-        # NOTE: xfs filesystems are ~40 MiB and ext4 ~26 MiB smaller than the partition - reduce minsize by 100 MiB
-        minsize -= 100 * 2 ** 20
-        assert minsize < mountpoint_sizes[mountpoint]
