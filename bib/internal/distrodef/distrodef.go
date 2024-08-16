@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
+
+	"github.com/hashicorp/go-version"
 )
 
 // ImageDef is a structure containing extra information needed to build an image that cannot be extracted
@@ -20,9 +21,9 @@ type ImageDef struct {
 
 func findDistroDef(defDirs []string, distro, wantedVerStr string) (string, error) {
 	var bestFuzzyMatch string
-	var bestFuzzyVer int
 
-	wantedVer, err := strconv.Atoi(wantedVerStr)
+	bestFuzzyVer := &version.Version{}
+	wantedVer, err := version.NewVersion(wantedVerStr)
 	if err != nil {
 		return "", fmt.Errorf("cannot parse wanted version string: %w", err)
 	}
@@ -46,11 +47,11 @@ func findDistroDef(defDirs []string, distro, wantedVerStr string) (string, error
 			baseNoExt := strings.TrimSuffix(filepath.Base(m), ".yaml")
 			haveVerStr := strings.SplitN(baseNoExt, "-", 2)[1]
 			// this should never error (because of the glob above) but be defensive
-			haveVer, err := strconv.Atoi(haveVerStr)
+			haveVer, err := version.NewVersion(haveVerStr)
 			if err != nil {
 				return "", fmt.Errorf("cannot parse distro version from %q: %w", m, err)
 			}
-			if wantedVer > haveVer && haveVer > bestFuzzyVer {
+			if wantedVer.Compare(haveVer) > 0 && haveVer.Compare(bestFuzzyVer) > 0 {
 				bestFuzzyVer = haveVer
 				bestFuzzyMatch = m
 			}
