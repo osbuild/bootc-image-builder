@@ -34,8 +34,8 @@ func TestLoadUnhappy(t *testing.T) {
 	_, err = LoadImageDef([]string{testDefLocation}, "fedoratest", "41", "anaconda-disk")
 	assert.ErrorContains(t, err, "could not find def for distro fedoratest and image type anaconda-disk")
 
-	_, err = LoadImageDef([]string{testDefLocation}, "fedoratest", "NaN", "anaconda-disk")
-	assert.ErrorContains(t, err, `cannot parse wanted version string: strconv.Atoi: parsing "NaN": invalid syntax`)
+	_, err = LoadImageDef([]string{testDefLocation}, "fedoratest", "xxx", "anaconda-disk")
+	assert.ErrorContains(t, err, `cannot parse wanted version string: `)
 }
 
 const fakeDefFileContent = "anaconda-iso:\n packages:  \n    - foo\n"
@@ -93,6 +93,19 @@ func TestFindDistroDefMultiFuzzy(t *testing.T) {
 	def, err := findDistroDef(defDirs, "fedora", "99")
 	assert.NoError(t, err)
 	assert.True(t, strings.HasSuffix(def, "b/b/fedora-42.yaml"))
+}
+
+func TestFindDistroDefMultiFuzzyMinorReleases(t *testing.T) {
+	defDirs := makeFakeDistrodefRoot(t, []string{
+		"a/centos-8.9.yaml",
+		"b/centos-7.yaml",
+		"c/centos-9.1.yaml",
+		"d/centos-9.1.1.yaml",
+		"b/b/centos-9.10.yaml",
+	})
+	def, err := findDistroDef(defDirs, "centos", "9.11")
+	assert.NoError(t, err)
+	assert.True(t, strings.HasSuffix(def, "b/b/centos-9.10.yaml"), def)
 }
 
 func TestFindDistroDefMultiFuzzyError(t *testing.T) {
