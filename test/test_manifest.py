@@ -291,7 +291,7 @@ def test_mount_ostree_error(tmpdir_factory, build_container):
             "manifest", f"{container_ref}",
             "--config", "/output/config.json",
         ], stderr=subprocess.PIPE, encoding="utf8")
-    assert "The following errors occurred while validating custom mountpoints:\npath '/ostree ' is not allowed" \
+    assert 'The following errors occurred while validating custom mountpoints:\npath "/ostree" is not allowed' \
         in exc.value.stderr
 
 
