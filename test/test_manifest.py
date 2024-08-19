@@ -488,3 +488,29 @@ def test_manifest_fs_customizations_xarch(tmp_path, build_container, fscustomiza
 
     # cross-arch builds only support ext4 (for now)
     assert_fs_customizations(fscustomizations, "ext4", output)
+
+
+def find_bootc_install_to_fs_stage_from(manifest_str):
+    manifest = json.loads(manifest_str)
+    for pipeline in manifest["pipelines"]:
+        # the fstab stage in cross-arch manifests is in the "ostree-deployment" pipeline
+        if pipeline["name"] == "image":
+            for st in pipeline["stages"]:
+                if st["type"] == "org.osbuild.bootc.install-to-filesystem":
+                    return st
+    raise ValueError(f"cannot find bootc.install-to-filesystem stage in manifest:\n{manifest_str}")
+
+
+def test_manifest_partition_mode_lvm(tmp_path, build_container):
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    partMode = "lvm"
+
+    output = subprocess.check_output([
+        *testutil.podman_run_common,
+        "--entrypoint=/usr/bin/bootc-image-builder",
+        build_container,
+        f"--partition-mode={partMode}",
+        "manifest", f"{container_ref}",
+    ])
+    st = find_bootc_install_to_fs_stage_from(output)
+    assert st["devices"]["rootlv"]["type"] == "org.osbuild.lvm2.lv"

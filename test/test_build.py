@@ -37,6 +37,7 @@ class ImageBuildResult(NamedTuple):
     img_arch: str
     container_ref: str
     rootfs: str
+    partition_mode: str
     username: str
     password: str
     ssh_keyfile_private_path: str
@@ -160,7 +161,8 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             journal_output = journal_log_path.read_text(encoding="utf8")
             bib_output = bib_output_path.read_text(encoding="utf8")
             results.append(ImageBuildResult(
-                image_type, generated_img, tc.target_arch, tc.container_ref, tc.rootfs,
+                image_type, generated_img, tc.target_arch, tc.container_ref,
+                tc.rootfs, tc.partition_mode,
                 username, password, ssh_keyfile_private_path,
                 kargs, bib_output, journal_output))
 
@@ -262,6 +264,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             *upload_args,
             *target_arch_args,
             *tc.bib_rootfs_args(),
+            *tc.bib_partition_mode_args(),
             "--local" if tc.local else "--local=false",
         ])
 
@@ -295,7 +298,8 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
     results = []
     for image_type in image_types:
         results.append(ImageBuildResult(
-            image_type, artifact[image_type], tc.target_arch, tc.container_ref, tc.rootfs,
+            image_type, artifact[image_type], tc.target_arch, tc.container_ref,
+            tc.rootfs, tc.partition_mode,
             username, password, ssh_keyfile_private_path,
             kargs, bib_output, journal_output, metadata))
     yield results

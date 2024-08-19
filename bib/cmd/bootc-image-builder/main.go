@@ -188,6 +188,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
 	localStorage, _ := cmd.Flags().GetBool("local")
 	rootFs, _ := cmd.Flags().GetString("rootfs")
+	partMode, _ := cmd.Flags().GetString("partition-mode")
 
 	if targetArch != "" && arch.FromString(targetArch) != arch.Current() {
 		// TODO: detect if binfmt_misc for target arch is
@@ -306,6 +307,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		DistroDefPaths:   distroDefPaths,
 		SourceInfo:       sourceinfo,
 		RootFSType:       rootfsType,
+		PartitionMode:    partMode,
 		DepsolverRootDir: container.Root(),
 	}
 
@@ -608,6 +610,7 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, fmt.Sprintf("image types to build [%s]", allImageTypesString()))
 	manifestCmd.Flags().Bool("local", false, "use a local container rather than a container from a registry")
 	manifestCmd.Flags().String("rootfs", "", "Root filesystem type. If not given, the default configured in the source container image is used.")
+	manifestCmd.Flags().String("partition-mode", "", "Partition mode. Supported: raw, lvm")
 	// --config is only useful for developers who run bib outside
 	// of a container to generate a manifest. so hide it by
 	// default from users.

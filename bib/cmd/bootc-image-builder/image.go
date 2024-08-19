@@ -63,6 +63,9 @@ type ManifestConfig struct {
 
 	// RootFSType specifies the filesystem type for the root partition
 	RootFSType string
+
+	// PartitionMode specifies the partiton mode to use (raw, lvm)
+	PartitionMode string
 }
 
 func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
@@ -216,6 +219,12 @@ func genPartitionTable(c *ManifestConfig, customizations *blueprint.Customizatio
 	if c.RootFSType == "btrfs" {
 		partitioningMode = disk.BtrfsPartitioningMode
 	}
+	// XXX: make this nicer, also figure out how this inteacts with
+	// btrfs partition mode
+	if c.PartitionMode == "lvm" {
+		partitioningMode = disk.LVMPartitioningMode
+	}
+
 	if err := checkFilesystemCustomizations(customizations.GetFilesystems(), partitioningMode); err != nil {
 		return nil, err
 	}
