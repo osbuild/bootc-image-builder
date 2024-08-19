@@ -116,7 +116,7 @@ var (
 	})
 )
 
-func checkMountpoints(filesystems []blueprint.FilesystemCustomization, policy *pathpolicy.PathTrie) error {
+func checkMountpoints(filesystems []blueprint.FilesystemCustomization, policy *pathpolicy.PathPolicies) error {
 	errs := []error{}
 	for _, fs := range filesystems {
 		if err := policy.Check(fs.Mountpoint); err != nil {
@@ -125,7 +125,7 @@ func checkMountpoints(filesystems []blueprint.FilesystemCustomization, policy *p
 		if fs.Mountpoint == "/var" {
 			// this error message is consistent with the errors returned by policy.Check()
 			// TODO: remove trailing space inside the quoted path when the function is fixed in osbuild/images.
-			errs = append(errs, fmt.Errorf("path '/var ' is not allowed"))
+			errs = append(errs, fmt.Errorf(`path "/var" is not allowed`))
 		}
 	}
 	if len(errs) > 0 {
@@ -135,7 +135,7 @@ func checkMountpoints(filesystems []blueprint.FilesystemCustomization, policy *p
 }
 
 func checkFilesystemCustomizations(fsCustomizations []blueprint.FilesystemCustomization, ptmode disk.PartitioningMode) error {
-	var policy *pathpolicy.PathTrie
+	var policy *pathpolicy.PathPolicies
 	switch ptmode {
 	case disk.BtrfsPartitioningMode:
 		// btrfs subvolumes are not supported at build time yet, so we only
