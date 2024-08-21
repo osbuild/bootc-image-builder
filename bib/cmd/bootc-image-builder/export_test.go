@@ -9,6 +9,7 @@ var (
 	UpdateFilesystemSizes         = updateFilesystemSizes
 	GenPartitionTable             = genPartitionTable
 	CreateRand                    = createRand
+	BuildCobraCmdline             = buildCobraCmdline
 )
 
 func MockOsGetuid(new func() int) (restore func()) {

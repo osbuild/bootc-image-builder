@@ -13,6 +13,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
 
 	"github.com/osbuild/images/pkg/arch"
@@ -565,7 +566,7 @@ func cmdVersion(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func run() error {
+func buildCobraCmdline() (*cobra.Command, error) {
 	rootCmd := &cobra.Command{
 		Use:               "bootc-image-builder",
 		Long:              "create a bootable image from an ostree native container",
@@ -612,7 +613,7 @@ func run() error {
 	// default from users.
 	manifestCmd.Flags().String("config", "", "build config file; /config.json will be used if present")
 	if err := manifestCmd.Flags().MarkHidden("config"); err != nil {
-		return fmt.Errorf("cannot hide 'config' :%w", err)
+		return nil, fmt.Errorf("cannot hide 'config' :%w", err)
 	}
 
 	buildCmd.Flags().AddFlagSet(manifestCmd.Flags())
@@ -626,11 +627,11 @@ func run() error {
 	// flag rules
 	for _, dname := range []string{"output", "store", "rpmmd"} {
 		if err := buildCmd.MarkFlagDirname(dname); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if err := buildCmd.MarkFlagFilename("config"); err != nil {
-		return err
+		return nil, err
 	}
 	buildCmd.MarkFlagsRequiredTogether("aws-region", "aws-bucket", "aws-ami-name")
 
@@ -640,10 +641,28 @@ func run() error {
 	// "quay.io" will create an "err != nil". Ideally we could check err
 	// for something like cobra.UnknownCommandError but cobra just gives
 	// us an error string
-	_, _, err := rootCmd.Find(os.Args[1:])
-	if err != nil && !slices.Contains([]string{"help", "completion"}, os.Args[1]) {
+	cmd, _, err := rootCmd.Find(os.Args[1:])
+	injectBuildArg := func() {
 		args := append([]string{buildCmd.Name()}, os.Args[1:]...)
 		rootCmd.SetArgs(args)
+	}
+	// command not known, i.e. happens for "bib quay.io/centos/..."
+	if err != nil && !slices.Contains([]string{"help", "completion"}, os.Args[1]) {
+		injectBuildArg()
+	}
+	// command appears valid, e.g. "bib --local quay.io/centos" but this
+	// is the parser just assuming "quay.io" is an argument for "--local" :(
+	if err == nil && cmd.Use == rootCmd.Use && cmd.Flags().Parse(os.Args[1:]) != pflag.ErrHelp {
+		injectBuildArg()
+	}
+
+	return rootCmd, nil
+}
+
+func run() error {
+	rootCmd, err := buildCobraCmdline()
+	if err != nil {
+		return err
 	}
 	return rootCmd.Execute()
 }

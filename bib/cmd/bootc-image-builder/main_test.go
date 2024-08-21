@@ -5,7 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -574,6 +577,72 @@ func TestBuildType(t *testing.T) {
 			bt, err := main.NewBuildType(tc.imageTypes)
 			assert.Equal(t, err, tc.err)
 			assert.Equal(t, bt, tc.buildType)
+		})
+	}
+}
+
+func mockOsArgs(new []string) (restore func()) {
+	saved := os.Args
+	os.Args = append([]string{"argv0"}, new...)
+	return func() {
+		os.Args = saved
+	}
+}
+
+func addRunLog(rootCmd *cobra.Command, runeCall *string) {
+	for _, cmd := range rootCmd.Commands() {
+		cmd.RunE = func(cmd *cobra.Command, args []string) error {
+			callStr := fmt.Sprintf("<%v>: %v", cmd.Name(), strings.Join(args, ","))
+			if *runeCall != "" {
+				panic(fmt.Sprintf("runE called with %v but already called before: %v", callStr, *runeCall))
+			}
+			*runeCall = callStr
+			return nil
+		}
+	}
+}
+
+func TestCobraCmdline(t *testing.T) {
+	for _, tc := range []struct {
+		cmdline      []string
+		expectedCall string
+	}{
+		// trivial: cmd is given explicitly
+		{
+			[]string{"manifest", "quay.io..."},
+			"<manifest>: quay.io...",
+		},
+		{
+			[]string{"build", "quay.io..."},
+			"<build>: quay.io...",
+		},
+		{
+			[]string{"version", "quay.io..."},
+			"<version>: quay.io...",
+		},
+		// implicit: no cmd like build/manifest defaults to build
+		{
+			[]string{"--local", "quay.io..."},
+			"<build>: quay.io...",
+		},
+		{
+			[]string{"quay.io..."},
+			"<build>: quay.io...",
+		},
+	} {
+		var runeCall string
+
+		restore := mockOsArgs(tc.cmdline)
+		defer restore()
+
+		rootCmd, err := main.BuildCobraCmdline()
+		assert.NoError(t, err)
+		addRunLog(rootCmd, &runeCall)
+
+		t.Run(tc.expectedCall, func(t *testing.T) {
+			err = rootCmd.Execute()
+			assert.NoError(t, err)
+			assert.Equal(t, runeCall, tc.expectedCall)
 		})
 	}
 }
