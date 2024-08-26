@@ -56,6 +56,13 @@ class TestCaseCentos(TestCase):
         "quay.io/centos-bootc/centos-bootc:stream9")
 
 
+@dataclasses.dataclass
+class TestCaseCentos10(TestCase):
+    container_ref: str = os.getenv(
+        "BIB_TEST_BOOTC_CONTAINER_TAG",
+        "quay.io/centos-bootc/centos-bootc:stream10")
+
+
 def gen_testcases(what):  # pylint: disable=too-many-return-statements
     if what == "manifest":
         return [TestCaseCentos(), TestCaseFedora()]
@@ -65,7 +72,9 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
     if what == "ami-boot":
         return [TestCaseCentos(image="ami"), TestCaseFedora(image="ami")]
     if what == "anaconda-iso":
-        return [TestCaseCentos(image="anaconda-iso"), TestCaseFedora(image="anaconda-iso")]
+        return [TestCaseCentos(image="anaconda-iso"),
+                TestCaseCentos10(image="anaconda-iso"),
+                TestCaseFedora(image="anaconda-iso")]
     if what == "qemu-boot":
         test_cases = [
             klass(image=img)

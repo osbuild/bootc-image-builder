@@ -27,6 +27,7 @@ anaconda-iso:
     - gdisk
     - glibc-all-langpacks
     - gnome-kiosk
+    - gnome-remote-desktop
     - google-noto-sans-cjk-ttc-fonts
     - grub2-tools
     - grub2-tools-extra
@@ -62,6 +63,7 @@ anaconda-iso:
     - nss-tools
     - openssh-clients
     - openssh-server
+    - openssl
     - ostree
     - pciutils
     - perl-interpreter
