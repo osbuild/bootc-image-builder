@@ -359,6 +359,12 @@ def test_image_boots(image_type):
         # XXX: read the fully yaml instead?
         assert f"image: {image_type.container_ref}" in output
 
+        # XXX: put this into assert_fs_customizations or something
+        if image_type.partition_mode == "lvm":
+            exit_status, output = test_vm.run("findmnt", user="root", keyfile=image_type.ssh_keyfile_private_path)
+            assert exit_status == 0
+            assert "/dev/mapper/rootvg-rootlv" in output
+        
         # check the minsize specified in the build configuration for each mountpoint against the sizes in the image
         # TODO: replace 'df' call with 'parted --json' and find the partition size for each mountpoint
         exit_status, output = test_vm.run("df --output=target,size", user="root",

@@ -501,15 +501,15 @@ def find_bootc_install_to_fs_stage_from(manifest_str):
     raise ValueError(f"cannot find bootc.install-to-filesystem stage in manifest:\n{manifest_str}")
 
 
-def test_manifest_partition_mode_lvm(tmp_path, build_container):
+def test_manifest_partition_mode_lvm(build_container):
     container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
-    partMode = "lvm"
+    part_mode = "lvm"
 
     output = subprocess.check_output([
         *testutil.podman_run_common,
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
-        f"--partition-mode={partMode}",
+        f"--partition-mode={part_mode}",
         "manifest", f"{container_ref}",
     ])
     st = find_bootc_install_to_fs_stage_from(output)
