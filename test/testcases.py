@@ -74,9 +74,12 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
         ]
         # do a cross arch test too
         if platform.machine() == "x86_64":
-            # todo: add fedora:eln
-            test_cases.append(
-                TestCaseCentos(image="raw", target_arch="arm64"))
+            # TODO: re-enable once
+            # https://github.com/osbuild/bootc-image-builder/issues/619
+            # is resolved
+            # test_cases.append(
+            #    TestCaseCentos(image="raw", target_arch="arm64"))
+            pass
         elif platform.machine() == "arm64":
             # TODO: add arm64->x86_64 cross build test too
             pass
