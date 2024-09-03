@@ -131,7 +131,6 @@ Flags:
       --progress string       type of progress bar to use (e.g. verbose,term) (default "auto")
       --rootfs string         Root filesystem type. If not given, the default configured in the source container image is used.
       --target-arch string    build for the given target architecture (experimental)
-      --tls-verify            require HTTPS and verify certificates when contacting registries (default true)
       --type stringArray      image types to build [ami, anaconda-iso, gce, iso, qcow2, raw, vhd, vmdk] (default [qcow2])
       --version               version for bootc-image-builder
 
@@ -148,7 +147,6 @@ Global Flags:
 | --output          | output the artifact into the given output directory                                                       |      `.`      |
 | --progress        | Show progress in the given format, supported: verbose,term,debug. If empty it is auto-detected            |     `auto`    |
 | **--rootfs**      | Root filesystem type. Overrides the default from the source container. Supported values: ext4, xfs, btrfs |       ❌      |
-| --tls-verify      | Require HTTPS and verify certificates when contacting registries                                          |     `true`    |
 | **--type**        | [Image type](#-image-types) to build (can be passed multiple times)                                       |     `qcow2`   |
 | --target-arch     | [Target arch](#-target-architecture) to build                                                             |       ❌      |
 | --log-level       | Change log level (debug, info, error)                                                                     |     `error`   |
