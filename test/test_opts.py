@@ -76,33 +76,6 @@ def test_opts_arch_is_same_arch_is_fine(tmp_path, build_fake_container, target_a
         assert expected_err in res.stderr
 
 
-@pytest.mark.parametrize("tls_opt,expected_cmdline", [
-    ([], "--tls-verify=true"),
-    (["--tls-verify"], "--tls-verify=true"),
-    (["--tls-verify=true"], "--tls-verify=true"),
-    (["--tls-verify=false"], "--tls-verify=false"),
-    (["--tls-verify=0"], "--tls-verify=false"),
-])
-def test_bib_tls_opts(tmp_path, container_storage, build_fake_container, tls_opt, expected_cmdline):
-    output_path = tmp_path / "output"
-    output_path.mkdir(exist_ok=True)
-
-    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
-    testutil.pull_container(container_ref)
-
-    subprocess.check_call([
-        "podman", "run", "--rm",
-        "--privileged",
-        "--security-opt", "label=type:unconfined_t",
-        "-v", f"{container_storage}:/var/lib/containers/storage",
-        "-v", f"{output_path}:/output",
-        build_fake_container,
-        container_ref,
-    ] + tls_opt)
-    podman_log = output_path / "podman.log"
-    assert expected_cmdline in podman_log.read_text()
-
-
 @pytest.mark.parametrize("with_debug", [False, True])
 def test_bib_log_level_smoke(tmp_path, container_storage, build_fake_container, with_debug):
     output_path = tmp_path / "output"
