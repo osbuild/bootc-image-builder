@@ -126,7 +126,6 @@ Usage:
 
 Flags:
       --chown string           chown the ouput directory to match the specified UID:GID
-      --tls-verify             require HTTPS and verify certificates when contacting registries (default true)
       --type string            image type to build [qcow2, ami] (default "qcow2")
       --target-arch string     architecture to build image for (default is the native architecture)
 ```
@@ -137,7 +136,6 @@ Flags:
 |-------------------|-----------------------------------------------------------------------------------------------------------|:-------------:|
 | **--chown**       | chown the output directory to match the specified UID:GID                                                 |       ❌      |
 | **--rootfs**      | Root filesystem type. Overrides the default from the source container. Supported values: ext4, xfs, btrfs |       ❌      |
-| **--tls-verify**  | Require HTTPS and verify certificates when contacting registries                                          |    `true`     |
 | **--type**        | [Image type](#-image-types) to build                                                                      |    `qcow2`    |
 | **--target-arch** | [Target arch](#-target-architecture) to build                                                             |       ❌      |
 

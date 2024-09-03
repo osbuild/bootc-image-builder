@@ -179,7 +179,6 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	imgTypes, _ := cmd.Flags().GetStringArray("type")
 	rpmCacheRoot, _ := cmd.Flags().GetString("rpmmd")
 	targetArch, _ := cmd.Flags().GetString("target-arch")
-	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
 	rootFs, _ := cmd.Flags().GetString("rootfs")
 
 	// If --local was given, warn in the case of --local or --local=true (true is the default), error in the case of --local=false
@@ -286,7 +285,6 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		Config:         config,
 		ImageTypes:     imageTypes,
 		Imgref:         imgref,
-		TLSVerify:      tlsVerify,
 		RootfsMinsize:  cntSize * containerSizeToDiskSizeMultiplier,
 		DistroDefPaths: distroDefPaths,
 		SourceInfo:     sourceinfo,
@@ -574,7 +572,10 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	rootCmd.AddCommand(versionCmd)
 
 	rootCmd.AddCommand(manifestCmd)
-	manifestCmd.Flags().Bool("tls-verify", true, "require HTTPS and verify certificates when contacting registries")
+	manifestCmd.Flags().Bool("tls-verify", false, "DEPRECATED: require HTTPS and verify certificates when contacting registries")
+	if err := manifestCmd.Flags().MarkHidden("tls-verify"); err != nil {
+		return nil, fmt.Errorf("cannot hide 'tls-verify' :%w", err)
+	}
 	manifestCmd.Flags().String("rpmmd", "/rpmmd", "rpm metadata cache directory")
 	manifestCmd.Flags().String("target-arch", "", "build for the given target architecture (experimental)")
 	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, fmt.Sprintf("image types to build [%s]", imagetypes.Available()))
