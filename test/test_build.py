@@ -134,6 +134,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
         "ami": pathlib.Path(output_path) / "image/disk.raw",
         "raw": pathlib.Path(output_path) / "image/disk.raw",
         "vmdk": pathlib.Path(output_path) / "vmdk/disk.vmdk",
+        "vhd": pathlib.Path(output_path) / "vpc/disk.vhd",
         "anaconda-iso": pathlib.Path(output_path) / "bootiso/install.iso",
     }
     assert len(artifact) == len(set(tc.image for tc in gen_testcases("all"))), \
@@ -453,7 +454,7 @@ def test_iso_installs(image_type):
 @pytest.mark.parametrize("images", gen_testcases("multidisk"), indirect=["images"])
 def test_multi_build_request(images):
     artifacts = set()
-    expected = {"disk.qcow2", "disk.raw", "disk.vmdk"}
+    expected = {"disk.qcow2", "disk.raw", "disk.vhd", "disk.vmdk"}
     for result in images:
         filename = os.path.basename(result.img_path)
         assert result.img_path.exists()

@@ -158,6 +158,7 @@ The following image types are currently available via the `--type` argument:
 | `vmdk`                | [VMDK](https://en.wikipedia.org/wiki/VMDK) usable in vSphere, among others            |
 | `anaconda-iso`        | An unattended Anaconda installer that installs to the first disk found.               |
 | `raw`                 | Unformatted [raw disk](https://en.wikipedia.org/wiki/Rawdisk).                        |
+| `vhd`                 | [vhd](https://en.wikipedia.org/wiki/VHD_(file_format)) usable in Virtual PC, among others |
 
 ## 💾 Target architecture
 
