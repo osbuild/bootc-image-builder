@@ -18,6 +18,7 @@ var supportedImageTypes = map[string]BuildType{
 	"qcow2":        BuildTypeDisk,
 	"raw":          BuildTypeDisk,
 	"vmdk":         BuildTypeDisk,
+	"vhd":          BuildTypeDisk,
 	"anaconda-iso": BuildTypeISO,
 	"iso":          BuildTypeISO,
 }

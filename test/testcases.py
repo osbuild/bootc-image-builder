@@ -4,10 +4,10 @@ import os
 import platform
 
 # disk image types can be build from a single manifest
-DISK_IMAGE_TYPES = ("qcow2", "raw", "vmdk")
+DISK_IMAGE_TYPES = ["qcow2", "raw", "vmdk", "vhd"]
 
 # supported images that can be booted in a cloud
-CLOUD_BOOT_IMAGE_TYPES = ("ami",)
+CLOUD_BOOT_IMAGE_TYPES = ["ami"]
 
 
 @dataclasses.dataclass
@@ -88,7 +88,7 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
         return [
             klass(image=img)
             for klass in (TestCaseCentos, TestCaseFedora)
-            for img in ("ami", "anaconda-iso", "qcow2", "raw", "vmdk")
+            for img in CLOUD_BOOT_IMAGE_TYPES + DISK_IMAGE_TYPES + ["anaconda-iso"]
         ]
     if what == "multidisk":
         # single test that specifies all image types

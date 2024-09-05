@@ -437,7 +437,9 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 			exports = append(exports, "image")
 		case "vmdk":
 			exports = append(exports, "vmdk")
-
+		case "vhd":
+			// should we make "vhd" just an alias for "vpc" everywhere?
+			exports = append(exports, "vpc")
 		case "anaconda-iso", "iso":
 			exports = append(exports, "bootiso")
 		default:
