@@ -125,3 +125,5 @@ require (
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )
+
+replace github.com/osbuild/images => github.com/mvo5/images v0.0.0-20240906141208-1adf3a7a21a6

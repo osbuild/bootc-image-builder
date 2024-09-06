@@ -215,6 +215,8 @@ github.com/modern-go/reflect2 v1.0.2 h1:xBagoLtFs94CBntxluKeaWgTMpvLxC4ur3nMaC9G
 github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjYzDa0/r8luk=
 github.com/morikuni/aec v1.0.0 h1:nP9CBfwrvYnBRgY6qfDQkygYDmYwOilePFkwzv4dU8A=
 github.com/morikuni/aec v1.0.0/go.mod h1:BbKIizmSmc5MMPqRYbxO4ZU0S0+P200+tUnFx7PXmsc=
+github.com/mvo5/images v0.0.0-20240906141208-1adf3a7a21a6 h1:MZ/hlXQnnQOtOgQeJ0yo38u3zxlUPPXOEHVH4fKObV8=
+github.com/mvo5/images v0.0.0-20240906141208-1adf3a7a21a6/go.mod h1:t+lyeUxOmLgyV+IZi4u+H+AyL1X59DffIgIb4KQXTGA=
 github.com/oklog/ulid v1.3.1 h1:EGfNDEx6MqHz8B3uNV6QAib1UR2Lm97sHi3ocA6ESJ4=
 github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn4U=
 github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8Oi/yOhh5U=
@@ -225,10 +227,6 @@ github.com/opencontainers/runtime-spec v1.2.0 h1:z97+pHb3uELt/yiAWD691HNHQIF07bE
 github.com/opencontainers/runtime-spec v1.2.0/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
 github.com/opencontainers/selinux v1.11.0 h1:+5Zbo97w3Lbmb3PeqQtpmTkMwsW5nRI3YaLpt7tQ7oU=
 github.com/opencontainers/selinux v1.11.0/go.mod h1:E5dMC3VPuVvVHDYmi78qvhJp8+M586T4DlDRYpFkyec=
-github.com/osbuild/images v0.82.0 h1:bWfcGHHQR6pYZnv4jAxmLWxEkw669Zb6C2ADcyuf49g=
-github.com/osbuild/images v0.82.0/go.mod h1:1kJyvTtEbJfRv00phwd9Dlkai4/V05JhNACglxFTxS8=
-github.com/osbuild/images v0.83.1-0.20240906094240-bc26593c22f7 h1:JvFL9eSECmsjg9tkkEq5ywiFjqopdNowUbY3uzgEj7Y=
-github.com/osbuild/images v0.83.1-0.20240906094240-bc26593c22f7/go.mod h1:1kJyvTtEbJfRv00phwd9Dlkai4/V05JhNACglxFTxS8=
 github.com/ostreedev/ostree-go v0.0.0-20210805093236-719684c64e4f h1:/UDgs8FGMqwnHagNDPGOlts35QkhAZ8by3DR7nMih7M=
 github.com/ostreedev/ostree-go v0.0.0-20210805093236-719684c64e4f/go.mod h1:J6OG6YJVEWopen4avK3VNQSnALmmjvniMmni/YFYAwc=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
