@@ -8,7 +8,7 @@ require (
 	github.com/cheggaaa/pb/v3 v3.1.5
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-version v1.7.0
-	github.com/osbuild/images v0.82.0
+	github.com/osbuild/images v0.83.1-0.20240906094240-bc26593c22f7
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
@@ -125,3 +125,5 @@ require (
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )
+
+replace github.com/osbuild/images => github.com/mvo5/images v0.0.0-20240906141208-1adf3a7a21a6
