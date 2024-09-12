@@ -159,6 +159,7 @@ The following image types are currently available via the `--type` argument:
 | `anaconda-iso`        | An unattended Anaconda installer that installs to the first disk found.               |
 | `raw`                 | Unformatted [raw disk](https://en.wikipedia.org/wiki/Rawdisk).                        |
 | `vhd`                 | [vhd](https://en.wikipedia.org/wiki/VHD_(file_format)) usable in Virtual PC, among others |
+| `gce`                 | [GCE](https://cloud.google.com/compute/docs/images#custom_images) |
 
 ## 💾 Target architecture
 

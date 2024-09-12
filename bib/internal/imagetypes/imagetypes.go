@@ -18,6 +18,7 @@ var supportedImageTypes = map[string]imageType{
 	"raw":          imageType{Export: "image"},
 	"vmdk":         imageType{Export: "vmdk"},
 	"vhd":          imageType{Export: "vpc"},
+	"gce":          imageType{Export: "gce"},
 	"anaconda-iso": imageType{Export: "bootiso", ISO: true},
 	"iso":          imageType{Export: "bootiso", ISO: true},
 }

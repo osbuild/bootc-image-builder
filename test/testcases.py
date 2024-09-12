@@ -4,7 +4,7 @@ import os
 import platform
 
 # disk image types can be build from a single manifest
-DISK_IMAGE_TYPES = ["qcow2", "raw", "vmdk", "vhd"]
+DISK_IMAGE_TYPES = ["qcow2", "raw", "vmdk", "vhd", "gce"]
 
 # supported images that can be booted in a cloud
 CLOUD_BOOT_IMAGE_TYPES = ["ami"]
