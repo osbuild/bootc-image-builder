@@ -26,6 +26,7 @@ import (
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
 	podman_container "github.com/osbuild/bootc-image-builder/bib/internal/container"
+	"github.com/osbuild/bootc-image-builder/bib/internal/imagetypes"
 	"github.com/osbuild/bootc-image-builder/bib/internal/setup"
 	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 	"github.com/osbuild/bootc-image-builder/bib/internal/util"
@@ -209,7 +210,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		}
 	}
 
-	buildType, err := NewBuildType(imgTypes)
+	imageTypes, err := imagetypes.New(imgTypes...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot detect build types %v: %w", imgTypes, err)
 	}
@@ -259,7 +260,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	}()
 
 	var rootfsType string
-	if buildType != BuildTypeISO {
+	if !imageTypes.BuildsISO() {
 		if rootFs != "" {
 			rootfsType = rootFs
 		} else {
@@ -299,7 +300,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	manifestConfig := &ManifestConfig{
 		Architecture:     cntArch,
 		Config:           config,
-		BuildType:        buildType,
+		ImageTypes:       imageTypes,
 		Imgref:           imgref,
 		TLSVerify:        tlsVerify,
 		RootfsMinsize:    cntSize * containerSizeToDiskSizeMultiplier,
@@ -427,25 +428,11 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	fmt.Print("DONE\n")
 
 	// collect pipeline exports for each image type
-	var exports []string
-	for _, imgType := range imgTypes {
-		switch imgType {
-		case "qcow2":
-			exports = append(exports, "qcow2")
-		case "ami", "raw":
-			// this might be appended more than once, but that's okay
-			exports = append(exports, "image")
-		case "vmdk":
-			exports = append(exports, "vmdk")
-		case "vhd":
-			// should we make "vhd" just an alias for "vpc" everywhere?
-			exports = append(exports, "vpc")
-		case "anaconda-iso", "iso":
-			exports = append(exports, "bootiso")
-		default:
-			return fmt.Errorf("valid types are %s, not: '%s'", allImageTypesString(), imgType)
-		}
+	imageTypes, err := imagetypes.New(imgTypes...)
+	if err != nil {
+		return err
 	}
+	exports := imageTypes.Exports()
 	manifestPath := filepath.Join(outputDir, manifest_fname)
 	if err := saveManifest(mf, manifestPath); err != nil {
 		return fmt.Errorf("cannot save manifest: %w", err)
@@ -607,7 +594,7 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	manifestCmd.Flags().Bool("tls-verify", true, "require HTTPS and verify certificates when contacting registries")
 	manifestCmd.Flags().String("rpmmd", "/rpmmd", "rpm metadata cache directory")
 	manifestCmd.Flags().String("target-arch", "", "build for the given target architecture (experimental)")
-	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, fmt.Sprintf("image types to build [%s]", allImageTypesString()))
+	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, fmt.Sprintf("image types to build [%s]", imagetypes.Available()))
 	manifestCmd.Flags().Bool("local", false, "use a local container rather than a container from a registry")
 	manifestCmd.Flags().String("rootfs", "", "Root filesystem type. If not given, the default configured in the source container image is used.")
 	// --config is only useful for developers who run bib outside
