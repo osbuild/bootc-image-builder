@@ -10,9 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
-	"github.com/osbuild/bootc-image-builder/bib/internal/distrodef"
-	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/container"
@@ -28,6 +25,11 @@ import (
 	"github.com/osbuild/images/pkg/rpmmd"
 	"github.com/osbuild/images/pkg/runner"
 	"github.com/sirupsen/logrus"
+
+	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
+	"github.com/osbuild/bootc-image-builder/bib/internal/distrodef"
+	"github.com/osbuild/bootc-image-builder/bib/internal/imagetypes"
+	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 )
 
 // TODO: Auto-detect this from container image metadata
@@ -37,7 +39,7 @@ type ManifestConfig struct {
 	// OCI image path (without the transport, that is always docker://)
 	Imgref string
 
-	BuildType BuildType
+	ImageTypes imagetypes.ImageTypes
 
 	// Build config
 	Config *buildconfig.BuildConfig
@@ -68,14 +70,10 @@ type ManifestConfig struct {
 func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
 	rng := createRand()
 
-	switch c.BuildType {
-	case BuildTypeDisk:
-		return manifestForDiskImage(c, rng)
-	case BuildTypeISO:
+	if c.ImageTypes.BuildsISO() {
 		return manifestForISO(c, rng)
-	default:
-		return nil, fmt.Errorf("Manifest(): unknown build type %d", c.BuildType)
 	}
+	return manifestForDiskImage(c, rng)
 }
 
 var (

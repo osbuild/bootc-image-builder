@@ -45,12 +45,12 @@ func TestImageTypes(t *testing.T) {
 		},
 		"iso": {
 			imageTypes:      []string{"iso"},
-			expectedExports: []string{"iso"},
+			expectedExports: []string{"bootiso"},
 			expectISO:       true,
 		},
 		"anaconda": {
 			imageTypes:      []string{"anaconda-iso"},
-			expectedExports: []string{"anaconda-iso"},
+			expectedExports: []string{"bootiso"},
 			expectISO:       true,
 		},
 		"bad-mix": {
