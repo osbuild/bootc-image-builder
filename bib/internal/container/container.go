@@ -124,12 +124,12 @@ func (c *Container) ExecArgv() []string {
 }
 
 // InitDNF initializes dnf in the container. This is necessary when the caller wants to read the image's dnf
-// repositories, but they are not static, but rather configured by dnf dynamically. The primaru use-case for
+// repositories, but they are not static, but rather configured by dnf dynamically. The primary use-case for
 // this is RHEL and subscription-manager.
 //
-// The implementation is simple: We just run plain `dnf` in the container.
+// The implementation is simple: We just run `dnf --version` in the container.
 func (c *Container) InitDNF() error {
-	if output, err := exec.Command("podman", "exec", c.id, "dnf").CombinedOutput(); err != nil {
+	if output, err := exec.Command("podman", "exec", c.id, "dnf", "--version").CombinedOutput(); err != nil {
 		return fmt.Errorf("initializing dnf in %s container failed: %w\noutput:\n%s", c.id, err, string(output))
 	}
 
