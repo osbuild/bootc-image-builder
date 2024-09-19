@@ -328,7 +328,7 @@ func cmdManifest(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("cannot generate manifest: %w", err)
 	}
-	fmt.Print(string(mf))
+	fmt.Println(string(mf))
 	return nil
 }
 
