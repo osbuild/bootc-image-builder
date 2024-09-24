@@ -157,3 +157,24 @@ func TestJsonUnknownKeysError(t *testing.T) {
 
 	assert.ErrorContains(t, err, `json: unknown field "birds"`)
 }
+
+func TestReadConfigIsssue655(t *testing.T) {
+	fakeUserCnfPath := makeFakeConfig(t, "config.toml", `
+[[customizations.filesystem]]
+mountpoint = "/"
+minsize = 1000
+`)
+
+	conf, err := buildconfig.ReadWithFallback(fakeUserCnfPath)
+	assert.NoError(t, err)
+	assert.Equal(t, &buildconfig.BuildConfig{
+		Customizations: &blueprint.Customizations{
+			Filesystem: []blueprint.FilesystemCustomization{
+				{
+					Mountpoint: "/",
+					MinSize:    1000,
+				},
+			},
+		},
+	}, conf)
+}
