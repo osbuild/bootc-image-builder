@@ -430,6 +430,36 @@ def test_manifest_fs_customizations(tmp_path, build_container, fscustomizations,
     assert_fs_customizations(fscustomizations, rootfs, output)
 
 
+def test_manifest_fs_customizations_smoke_toml(tmp_path, build_container):
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    rootfs = "xfs"
+
+    expected_fs_customizations = {
+        "/":  10 * 1024 * 1024 * 1024,
+        "/var/data": 20 * 1024 * 1024 * 1024,
+    }
+
+    config_toml_path = tmp_path / "config.toml"
+    config_toml_path.write_text(textwrap.dedent("""\
+    [[customizations.filesystem]]
+    mountpoint = "/"
+    minsize = "10 GiB"
+
+    [[customizations.filesystem]]
+    mountpoint = "/var/data"
+    minsize = "20 GiB"
+    """))
+    output = subprocess.check_output([
+        *testutil.podman_run_common,
+        "-v", f"{config_toml_path}:/config.toml:ro",
+        "--entrypoint=/usr/bin/bootc-image-builder",
+        build_container,
+        f"--rootfs={rootfs}",
+        "manifest", f"{container_ref}",
+    ])
+    assert_fs_customizations(expected_fs_customizations, rootfs, output)
+
+
 def assert_fs_customizations(customizations, fstype, manifest):
     # use the fstab stage to get filesystem types for each mountpoint
     fstab_stage = find_fstab_stage_from(manifest)
