@@ -435,7 +435,7 @@ def test_manifest_fs_customizations_smoke_toml(tmp_path, build_container):
     rootfs = "xfs"
 
     expected_fs_customizations = {
-        "/":  10 * 1024 * 1024 * 1024,
+        "/": 10 * 1024 * 1024 * 1024,
         "/var/data": 20 * 1024 * 1024 * 1024,
     }
 
