@@ -44,8 +44,8 @@ class TestCaseFedora(TestCase):
 
 
 @dataclasses.dataclass
-class TestCaseFedora41(TestCase):
-    container_ref: str = "quay.io/fedora/fedora-bootc:41"
+class TestCaseFedora42(TestCase):
+    container_ref: str = "quay.io/fedora/fedora-bootc:42"
     rootfs: str = "btrfs"
 
 
@@ -103,7 +103,7 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
         return [
             TestCaseCentos(target_arch="arm64"),
             # TODO: merge with TestCaseFedora once the arches are build there
-            TestCaseFedora41(target_arch="ppc64le"),
-            TestCaseFedora41(target_arch="s390x"),
+            TestCaseFedora42(target_arch="ppc64le"),
+            TestCaseFedora42(target_arch="s390x"),
         ]
     raise ValueError(f"unknown test-case type {what}")
