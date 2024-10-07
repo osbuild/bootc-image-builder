@@ -119,12 +119,12 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 	depsolvedSets := make(map[string][]rpmmd.PackageSpec)
 	depsolvedRepos := make(map[string][]rpmmd.RepoConfig)
 	for name, pkgSet := range manifest.GetPackageSetChains() {
-		res, repos, err := solver.Depsolve(pkgSet)
+		res, err := solver.Depsolve(pkgSet, 0)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot depsolve: %w", err)
 		}
-		depsolvedSets[name] = res
-		depsolvedRepos[name] = repos
+		depsolvedSets[name] = res.Packages
+		depsolvedRepos[name] = res.Repos
 	}
 
 	// Resolve container - the normal case is that host and target
