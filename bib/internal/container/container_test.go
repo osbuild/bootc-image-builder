@@ -80,6 +80,49 @@ func TestNew(t *testing.T) {
 	assert.Contains(t, string(osRelease), `ID="rhel"`)
 }
 
+func makeFakeRunSecrets(t *testing.T) string {
+	fakeSecretsRoot := filepath.Join(t.TempDir(), "/run/secrets")
+	fakeSecretsFile := filepath.Join(fakeSecretsRoot, "/etc-pki-entitlement/12345.pem")
+	err := os.MkdirAll(filepath.Dir(fakeSecretsFile), 0700)
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(fakeSecretsFile), []byte("very-secret"), 0600)
+	require.NoError(t, err)
+
+	restore := MockSecretDirSrc(fakeSecretsRoot)
+	t.Cleanup(restore)
+
+	return fakeSecretsRoot
+}
+
+func TestSecretsAvailableInsideContainer(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("skipping test; not running as root")
+	}
+
+	// fake /run/secrets as we would have it when running bib in a
+	// subscribed machine
+	makeFakeRunSecrets(t)
+
+	cnt, err := New(testingImage)
+	require.NoError(t, err)
+	defer cnt.Stop()
+
+	// ensure secrets are available when running "cat" inside the container
+	secretContent, err := cnt.ReadFile("/run/secrets/etc-pki-entitlement/12345.pem")
+	require.NoError(t, err)
+	assert.Equal(t, "very-secret", string(secretContent))
+
+	// ensure other /run content is available still
+	_, err = cnt.ReadFile("/run/motd")
+	require.NoError(t, err)
+
+	// ensure secrets are available when accessing the container root
+	root := cnt.Root()
+	secretContent, err = os.ReadFile(filepath.Join(root, "/run/secrets/etc-pki-entitlement/12345.pem"))
+	require.NoError(t, err)
+	assert.Equal(t, "very-secret", string(secretContent))
+}
+
 func TestReadFile(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("skipping test; not running as root")

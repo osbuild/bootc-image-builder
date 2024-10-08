@@ -12,6 +12,11 @@ import (
 	"github.com/osbuild/bootc-image-builder/bib/internal/util"
 )
 
+var (
+	secretDirSrc = "/run/secrets"
+	secretDirDst = "/run/secrets"
+)
+
 // Container is a simpler wrapper around a running podman container.
 // This type isn't meant as a general-purpose container management tool, but
 // as an opinonated library for bootc-image-builder.
@@ -26,9 +31,6 @@ type Container struct {
 // - --net host is used to make networking work in a nested container
 // - /run/secrets is mounted from the host to make sure RHSM credentials are available
 func New(ref string) (*Container, error) {
-	const secretDir = "/run/secrets"
-	secretVolume := fmt.Sprintf("%s:%s", secretDir, secretDir)
-
 	args := []string{
 		"run",
 		"--rm",
@@ -36,11 +38,6 @@ func New(ref string) (*Container, error) {
 		"--detach",
 		"--net", "host", // Networking in a nested container doesn't work without re-using this container's network
 		"--entrypoint", "sleep", // The entrypoint might be arbitrary, so let's just override it with sleep, we don't want to run anything
-	}
-
-	// Re-mount the secret directory if it exists
-	if _, err := os.Stat(secretDir); err == nil {
-		args = append(args, "--volume", secretVolume)
 	}
 
 	args = append(args, ref, "infinity")
@@ -73,6 +70,14 @@ func New(ref string) (*Container, error) {
 		return nil, fmt.Errorf("mounting %s container failed with generic error: %w", ref, err)
 	}
 	c.root = strings.TrimSpace(string(output))
+
+	// XXX: fugly
+	// Copy the secrets if they exist, we cannot just mount them
+	// inside the container because we run "dnf" via
+	// "SetRootDir()" which will not have a mounted /run
+	if _, err := os.Stat(secretDirSrc); err == nil {
+		c.CopyInto(secretDirSrc, secretDirDst)
+	}
 
 	return c, err
 }
