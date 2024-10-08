@@ -322,6 +322,24 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 	return &mf, err
 }
 
+func labelForISO(os *source.OSRelease, arch *arch.Arch) string {
+	switch os.ID {
+	case "fedora":
+		return fmt.Sprintf("Fedora-S-dvd-%s-%s", arch, os.VersionID)
+	case "centos":
+		labelTemplate := "CentOS-Stream-%s-BaseOS-%s"
+		if os.VersionID == "8" {
+			labelTemplate = "CentOS-Stream-%s-%s-dvd"
+		}
+		return fmt.Sprintf(labelTemplate, os.VersionID, arch)
+	case "rhel":
+		version := strings.ReplaceAll(os.VersionID, ".", "-")
+		return fmt.Sprintf("RHEL-%s-BaseOS-%s", version, arch)
+	default:
+		return fmt.Sprintf("Container-Installer-%s", arch)
+	}
+}
+
 func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, error) {
 	if c.Imgref == "" {
 		return nil, fmt.Errorf("pipeline: no base image defined")
@@ -351,7 +369,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		Include: imageDef.Packages,
 	}
 
-	img.ISOLabel = fmt.Sprintf("Container-Installer-%s", c.Architecture)
+	img.ISOLabel = labelForISO(&c.SourceInfo.OSRelease, &c.Architecture)
 
 	var customizations *blueprint.Customizations
 	if c.Config != nil {
