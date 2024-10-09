@@ -23,10 +23,17 @@ class TestCase:
     # rootfs to use (e.g. ext4), some containers like fedora do not
     # have a default rootfs. If unset the container default is used.
     rootfs: str = ""
+    # partition-mode (e.g. lvm)
+    partition_mode: str = ""
 
     def bib_rootfs_args(self):
         if self.rootfs:
             return ["--rootfs", self.rootfs]
+        return []
+
+    def bib_partition_mode_args(self):
+        if self.partition_mode:
+            return ["--partition-mode", self.partition_mode]
         return []
 
     def __str__(self):
@@ -72,6 +79,9 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
             for klass in (TestCaseCentos, TestCaseFedora)
             for img in ("raw", "qcow2")
         ]
+        # LVM
+        test_cases.append(
+            TestCaseCentos(image="raw", partition_mode="lvm"))
         # do a cross arch test too
         if platform.machine() == "x86_64":
             # TODO: re-enable once

@@ -2,7 +2,7 @@
 # from the Containerfile by default, using leading '#' as comments.
 
 # This project uses osbuild
-osbuild osbuild-ostree osbuild-depsolve-dnf
+osbuild osbuild-ostree osbuild-depsolve-dnf osbuild-lvm2
 
 # We mount container images internally
 podman

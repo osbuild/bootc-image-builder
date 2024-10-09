@@ -37,6 +37,7 @@ class ImageBuildResult(NamedTuple):
     img_arch: str
     container_ref: str
     rootfs: str
+    partition_mode: str
     username: str
     password: str
     ssh_keyfile_private_path: str
@@ -162,7 +163,8 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             journal_output = journal_log_path.read_text(encoding="utf8")
             bib_output = bib_output_path.read_text(encoding="utf8")
             results.append(ImageBuildResult(
-                image_type, generated_img, tc.target_arch, tc.container_ref, tc.rootfs,
+                image_type, generated_img, tc.target_arch, tc.container_ref,
+                tc.rootfs, tc.partition_mode,
                 username, password, ssh_keyfile_private_path,
                 kargs, bib_output, journal_output))
 
@@ -264,6 +266,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             *upload_args,
             *target_arch_args,
             *tc.bib_rootfs_args(),
+            *tc.bib_partition_mode_args(),
             "--local" if tc.local else "--local=false",
         ])
 
@@ -297,7 +300,8 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
     results = []
     for image_type in image_types:
         results.append(ImageBuildResult(
-            image_type, artifact[image_type], tc.target_arch, tc.container_ref, tc.rootfs,
+            image_type, artifact[image_type], tc.target_arch, tc.container_ref,
+            tc.rootfs, tc.partition_mode,
             username, password, ssh_keyfile_private_path,
             kargs, bib_output, journal_output, metadata))
     yield results
@@ -357,6 +361,12 @@ def test_image_boots(image_type):
         # XXX: read the fully yaml instead?
         assert f"image: {image_type.container_ref}" in output
 
+        # XXX: put this into assert_fs_customizations or something
+        if image_type.partition_mode == "lvm":
+            exit_status, output = test_vm.run("findmnt", user="root", keyfile=image_type.ssh_keyfile_private_path)
+            assert exit_status == 0
+            assert "/dev/mapper/rootvg-rootlv" in output
+        
         # check the minsize specified in the build configuration for each mountpoint against the sizes in the image
         # TODO: replace 'df' call with 'parted --json' and find the partition size for each mountpoint
         exit_status, output = test_vm.run("df --output=target,size", user="root",
