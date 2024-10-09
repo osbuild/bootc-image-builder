@@ -21,6 +21,7 @@ prepare:
     - qemu-kvm
     - qemu-system-aarch64
     - qemu-user-static
+    - libosinfo
 execute:
   how: tmt
   script: |
