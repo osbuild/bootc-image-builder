@@ -5,8 +5,9 @@ import (
 	"os"
 	"path"
 
-	"github.com/osbuild/images/pkg/distro"
 	"github.com/sirupsen/logrus"
+
+	"github.com/osbuild/images/pkg/distro"
 )
 
 type OSRelease struct {

@@ -143,6 +143,17 @@ func (c *Container) InitDNF() error {
 	return nil
 }
 
+func (c *Container) InitDepSolveDNF() ([]string, error) {
+	if err := c.CopyInto("/usr/libexec/osbuild-depsolve-dnf", "/osbuild-depsolve-dnf"); err != nil {
+		return nil, fmt.Errorf("cannot prepare depsolve in the container: %w", err)
+	}
+	// XXX: hardcoded python3.12
+	if err := c.CopyInto("/usr/lib//python3.12/site-packages/osbuild", "/"); err != nil {
+		return nil, fmt.Errorf("cannot prepare depsolve python-modules in the container: %w", err)
+	}
+	return append(c.ExecArgv(), "/osbuild-depsolve-dnf"), nil
+}
+
 // DefaultRootfsType returns the default rootfs type (e.g. "ext4") as
 // specified by the bootc container install configuration. An empty
 // string is valid and means the container sets no default.
