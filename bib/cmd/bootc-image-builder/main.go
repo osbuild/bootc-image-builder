@@ -109,6 +109,7 @@ func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest
 	}
 
 	// depsolve packages
+	// XXX: put into a dnf module
 	solver := dnfjson.NewSolver(
 		c.SourceInfo.OSRelease.PlatformID,
 		c.SourceInfo.OSRelease.VersionID,
@@ -287,18 +288,14 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		}
 	}
 
-	if err := container.CopyInto("/usr/libexec/osbuild-depsolve-dnf", "/osbuild-depsolve-dnf"); err != nil {
-		return nil, nil, fmt.Errorf("cannot prepare depsolve in the container: %w", err)
-	}
-	// XXX: hardcoded python3.12
-	if err := container.CopyInto("/usr/lib//python3.12/site-packages/osbuild", "/"); err != nil {
-		return nil, nil, fmt.Errorf("cannot prepare depsolve python-modules in the container: %w", err)
-	}
-
 	// This is needed just for RHEL and RHSM in most cases, but let's run it every time in case
 	// the image has some non-standard dnf plugins.
 	if err := container.InitDNF(); err != nil {
 		return nil, nil, err
+	}
+	depSolverCmd, err := container.InitDepsolveDNF()
+	if err != nil {
+		return nil, nil, fmt.Errorf("cannot prepare depsolve in the container: %w", err)
 	}
 
 	sourceinfo, err := source.LoadInfo(container.Root())
@@ -316,7 +313,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		DistroDefPaths: distroDefPaths,
 		SourceInfo:     sourceinfo,
 		RootFSType:     rootfsType,
-		DepsolverCmd:   append(container.ExecArgv(), "/osbuild-depsolve-dnf"),
+		DepsolverCmd:   depSolverCmd,
 	}
 
 	manifest, repos, err := makeManifest(manifestConfig, rpmCacheRoot)

@@ -13,6 +13,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/osbuild/images/pkg/dnfjson"
+	"github.com/osbuild/images/pkg/rpmmd"
+
+	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 )
 
 const (
@@ -223,4 +228,46 @@ func TestDNFInitGivesAccessToSubscribedContent(t *testing.T) {
 	content, err := cnt.ReadFile("/etc/yum.repos.d/redhat.repo")
 	require.NoError(t, err)
 	assert.Contains(t, string(content), "rhel-9-for-x86_64-baseos-rpms")
+}
+
+// XXX: should tihs be in a different file, it's more an integration test
+func TestDNFJsonWorkWithSubscribedContent(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("skipping test; not running as root")
+	}
+	if runtime.GOARCH != "amd64" {
+		t.Skip("skipping test; only runs on x86_64")
+	}
+	if _, err := os.Stat("/usr/libexec/osbuild-depsolve-dnf"); err != nil {
+		t.Skip("cannot find /usr/libexec/osbuild-depsolve-dnf")
+	}
+	cacheRoot := t.TempDir()
+
+	restore := subscribeMachine(t)
+	defer restore()
+
+	cnt, err := New(dnfTestingImage)
+	require.NoError(t, err)
+	err = cnt.InitDNF()
+	require.NoError(t, err)
+	depsolverCmd, err := cnt.InitDepSolveDNF()
+	require.NoError(t, err)
+
+	sourceInfo, err := source.LoadInfo(cnt.Root())
+	require.NoError(t, err)
+	solver := dnfjson.NewSolver(
+		sourceInfo.OSRelease.PlatformID,
+		sourceInfo.OSRelease.VersionID,
+		"x86_64",
+		fmt.Sprintf("%s-%s", sourceInfo.OSRelease.ID, sourceInfo.OSRelease.VersionID),
+		cacheRoot)
+	solver.SetDNFJSONPath(depsolverCmd[0], depsolverCmd[1:]...)
+	solver.SetRootDir("/")
+	res, err := solver.Depsolve([]rpmmd.PackageSet{
+		{
+			Include: []string{"coreutils"},
+		},
+	}, 0)
+	require.NoError(t, err)
+	assert.True(t, len(res.Packages) > 0)
 }

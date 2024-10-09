@@ -11,6 +11,7 @@ prepare:
   how: install
   package:
     - edk2-aarch64
+    - osbuild-depsolve-dnf
     - podman
     - pytest
     - python3-boto3
