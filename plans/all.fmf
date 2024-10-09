@@ -18,6 +18,7 @@ prepare:
     - python3-paramiko
     - python3-pip
     - skopeo
+    - subscription-manager
     - qemu-kvm
     - qemu-system-aarch64
     - qemu-user-static
