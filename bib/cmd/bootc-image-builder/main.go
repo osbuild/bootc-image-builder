@@ -25,6 +25,7 @@ import (
 	"github.com/osbuild/images/pkg/rpmmd"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
+	"github.com/osbuild/bootc-image-builder/bib/internal/cntdnf"
 	podman_container "github.com/osbuild/bootc-image-builder/bib/internal/container"
 	"github.com/osbuild/bootc-image-builder/bib/internal/imagetypes"
 	"github.com/osbuild/bootc-image-builder/bib/internal/setup"
@@ -102,22 +103,13 @@ func getContainerSize(imgref string) (uint64, error) {
 	return size, nil
 }
 
-func makeManifest(c *ManifestConfig, cacheRoot string) (manifest.OSBuildManifest, map[string][]rpmmd.RepoConfig, error) {
+func makeManifest(c *ManifestConfig, solver *dnfjson.Solver, cacheRoot string) (manifest.OSBuildManifest, map[string][]rpmmd.RepoConfig, error) {
 	manifest, err := Manifest(c)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot get manifest: %w", err)
 	}
 
 	// depsolve packages
-	// XXX: put into a dnf module
-	solver := dnfjson.NewSolver(
-		c.SourceInfo.OSRelease.PlatformID,
-		c.SourceInfo.OSRelease.VersionID,
-		c.Architecture.String(),
-		fmt.Sprintf("%s-%s", c.SourceInfo.OSRelease.ID, c.SourceInfo.OSRelease.VersionID),
-		cacheRoot)
-	solver.SetDNFJSONPath(c.DepsolverCmd[0], c.DepsolverCmd[1:]...)
-	solver.SetRootDir("/")
 	depsolvedSets := make(map[string][]rpmmd.PackageSpec)
 	depsolvedRepos := make(map[string][]rpmmd.RepoConfig)
 	for name, pkgSet := range manifest.GetPackageSetChains() {
@@ -287,18 +279,18 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 			rootfsType = "ext4"
 		}
 	}
+	// Gather some data from the containers distro
+	sourceinfo, err := source.LoadInfo(container.Root())
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// This is needed just for RHEL and RHSM in most cases, but let's run it every time in case
 	// the image has some non-standard dnf plugins.
 	if err := container.InitDNF(); err != nil {
 		return nil, nil, err
 	}
-	depSolverCmd, err := container.InitDepsolveDNF()
-	if err != nil {
-		return nil, nil, fmt.Errorf("cannot prepare depsolve in the container: %w", err)
-	}
-
-	sourceinfo, err := source.LoadInfo(container.Root())
+	solver, err := cntdnf.NewContainerSolver(rpmCacheRoot, container, cntArch, sourceinfo)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -313,10 +305,9 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		DistroDefPaths: distroDefPaths,
 		SourceInfo:     sourceinfo,
 		RootFSType:     rootfsType,
-		DepsolverCmd:   depSolverCmd,
 	}
 
-	manifest, repos, err := makeManifest(manifestConfig, rpmCacheRoot)
+	manifest, repos, err := makeManifest(manifestConfig, solver, rpmCacheRoot)
 	if err != nil {
 		return nil, nil, err
 	}
