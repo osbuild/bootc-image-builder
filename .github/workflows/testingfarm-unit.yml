@@ -1,28 +1,11 @@
 ---
-name: Testing farm tests
+name: Testing farm go unit tests
 
 on:
   pull_request_target:
     types: [opened, synchronize, reopened]
 
-# To use testing farm we need the TF_API_KEY secret available inside the
-# forked repo which requires the pull_request_target trigger. To protect
-# the secrets we need to make sure only people with repo write access
-# can trigger this workflow. This means that ouside contributors will
-# get an initial failure when the workflow is run. But once someone from
-# the team re-triggers it it will work.
-#
-# Note that "pull_requqest_target" events are always triggered even
-# when the "Fork pull request workflows from outside collaborators"
-# setting is restricted to "Require approval for all outside collaborators"
-# (see https://docs.github.com/en/actions/managing-workflow-runs/approving-workflow-runs-from-public-forks)
-#
-# Note also that this precautions might be overkill because a fork
-# cannot modify this workflow and all we do is run a branch inside
-# testing farm. But a) the scope of workflow may expand over time
-# b) it feels safer this way and is not a big burden in practise.
-#
-# This follows https://michaelheap.com/access-secrets-from-forks/
+# see testingfarm.yml
 jobs:
   testingfarm:
     name: "Run in testing farm"
@@ -51,7 +34,7 @@ jobs:
       uses: sclorg/testing-farm-as-github-action@v3
       with:
         compose: Fedora-40
-        tmt_plan_filter: "integration.fmf"
+        tmt_plan_filter: "unit-go.fmf"
         api_key: ${{ secrets.TF_API_KEY }}
         git_url: ${{ github.event.pull_request.head.repo.clone_url }}
         git_ref: ${{ github.event.pull_request.head.ref }}
