@@ -16,4 +16,6 @@ execute:
   how: tmt
   script: |
     echo "Run tests as root"
+    export BIB_TESTING_FARM=1
+    # use "-v" to see skipped tests
     cd bib && go test -v ./...
