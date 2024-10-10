@@ -1,0 +1,19 @@
+summary: Run all tests inside a VM environment
+provision:
+  how: virtual
+  image: fedora:40
+prepare:
+  how: install
+  package:
+    - btrfs-progs-devel
+    - device-mapper-devel
+    - gpgme-devel
+    - golang
+    - osbuild-depsolve-dnf
+    - podman
+    - subscription-manager
+execute:
+  how: tmt
+  script: |
+    echo "Run tests as root"
+    cd bib && go test -v ./...
