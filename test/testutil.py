@@ -140,6 +140,20 @@ def create_filesystem_customizations(rootfs: str):
     ]
 
 
+def pull_container(container_ref, target_arch=""):
+    if target_arch == "":
+        target_arch = platform.machine()
+
+    if target_arch not in ["x86_64", "amd64", "aarch64", "arm64", "s390x", "ppc64le"]:
+        raise RuntimeError(f"unknown host arch: {target_arch}")
+
+    subprocess.run([
+        "podman", "pull",
+        "--arch", target_arch,
+        container_ref,
+    ], check=True)
+
+
 # podman_run_common has the common prefix for the podman run invocations
 podman_run_common = [
     "podman", "run", "--rm",
