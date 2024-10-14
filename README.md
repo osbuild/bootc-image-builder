@@ -301,6 +301,9 @@ sudo podman run \
     quay.io/centos-bootc/centos-bootc:stream9
 ```
 
+The configuration can also be passed in via stdin when `--config -`
+is used. Only JSON configuration is supported in this mode.
+
 ### Users (`user`, array)
 
 Possible fields:
