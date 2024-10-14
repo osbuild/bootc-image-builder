@@ -4,6 +4,13 @@ A container to create disk images from [bootc](https://github.com/containers/boo
 especially oriented towards [Fedora/CentOS bootc](https://docs.fedoraproject.org/en-US/bootc/) or
 derivatives.
 
+## Project
+
+* **Website**: https://www.osbuild.org
+* **Bug Tracker**: https://github.com/osbuild/bootc-image-builder/issues
+* **Discussions**: https://github.com/orgs/osbuild/discussions
+* **Matrix**: #image-builder on [fedoraproject.org](https://matrix.to/#/#image-builder:fedoraproject.org)
+
 ## 🔨 Installation
 
 Have [podman](https://podman.io/) installed on your system. Either through your systems package manager if you're on
