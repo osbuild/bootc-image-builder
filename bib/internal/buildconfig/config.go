@@ -67,17 +67,26 @@ func decodeTomlBuildConfig(r io.Reader, what string) (*BuildConfig, error) {
 	return &conf, nil
 }
 
-func loadConfig(path string) (*BuildConfig, error) {
-	fp, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer fp.Close()
+var osStdin = os.Stdin
 
-	switch filepath.Ext(path) {
-	case ".json":
+func loadConfig(path string) (*BuildConfig, error) {
+	var fp *os.File
+	var err error
+
+	if path == "-" {
+		fp = osStdin
+	} else {
+		fp, err = os.Open(path)
+		if err != nil {
+			return nil, err
+		}
+		defer fp.Close()
+	}
+
+	switch {
+	case path == "-", filepath.Ext(path) == ".json":
 		return decodeJsonBuildConfig(fp, path)
-	case ".toml":
+	case filepath.Ext(path) == ".toml":
 		return decodeTomlBuildConfig(fp, path)
 	default:
 		return nil, fmt.Errorf("unsupported file extension for %q", path)

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/osbuild/images/pkg/blueprint"
 
@@ -167,4 +168,18 @@ minsize = 1000
 			},
 		},
 	}, conf)
+}
+
+func TestReadWithFallbackFromStdin(t *testing.T) {
+	fakeUserCnfPath := makeFakeConfig(t, "fake-stdin", fakeConfigJSON)
+	fakeStdinFp, err := os.Open(fakeUserCnfPath)
+	require.NoError(t, err)
+	defer fakeStdinFp.Close()
+
+	restore := buildconfig.MockOsStdin(fakeStdinFp)
+	defer restore()
+
+	cfg, err := buildconfig.ReadWithFallback("-")
+	assert.NoError(t, err)
+	assert.Equal(t, expectedBuildConfig, cfg)
 }
