@@ -25,7 +25,6 @@ import (
 	"github.com/osbuild/images/pkg/rpmmd"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
-	"github.com/osbuild/bootc-image-builder/bib/internal/cntdnf"
 	podman_container "github.com/osbuild/bootc-image-builder/bib/internal/container"
 	"github.com/osbuild/bootc-image-builder/bib/internal/imagetypes"
 	"github.com/osbuild/bootc-image-builder/bib/internal/setup"
@@ -290,7 +289,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 	if err := container.InitDNF(); err != nil {
 		return nil, nil, err
 	}
-	solver, err := cntdnf.NewContainerSolver(rpmCacheRoot, container, cntArch, sourceinfo)
+	solver, err := container.NewContainerSolver(rpmCacheRoot, cntArch, sourceinfo)
 	if err != nil {
 		return nil, nil, err
 	}
