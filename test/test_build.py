@@ -136,7 +136,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
         "raw": pathlib.Path(output_path) / "image/disk.raw",
         "vmdk": pathlib.Path(output_path) / "vmdk/disk.vmdk",
         "vhd": pathlib.Path(output_path) / "vpc/disk.vhd",
-        "gce": pathlib.Path(output_path) / "gce/image.tgz",
+        "gce": pathlib.Path(output_path) / "gce/image.tar.gz",
         "anaconda-iso": pathlib.Path(output_path) / "bootiso/install.iso",
     }
     assert len(artifact) == len(set(tc.image for tc in gen_testcases("all"))), \
