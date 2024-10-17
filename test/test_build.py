@@ -36,7 +36,6 @@ class ImageBuildResult(NamedTuple):
     img_type: str
     img_path: str
     img_arch: str
-    osinfo_template: str
     container_ref: str
     rootfs: str
     username: str
@@ -327,7 +326,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
             journal_output = journal_log_path.read_text(encoding="utf8")
             bib_output = bib_output_path.read_text(encoding="utf8")
             results.append(ImageBuildResult(
-                image_type, generated_img, tc.target_arch, tc.osinfo_template,
+                image_type, generated_img, tc.target_arch,
                 container_ref, tc.rootfs, username, password,
                 ssh_keyfile_private_path, kargs, bib_output, journal_output))
 
@@ -473,7 +472,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
     results = []
     for image_type in image_types:
         results.append(ImageBuildResult(
-            image_type, artifact[image_type], tc.target_arch, tc.osinfo_template,
+            image_type, artifact[image_type], tc.target_arch,
             container_ref, tc.rootfs, username, password,
             ssh_keyfile_private_path, kargs, bib_output, journal_output, metadata))
     yield results
@@ -628,6 +627,15 @@ def test_iso_installs(image_type):
         assert_kernel_args(vm, image_type)
 
 
+def osinfo_for(it: ImageBuildResult, arch: str) -> str:
+    if it.container_ref.endswith("/centos-bootc/centos-bootc:stream9"):
+        return f"CentOS Stream 9 ({arch})"
+    if "/fedora/fedora-bootc:" in it.container_ref:
+        ver = it.container_ref.rsplit(":", maxsplit=1)[1]
+        return f"Fedora Server {ver} ({arch})"
+    raise ValueError(f"unknown osinfo string for '{it.container_ref}'")
+
+
 @pytest.mark.skipif(platform.system() != "Linux", reason="osinfo detect test only runs on linux right now")
 @pytest.mark.parametrize("image_type", gen_testcases("anaconda-iso"), indirect=["image_type"])
 def test_iso_os_detection(image_type):
@@ -635,13 +643,12 @@ def test_iso_os_detection(image_type):
     arch = image_type.img_arch
     if not arch:
         arch = platform.machine()
-    osinfo = image_type.osinfo_template.format(arch=arch)
     result = subprocess.run([
         "osinfo-detect",
         installer_iso_path,
     ], capture_output=True, text=True, check=True)
     osinfo_output = result.stdout
-    expected_output = f"Media is bootable.\nMedia is an installer for OS '{osinfo}'\n"
+    expected_output = f"Media is bootable.\nMedia is an installer for OS '{osinfo_for(image_type, arch)}'\n"
     assert osinfo_output == expected_output
 
 
