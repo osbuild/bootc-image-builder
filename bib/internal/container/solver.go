@@ -1,17 +1,37 @@
-package cntdnf
+package container
 
 import (
 	"fmt"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/dnfjson"
 
-	"github.com/osbuild/bootc-image-builder/bib/internal/container"
 	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 )
 
-func injectDNFJson(cnt *container.Container) ([]string, error) {
+// InitDNF initializes dnf in the container. This is necessary when
+// the caller wants to read the image's dnf repositories, but they are
+// not static, but rather configured by dnf dynamically. The primaru
+// use-case for this is RHEL and subscription-manager.
+//
+// The implementation is simple: We just run plain `dnf` in the
+// container so that the subscription-manager gets initialized. For
+// compatibility with both dnf and dnf5 we cannot just run "dnf" as
+// dnf5 will error and do nothing in this case. So we use "dnf check
+// --duplicates" as this is fast on both dnf4/dnf5 (just doing "dnf5
+// check" without arguments takes around 25s so that is not a great
+// option).
+func (c *Container) InitDNF() error {
+	if output, err := exec.Command("podman", "exec", c.id, "dnf", "check", "--duplicates").CombinedOutput(); err != nil {
+		return fmt.Errorf("initializing dnf in %s container failed: %w\noutput:\n%s", c.id, err, string(output))
+	}
+
+	return nil
+}
+
+func (cnt *Container) injectDNFJson() ([]string, error) {
 	if err := cnt.CopyInto("/usr/libexec/osbuild-depsolve-dnf", "/osbuild-depsolve-dnf"); err != nil {
 		return nil, fmt.Errorf("cannot prepare depsolve in the container: %w", err)
 	}
@@ -30,8 +50,8 @@ func injectDNFJson(cnt *container.Container) ([]string, error) {
 	return append(cnt.ExecArgv(), "/osbuild-depsolve-dnf"), nil
 }
 
-func NewContainerSolver(cacheRoot string, cnt *container.Container, architecture arch.Arch, sourceInfo *source.Info) (*dnfjson.Solver, error) {
-	depsolverCmd, err := injectDNFJson(cnt)
+func (cnt *Container) NewContainerSolver(cacheRoot string, architecture arch.Arch, sourceInfo *source.Info) (*dnfjson.Solver, error) {
+	depsolverCmd, err := cnt.injectDNFJson()
 	if err != nil {
 		return nil, fmt.Errorf("cannot inject depsolve into the container: %w", err)
 	}

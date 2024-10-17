@@ -1,4 +1,4 @@
-package cntdnf_test
+package container_test
 
 import (
 	"os"
@@ -13,7 +13,6 @@ import (
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/rpmmd"
 
-	"github.com/osbuild/bootc-image-builder/bib/internal/cntdnf"
 	"github.com/osbuild/bootc-image-builder/bib/internal/container"
 	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 )
@@ -39,7 +38,7 @@ func TestDNFJsonWorks(t *testing.T) {
 
 	sourceInfo, err := source.LoadInfo(cnt.Root())
 	require.NoError(t, err)
-	solver, err := cntdnf.NewContainerSolver(cacheRoot, cnt, arch.Current(), sourceInfo)
+	solver, err := cnt.NewContainerSolver(cacheRoot, arch.Current(), sourceInfo)
 	require.NoError(t, err)
 	res, err := solver.Depsolve([]rpmmd.PackageSet{
 		{
@@ -122,7 +121,7 @@ func TestDNFJsonWorkWithSubscribedContent(t *testing.T) {
 
 	sourceInfo, err := source.LoadInfo(cnt.Root())
 	require.NoError(t, err)
-	solver, err := cntdnf.NewContainerSolver(cacheRoot, cnt, arch.ARCH_X86_64, sourceInfo)
+	solver, err := cnt.NewContainerSolver(cacheRoot, arch.ARCH_X86_64, sourceInfo)
 	require.NoError(t, err)
 	res, err := solver.Depsolve([]rpmmd.PackageSet{
 		{
