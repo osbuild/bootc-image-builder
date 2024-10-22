@@ -31,6 +31,8 @@ def find_image_size_from(manifest_str):
 
 @pytest.mark.parametrize("tc", gen_testcases("manifest"))
 def test_manifest_smoke(build_container, tc):
+    testutil.pull_container(tc.container_ref, tc.target_arch)
+
     output = subprocess.check_output([
         *testutil.podman_run_common,
         build_container,
@@ -50,6 +52,8 @@ def test_manifest_smoke(build_container, tc):
 
 @pytest.mark.parametrize("tc", gen_testcases("anaconda-iso"))
 def test_iso_manifest_smoke(build_container, tc):
+    testutil.pull_container(tc.container_ref, tc.target_arch)
+
     output = subprocess.check_output([
         *testutil.podman_run_common,
         build_container,
@@ -81,7 +85,7 @@ def test_manifest_disksize(tmp_path, build_container, tc):
         manifest_str = subprocess.check_output([
             *testutil.podman_run_common,
             build_container,
-            "manifest", "--local",
+            "manifest",
             *tc.bib_rootfs_args(),
             f"localhost/{container_tag}",
         ], encoding="utf8")
@@ -100,10 +104,11 @@ def test_manifest_local_checks_containers_storage_errors(build_container):
         "--privileged",
         "--security-opt", "label=type:unconfined_t",
         build_container,
-        "manifest", "--local", "arg-not-used",
+        "manifest", "arg-not-used",
     ], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf8")
     assert res.returncode == 1
-    err = 'local storage not working, did you forget -v /var/lib/containers/storage:/var/lib/containers/storage?'
+    err = 'could not access container storage, ' + \
+        'did you forget -v /var/lib/containers/storage:/var/lib/containers/storage?'
     assert err in res.stderr
 
 
@@ -118,7 +123,7 @@ def test_manifest_local_checks_containers_storage_works(tmp_path, build_containe
         subprocess.run([
             *testutil.podman_run_common,
             build_container,
-            "manifest", "--local",
+            "manifest",
             *tc.bib_rootfs_args(),
             f"localhost/{container_tag}",
         ], check=True, encoding="utf8")
@@ -138,7 +143,7 @@ def test_manifest_cross_arch_check(tmp_path, build_container):
                 *testutil.podman_run_common,
                 build_container,
                 "manifest", "--target-arch=aarch64",
-                "--local", f"localhost/{container_tag}"
+                f"localhost/{container_tag}"
             ], check=True, capture_output=True, encoding="utf8")
         assert 'image found is for unexpected architecture "x86_64"' in exc.value.stderr
 
@@ -157,6 +162,7 @@ def find_rootfs_type_from(manifest_str):
 @pytest.mark.parametrize("tc", gen_testcases("default-rootfs"))
 def test_manifest_rootfs_respected(build_container, tc):
     # TODO: derive container and fake "bootc install print-configuration"?
+    testutil.pull_container(tc.container_ref)
     output = subprocess.check_output([
         *testutil.podman_run_common,
         build_container,
@@ -196,6 +202,7 @@ def find_user_stage_from(manifest_str):
 def test_manifest_user_customizations_toml(tmp_path, build_container):
     # no need to parameterize this test, toml is the same for all containers
     container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
 
     config_toml_path = tmp_path / "config.toml"
     config_toml_path.write_text(textwrap.dedent("""\
@@ -223,6 +230,7 @@ def test_manifest_user_customizations_toml(tmp_path, build_container):
 
 def test_manifest_installer_customizations(tmp_path, build_container):
     container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
 
     config_toml_path = tmp_path / "config.toml"
     config_toml_path.write_text(textwrap.dedent("""\
@@ -256,6 +264,7 @@ def test_manifest_installer_customizations(tmp_path, build_container):
 def test_mount_ostree_error(tmpdir_factory, build_container):
     # no need to parameterize this test, toml is the same for all containers
     container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
 
     cfg = {
         "blueprint": {
@@ -304,6 +313,7 @@ def test_mount_ostree_error(tmpdir_factory, build_container):
 )
 def test_manifest_checks_build_container_is_bootc(build_container, container_ref, should_error, expected_error):
     def check_image_ref():
+        testutil.pull_container(container_ref)
         subprocess.check_output([
             *testutil.podman_run_common,
             build_container,
@@ -320,6 +330,8 @@ def test_manifest_checks_build_container_is_bootc(build_container, container_ref
 
 @pytest.mark.parametrize("tc", gen_testcases("target-arch-smoke"))
 def test_manifest_target_arch_smoke(build_container, tc):
+    testutil.pull_container(tc.container_ref, tc.target_arch)
+
     # TODO: actually build an image too
     output = subprocess.check_output([
         *testutil.podman_run_common,
@@ -372,6 +384,8 @@ def test_manifest_anaconda_module_customizations(tmpdir_factory, build_container
     config_json_path = output_path / "config.json"
     config_json_path.write_text(json.dumps(cfg), encoding="utf-8")
 
+    testutil.pull_container(tc.container_ref, tc.target_arch)
+
     output = subprocess.check_output([
         *testutil.podman_run_common,
         "-v", f"{output_path}:/output",
@@ -410,6 +424,7 @@ def find_fstab_stage_from(manifest_str):
 ])
 def test_manifest_fs_customizations(tmp_path, build_container, fscustomizations, rootfs):
     container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
 
     config = {
         "customizations": {
@@ -496,7 +511,9 @@ def assert_fs_customizations(customizations, fstype, manifest):
     ({}, "btrfs"),
 ])
 def test_manifest_fs_customizations_xarch(tmp_path, build_container, fscustomizations, rootfs):
+    target_arch = "aarch64"
     container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref, target_arch)
 
     config = {
         "customizations": {
@@ -512,7 +529,7 @@ def test_manifest_fs_customizations_xarch(tmp_path, build_container, fscustomiza
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
         f"--rootfs={rootfs}",
-        "--target-arch=aarch64",
+        f"--target-arch={target_arch}",
         "manifest", f"{container_ref}",
     ])
 
