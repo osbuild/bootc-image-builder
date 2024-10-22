@@ -1,3 +1,4 @@
+import dataclasses
 import os
 import pathlib
 import platform
@@ -147,3 +148,102 @@ podman_run_common = [
     "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
     "--security-opt", "label=type:unconfined_t",
 ]
+
+
+def get_ip_from_default_route():
+    default_route = subprocess.run([
+        "ip",
+        "route",
+        "list",
+        "default"
+    ], check=True, capture_output=True).stdout
+    return default_route.split()[8].decode("utf-8")
+
+
+@dataclasses.dataclass
+class GPGConfig():
+    email: str = "bootc-image-builder@redhat.com"
+    pub_key: str = "/etc/pki/rpm-gpg/RPM-GPG-KEY-booc-image-builder"
+    key_length = "3072"
+    input: str = f"""
+      %no-protection
+      Key-Type: RSA
+      Key-Length: {key_length}
+      Key-Usage: sign
+      Name-Real: Bootc Image Builder
+      Name-Email: {email}
+      Expire-Date: 0
+    """
+
+
+@dataclasses.dataclass
+class RegistryConfig():
+    local_registry: str = "localhost:5000"
+    sigstore_dir: str = "/var/lib/containers/sigstore"
+    lookaside_config: str = "/etc/containers/registries.d/bib.yaml"
+
+
+def sign_container_image(gpg_config: GPGConfig, registry_config: RegistryConfig, container_ref):
+    if not os.path.exists(gpg_config.pub_key):
+        subprocess.run([
+          "gpg", "--gen-key", "--batch"
+        ], check=True, capture_output=True,
+           input=gpg_config.input,
+           text=True)
+
+        subprocess.run([
+            "gpg",
+            "--output", gpg_config.pub_key,
+            "--armor",
+            "--export",
+            gpg_config.email
+        ], check=True, capture_output=True)
+
+        subprocess.run([
+            "podman", "image", "trust", "set",
+            "--pubkeysfile", gpg_config.pub_key,
+            "--type", "signedBy",
+            registry_config.local_registry
+        ], check=True, capture_output=True)
+
+    registry_lookaside_config = f"""docker:
+      {registry_config.local_registry}:
+        lookaside: file:///{registry_config.sigstore_dir}
+    """
+    with open(registry_config.lookaside_config, mode="w", encoding="utf-8") as f:
+        f.write(registry_lookaside_config)
+
+    registry_container_name = subprocess.run([
+        "podman", "ps", "-a", "--filter", "name=registry", "--format", "{{.Names}}"
+    ], check=True, capture_output=True).stdout.decode("utf-8").strip()
+
+    if registry_container_name != "registry":
+        subprocess.run([
+            "podman", "run", "-d",
+            "-p", "5000:5000",
+            "--restart", "always",
+            "--name", "registry",
+            "registry:2"
+        ], check=True, capture_output=True)
+
+    registry_container_state = subprocess.run([
+        "podman", "ps", "-a", "--filter", "name=registry", "--format", "{{.State}}"
+    ], check=True, capture_output=True).stdout.decode("utf-8").strip()
+
+    if registry_container_state in ("paused", "exited"):
+        subprocess.run([
+          "podman", "start", "registry"
+        ], check=True, capture_output=True)
+
+    container_ref_path = container_ref[container_ref.index('/'):]
+    signed_container_ref = f"{registry_config.local_registry}{container_ref_path}"
+    subprocess.run([
+        "skopeo", "copy",
+        "--dest-tls-verify=false",
+        "--remove-signatures",
+        "--sign-by", gpg_config.email,
+        f"docker://{container_ref}",
+        f"docker://{signed_container_ref}",
+    ], check=True, capture_output=True)
+
+    return signed_container_ref
