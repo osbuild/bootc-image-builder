@@ -147,3 +147,13 @@ podman_run_common = [
     "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
     "--security-opt", "label=type:unconfined_t",
 ]
+
+
+def get_ip_from_default_route():
+    default_route = subprocess.run([
+        "ip",
+        "route",
+        "list",
+        "default"
+    ], check=True, capture_output=True, text=True).stdout
+    return default_route.split()[8]
