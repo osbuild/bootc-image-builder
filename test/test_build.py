@@ -11,6 +11,7 @@ import tempfile
 import uuid
 from contextlib import contextmanager
 from typing import NamedTuple
+from dataclasses import dataclass
 
 import pytest
 # local test utils
@@ -47,14 +48,169 @@ class ImageBuildResult(NamedTuple):
     metadata: dict = {}
 
 
+@dataclass
+class GPGConf:
+    email: str
+    key_length: str
+    home_dir: str
+    pub_key_file: str
+    key_params: str
+
+
+@dataclass
+class RegistryConf:
+    local_registry: str
+    sigstore_dir: str
+    registries_d_dir: str
+    policy_file: str
+    lookaside_conf_file: str
+    lookaside_conf: str
+
+
 @pytest.fixture(name="shared_tmpdir", scope='session')
 def shared_tmpdir_fixture(tmpdir_factory):
     tmp_path = pathlib.Path(tmpdir_factory.mktemp("shared"))
     yield tmp_path
 
 
+@pytest.fixture(name="gpg_conf", scope='session')
+def gpg_conf_fixture(shared_tmpdir):
+    key_params_tmpl = """
+      %no-protection
+      Key-Type: RSA
+      Key-Length: {key_length}
+      Key-Usage: sign
+      Name-Real: Bootc Image Builder Tests
+      Name-Email: {email}
+      Expire-Date: 0
+    """
+    email = "bib-tests@redhat.com"
+    key_length = "3072"
+    home_dir = f"{shared_tmpdir}/.gnupg"
+    pub_key_file = f"{shared_tmpdir}/GPG-KEY-bib-tests"
+    key_params = key_params_tmpl.format(key_length=key_length, email=email)
+
+    os.makedirs(home_dir, mode=0o700, exist_ok=False)
+    subprocess.run(
+        ["gpg", "--gen-key", "--batch"],
+        check=True, env={"GNUPGHOME": home_dir},
+        input=key_params,
+        text=True)
+    subprocess.run(
+        ["gpg", "--output", pub_key_file,
+         "--armor", "--export", email],
+        check=True, env={"GNUPGHOME": home_dir})
+
+    yield GPGConf(email=email, home_dir=home_dir,
+                  key_length=key_length, pub_key_file=pub_key_file, key_params=key_params)
+
+
+@pytest.fixture(name="registry_conf", scope='session')
+def registry_conf_fixture(shared_tmpdir, request):
+    lookaside_conf_tmpl = """
+    docker:
+      {local_registry}:
+        lookaside: file:///{sigstore_dir}
+    """
+    registry_port = testutil.get_free_port()
+    # We cannot use localhost as we need to access the registry from both
+    # the host system and the bootc-image-builder container.
+    default_ip = testutil.get_ip_from_default_route()
+    local_registry = f"{default_ip}:{registry_port}"
+    sigstore_dir = f"{shared_tmpdir}/sigstore"
+    registries_d_dir = f"{shared_tmpdir}/registries.d"
+    policy_file = f"{shared_tmpdir}/policy.json"
+    lookaside_conf_file = f"{registries_d_dir}/lookaside.yaml"
+    lookaside_conf = lookaside_conf_tmpl.format(
+        local_registry=local_registry,
+        sigstore_dir=sigstore_dir
+    )
+    os.makedirs(registries_d_dir, mode=0o700, exist_ok=True)
+    os.makedirs(sigstore_dir, mode=0o700, exist_ok=True)
+
+    registry_container_name = f"registry_{registry_port}"
+
+    registry_container_running = subprocess.run([
+        "podman", "ps", "-a", "--filter", f"name={registry_container_name}", "--format", "{{.Names}}"
+    ], check=True, capture_output=True, text=True).stdout.strip()
+    if registry_container_running != registry_container_name:
+        subprocess.run([
+            "podman", "run", "-d",
+            "-p", f"{registry_port}:5000",
+            "--restart", "always",
+            "--name", registry_container_name,
+            "registry:2"
+        ], check=True)
+
+    registry_container_state = subprocess.run([
+        "podman", "ps", "-a", "--filter", f"name={registry_container_name}", "--format", "{{.State}}"
+    ], check=True, capture_output=True, text=True).stdout.strip()
+
+    if registry_container_state in ("paused", "exited"):
+        subprocess.run([
+            "podman", "start", registry_container_name
+        ], check=True)
+
+    def remove_registry():
+        subprocess.run([
+            "podman", "rm", "--force", registry_container_name
+        ], check=True)
+
+    request.addfinalizer(remove_registry)
+    yield RegistryConf(
+        local_registry=local_registry,
+        sigstore_dir=sigstore_dir,
+        registries_d_dir=registries_d_dir,
+        policy_file=policy_file,
+        lookaside_conf=lookaside_conf,
+        lookaside_conf_file=lookaside_conf_file,
+    )
+
+
+def get_signed_container_ref(local_registry: str, container_ref: str):
+    container_ref_path = container_ref[container_ref.index('/'):]
+    return f"{local_registry}{container_ref_path}"
+
+
+def sign_container_image(gpg_conf: GPGConf, registry_conf: RegistryConf, container_ref):
+    registry_policy = {
+        "default": [{"type": "insecureAcceptAnything"}],
+        "transports": {
+            "docker": {
+                f"{registry_conf.local_registry}": [
+                    {
+                        "type": "signedBy",
+                        "keyType": "GPGKeys",
+                        "keyPath": f"{gpg_conf.pub_key_file}"
+                    }
+                ]
+            },
+            "docker-daemon": {
+                "": [{"type": "insecureAcceptAnything"}]
+            }
+        }
+    }
+    with open(registry_conf.policy_file, mode="w", encoding="utf-8") as f:
+        f.write(json.dumps(registry_policy))
+
+    with open(registry_conf.lookaside_conf_file, mode="w", encoding="utf-8") as f:
+        f.write(registry_conf.lookaside_conf)
+
+    signed_container_ref = get_signed_container_ref(registry_conf.local_registry, container_ref)
+    cmd = [
+        "skopeo", "--registries.d", registry_conf.registries_d_dir,
+        "copy", "--dest-tls-verify=false", "--remove-signatures",
+        "--sign-by", gpg_conf.email,
+        f"docker://{container_ref}",
+        f"docker://{signed_container_ref}",
+    ]
+    print(cmd)
+    subprocess.run(cmd, check=True, env={"GNUPGHOME": gpg_conf.home_dir})
+
+
 @pytest.fixture(name="image_type", scope="session")
-def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload):
+# pylint: disable=too-many-arguments
+def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload, gpg_conf, registry_conf):
     """
     Build an image inside the passed build_container and return an
     ImageBuildResult with the resulting image path and user/password
@@ -76,24 +232,27 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
             f"containers-storage:[overlay@/var/lib/containers/storage+/run/containers/storage]{cont_tag}"
         ])
 
-    with build_images(shared_tmpdir, build_container, request, force_aws_upload) as build_results:
+    with build_images(shared_tmpdir, build_container,
+                      request, force_aws_upload, gpg_conf, registry_conf) as build_results:
         yield build_results[0]
 
 
 @pytest.fixture(name="images", scope="session")
-def images_fixture(shared_tmpdir, build_container, request, force_aws_upload):
+# pylint: disable=too-many-arguments
+def images_fixture(shared_tmpdir, build_container, request, force_aws_upload, gpg_conf, registry_conf):
     """
     Build one or more images inside the passed build_container and return an
     ImageBuildResult array with the resulting image path and user/password
     """
-    with build_images(shared_tmpdir, build_container, request, force_aws_upload) as build_results:
+    with build_images(shared_tmpdir, build_container,
+                      request, force_aws_upload, gpg_conf, registry_conf) as build_results:
         yield build_results
 
 
 # XXX: refactor
-# pylint: disable=too-many-locals,too-many-branches,too-many-statements
+# pylint: disable=too-many-locals,too-many-branches,too-many-statements,too-many-arguments
 @contextmanager
-def build_images(shared_tmpdir, build_container, request, force_aws_upload):
+def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_conf, registry_conf):
     """
     Build all available image types if necessary and return the results for
     the image types that were requested via :request:.
@@ -113,11 +272,16 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
     password = "password"
     kargs = "systemd.journald.forward_to_console=1"
 
+    container_ref = tc.container_ref
+
+    if tc.sign:
+        container_ref = get_signed_container_ref(registry_conf.local_registry, tc.container_ref)
+
     # params can be long and the qmp socket (that has a limit of 100ish
     # AF_UNIX) is derived from the path
     # hash the container_ref+target_arch, but exclude the image_type so that the output path is shared between calls to
     # different image type combinations
-    output_path = shared_tmpdir / format(abs(hash(tc.container_ref + str(tc.target_arch))), "x")
+    output_path = shared_tmpdir / format(abs(hash(container_ref + str(tc.target_arch))), "x")
     output_path.mkdir(exist_ok=True)
 
     # make sure that the test store exists, because podman refuses to start if the source directory for a volume
@@ -164,7 +328,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             bib_output = bib_output_path.read_text(encoding="utf8")
             results.append(ImageBuildResult(
                 image_type, generated_img, tc.target_arch, tc.osinfo_template,
-                tc.container_ref, tc.rootfs, username, password,
+                container_ref, tc.rootfs, username, password,
                 ssh_keyfile_private_path, kargs, bib_output, journal_output))
 
     # generate new keyfile
@@ -257,15 +421,26 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
         if tc.local:
             cmd.extend(["-v", "/var/lib/containers/storage:/var/lib/containers/storage"])
 
+        if tc.sign:
+            sign_container_image(gpg_conf, registry_conf, tc.container_ref)
+            signed_image_args = [
+                "-v", f"{registry_conf.policy_file}:/etc/containers/policy.json",
+                "-v", f"{registry_conf.lookaside_conf_file}:/etc/containers/registries.d/bib-lookaside.yaml",
+                "-v", f"{registry_conf.sigstore_dir}:{registry_conf.sigstore_dir}",
+                "-v", f"{gpg_conf.pub_key_file}:{gpg_conf.pub_key_file}",
+            ]
+            cmd.extend(signed_image_args)
+
         cmd.extend([
             *creds_args,
             build_container,
-            tc.container_ref,
+            container_ref,
             *types_arg,
             *upload_args,
             *target_arch_args,
             *tc.bib_rootfs_args(),
             "--local" if tc.local else "--local=false",
+            "--tls-verify=false" if tc.sign else "--tls-verify=true"
         ])
 
         # print the build command for easier tracing
@@ -299,7 +474,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
     for image_type in image_types:
         results.append(ImageBuildResult(
             image_type, artifact[image_type], tc.target_arch, tc.osinfo_template,
-            tc.container_ref, tc.rootfs, username, password,
+            container_ref, tc.rootfs, username, password,
             ssh_keyfile_private_path, kargs, bib_output, journal_output, metadata))
     yield results
 
@@ -316,7 +491,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
                 img.unlink()
         else:
             print("does not exist")
-    subprocess.run(["podman", "rmi", tc.container_ref], check=False)
+    subprocess.run(["podman", "rmi", container_ref], check=False)
     return
 
 

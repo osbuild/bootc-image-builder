@@ -93,7 +93,7 @@ jobs:
         echo "deb $sources_url/ /" | sudo tee /etc/apt/sources.list.d/devel-kubic-libcontainers-unstable.list
         curl -fsSL $key_url | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/devel_kubic_libcontainers_unstable.gpg > /dev/null
         sudo apt update
-        sudo apt install -y podman
+        sudo apt install -y podman skopeo
     - name: Install python test deps
       run: |
         # make sure test deps are available for root
