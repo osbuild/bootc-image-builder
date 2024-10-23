@@ -104,12 +104,8 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
         ]
         # do a cross arch test too
         if platform.machine() == "x86_64":
-            # TODO: re-enable once
-            # https://github.com/osbuild/bootc-image-builder/issues/619
-            # is resolved
-            # test_cases.append(
-            #    TestCaseC9S(image="raw", target_arch="arm64"))
-            pass
+            test_cases.append(
+                TestCaseC9S(image="raw", target_arch="arm64"))
         elif platform.machine() == "arm64":
             # TODO: add arm64->x86_64 cross build test too
             pass
