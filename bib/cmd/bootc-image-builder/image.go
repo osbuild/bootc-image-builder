@@ -428,6 +428,20 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 			},
 			UEFIVendor: c.SourceInfo.UEFIVendor,
 		}
+	case arch.ARCH_S390X:
+		img.Platform = &platform.S390X{
+			Zipl: true,
+			BasePlatform: platform.BasePlatform{
+				ImageFormat: platform.FORMAT_ISO,
+			},
+		}
+	case arch.ARCH_PPC64LE:
+		img.Platform = &platform.PPC64LE{
+			BIOS: true,
+			BasePlatform: platform.BasePlatform{
+				ImageFormat: platform.FORMAT_ISO,
+			},
+		}
 	}
 
 	img.Filename = "install.iso"
