@@ -23,6 +23,12 @@ class TestCase:
     # rootfs to use (e.g. ext4), some containers like fedora do not
     # have a default rootfs. If unset the container default is used.
     rootfs: str = ""
+    # osinfo_template is a string template describing the OS detected by
+    # 'osinfo-detect'. It can contain '{arch}' that will be replaced with the
+    # actual container image arch
+    osinfo_template: str = ""
+    # Sign the container_ref and use the new signed image instead of the original one
+    sign: bool = False
 
     def bib_rootfs_args(self):
         if self.rootfs:
@@ -31,7 +37,7 @@ class TestCase:
 
     def __str__(self):
         return ",".join([
-            attr
+            f"{name}={attr}"
             for name, attr in inspect.getmembers(self)
             if not name.startswith("_") and not callable(attr) and attr
         ])
@@ -68,7 +74,11 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
     if what == "ami-boot":
         return [TestCaseCentos(image="ami"), TestCaseFedora(image="ami")]
     if what == "anaconda-iso":
-        return [TestCaseCentos(image="anaconda-iso"), TestCaseFedora(image="anaconda-iso")]
+        return [
+            klass(image="anaconda-iso", sign=sign, local=False)
+            for klass in (TestCaseCentos, TestCaseFedora)
+            for sign in [True, False]
+        ]
     if what == "qemu-boot":
         test_cases = [
             klass(image=img)

@@ -113,11 +113,20 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
     password = "password"
     kargs = "systemd.journald.forward_to_console=1"
 
+    default_ip = testutil.get_ip_from_default_route()
+
+    gpg_config = testutil.GPGConfig()
+    registry_config = testutil.RegistryConfig(local_registry=f"{default_ip}:5000")
+    container_ref = tc.container_ref
+
+    if tc.sign:
+        container_ref = testutil.sign_container_image(gpg_config, registry_config, container_ref)
+
     # params can be long and the qmp socket (that has a limit of 100ish
     # AF_UNIX) is derived from the path
     # hash the container_ref+target_arch, but exclude the image_type so that the output path is shared between calls to
     # different image type combinations
-    output_path = shared_tmpdir / format(abs(hash(tc.container_ref + str(tc.target_arch))), "x")
+    output_path = shared_tmpdir / format(abs(hash(container_ref + str(tc.target_arch))), "x")
     output_path.mkdir(exist_ok=True)
 
     # make sure that the test store exists, because podman refuses to start if the source directory for a volume
@@ -164,7 +173,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
             bib_output = bib_output_path.read_text(encoding="utf8")
             results.append(ImageBuildResult(
                 image_type, generated_img, tc.target_arch, tc.osinfo_template,
-                tc.container_ref, tc.rootfs, username, password,
+                container_ref, tc.rootfs, username, password,
                 ssh_keyfile_private_path, kargs, bib_output, journal_output))
 
     # generate new keyfile
@@ -257,15 +266,28 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
         if tc.local:
             cmd.extend(["-v", "/var/lib/containers/storage:/var/lib/containers/storage"])
 
+        if tc.sign:
+            lookaside_config = registry_config.lookaside_config
+            gpg_pub_key = gpg_config.pub_key
+            sigstore_dir = registry_config.sigstore_dir
+            signed_image_args = [
+                "-v", "/etc/containers/policy.json:/etc/containers/policy.json",
+                "-v", f"{gpg_pub_key}:{gpg_pub_key}",
+                "-v", f"{lookaside_config}:{lookaside_config}",
+                "-v", f"{sigstore_dir}:{sigstore_dir}",
+            ]
+            cmd.extend(signed_image_args)
+
         cmd.extend([
             *creds_args,
             build_container,
-            tc.container_ref,
+            container_ref,
             *types_arg,
             *upload_args,
             *target_arch_args,
             *tc.bib_rootfs_args(),
             "--local" if tc.local else "--local=false",
+            "--tls-verify=false" if tc.sign else "--tls-verify=true"
         ])
 
         # print the build command for easier tracing
@@ -299,7 +321,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
     for image_type in image_types:
         results.append(ImageBuildResult(
             image_type, artifact[image_type], tc.target_arch, tc.osinfo_template,
-            tc.container_ref, tc.rootfs, username, password,
+            container_ref, tc.rootfs, username, password,
             ssh_keyfile_private_path, kargs, bib_output, journal_output, metadata))
     yield results
 
@@ -316,7 +338,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload):
                 img.unlink()
         else:
             print("does not exist")
-    subprocess.run(["podman", "rmi", tc.container_ref], check=False)
+    subprocess.run(["podman", "rmi", container_ref], check=False)
     return
 
 
