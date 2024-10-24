@@ -41,14 +41,12 @@ class TestCase:
 class TestCaseFedora(TestCase):
     container_ref: str = "quay.io/fedora/fedora-bootc:40"
     rootfs: str = "btrfs"
-    osinfo_template: str = "Fedora Server 40 ({arch})"
 
 
 @dataclasses.dataclass
 class TestCaseFedora42(TestCase):
     container_ref: str = "quay.io/fedora/fedora-bootc:42"
     rootfs: str = "btrfs"
-    osinfo_template: str = "Fedora Server 42 ({arch})"
 
 
 @dataclasses.dataclass
@@ -56,7 +54,16 @@ class TestCaseCentos(TestCase):
     container_ref: str = os.getenv(
         "BIB_TEST_BOOTC_CONTAINER_TAG",
         "quay.io/centos-bootc/centos-bootc:stream9")
-    osinfo_template: str = "CentOS Stream 9 ({arch})"
+
+
+def test_testcase_nameing():
+    """
+    Ensure the testcase naming does not change without us knowing as those
+    are visible when running "pytest --collect-only"
+    """
+    tc = TestCaseFedora()
+    expected = "quay.io/fedora/fedora-bootc:40,btrfs"
+    assert f"{tc}" == expected, f"{tc} != {expected}"
 
 
 def gen_testcases(what):  # pylint: disable=too-many-return-statements
