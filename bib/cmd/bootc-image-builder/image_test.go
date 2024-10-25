@@ -11,6 +11,7 @@ import (
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/disk"
 	"github.com/osbuild/images/pkg/manifest"
+	"github.com/osbuild/images/pkg/platform"
 	"github.com/osbuild/images/pkg/runner"
 
 	bib "github.com/osbuild/bootc-image-builder/bib/cmd/bootc-image-builder"
@@ -422,4 +423,33 @@ func TestGenPartitionTableSetsRootfsForAllFilesystemsBtrfs(t *testing.T) {
 	// ESP is always vfat
 	mnt, _ = findMountableSizeableFor(pt, "/boot/efi")
 	assert.Equal(t, "vfat", mnt.GetFSType())
+}
+
+func TestPlatformForSmoke(t *testing.T) {
+	for _, tc := range []struct {
+		arch arch.Arch
+		uefi string
+	}{
+		{arch.ARCH_X86_64, "foodora"},
+		{arch.ARCH_AARCH64, "dubian"},
+		{arch.ARCH_S390X, ""},
+		{arch.ARCH_PPC64LE, ""},
+	} {
+		platf, err := bib.PlatformFor(tc.arch, platform.FORMAT_ISO, tc.uefi)
+		assert.NoError(t, err)
+		assert.Equal(t, tc.uefi, platf.GetUEFIVendor())
+		assert.Equal(t, platform.FORMAT_ISO, platf.GetImageFormat())
+	}
+}
+
+func TestPlatformForUnhappy(t *testing.T) {
+	_, err := bib.PlatformFor(arch.Arch(911), platform.FORMAT_ISO, "")
+	assert.ErrorContains(t, err, "unsupported architecture ")
+
+	_, err = bib.PlatformFor(arch.ARCH_AARCH64, platform.FORMAT_ISO, "")
+	assert.ErrorContains(t, err, "UEFI vendor must be set for aarch64 ISO")
+
+	// for non ISO it is okay to have uset uefi vendor
+	_, err = bib.PlatformFor(arch.ARCH_AARCH64, platform.FORMAT_QCOW2, "")
+	assert.NoError(t, err)
 }

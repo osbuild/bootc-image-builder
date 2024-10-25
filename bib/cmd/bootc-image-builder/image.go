@@ -230,6 +230,49 @@ func genPartitionTable(c *ManifestConfig, customizations *blueprint.Customizatio
 	return pt, nil
 }
 
+func platformFor(archi arch.Arch, imgFormat platform.ImageFormat, UEFIVendor string) (platform.Platform, error) {
+	// note that this is not setting `QCOW2Compat: "1.1"` because
+	// this is the default in qemu since 2013 (upstream commit
+	// 8ad1898c, version qemu 1.7)
+	switch archi {
+	case arch.ARCH_X86_64:
+		return &platform.X86{
+			BasePlatform: platform.BasePlatform{
+				ImageFormat: imgFormat,
+			},
+			BIOS:       true,
+			UEFIVendor: UEFIVendor,
+		}, nil
+	case arch.ARCH_AARCH64:
+		// aarch64 always uses UEFI, so let's enforce the vendor
+		if imgFormat == platform.FORMAT_ISO && UEFIVendor == "" {
+			return nil, fmt.Errorf("UEFI vendor must be set for aarch64 ISO")
+		}
+		return &platform.Aarch64{
+			BasePlatform: platform.BasePlatform{
+				ImageFormat: imgFormat,
+			},
+			UEFIVendor: UEFIVendor,
+		}, nil
+	case arch.ARCH_S390X:
+		return &platform.S390X{
+			Zipl: true,
+			BasePlatform: platform.BasePlatform{
+				ImageFormat: imgFormat,
+			},
+		}, nil
+	case arch.ARCH_PPC64LE:
+		return &platform.PPC64LE{
+			BIOS: true,
+			BasePlatform: platform.BasePlatform{
+				ImageFormat: imgFormat,
+			},
+		}, nil
+	default:
+		return nil, fmt.Errorf("unsupported architecture %v", archi)
+	}
+}
+
 func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, error) {
 	if c.Imgref == "" {
 		return nil, fmt.Errorf("pipeline: no base image defined")
@@ -260,34 +303,12 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		"console=ttyS0",
 	}
 
-	switch c.Architecture {
-	case arch.ARCH_X86_64:
-		img.Platform = &platform.X86{
-			BasePlatform: platform.BasePlatform{},
-			BIOS:         true,
-		}
-	case arch.ARCH_AARCH64:
-		img.Platform = &platform.Aarch64{
-			UEFIVendor: "fedora",
-			BasePlatform: platform.BasePlatform{
-				QCOW2Compat: "1.1",
-			},
-		}
-	case arch.ARCH_S390X:
-		img.Platform = &platform.S390X{
-			BasePlatform: platform.BasePlatform{
-				QCOW2Compat: "1.1",
-			},
-			Zipl: true,
-		}
-	case arch.ARCH_PPC64LE:
-		img.Platform = &platform.PPC64LE{
-			BasePlatform: platform.BasePlatform{
-				QCOW2Compat: "1.1",
-			},
-			BIOS: true,
-		}
+	// not setting uefi vendor here as it is irrelevant for disk-images
+	platform, err := platformFor(c.Architecture, platform.FORMAT_UNSET, "")
+	if err != nil {
+		return nil, err
 	}
+	img.Platform = platform
 
 	if kopts := customizations.GetKernel(); kopts != nil && kopts.Append != "" {
 		img.KernelOptionsAppend = append(img.KernelOptionsAppend, kopts.Append)
@@ -408,44 +429,11 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.UseRHELLoraxTemplates =
 		c.SourceInfo.OSRelease.ID != "fedora" || c.SourceInfo.OSRelease.VersionID == "eln"
 
-	switch c.Architecture {
-	case arch.ARCH_X86_64:
-		img.Platform = &platform.X86{
-			BasePlatform: platform.BasePlatform{
-				ImageFormat: platform.FORMAT_ISO,
-			},
-			BIOS:       true,
-			UEFIVendor: c.SourceInfo.UEFIVendor,
-		}
-	case arch.ARCH_AARCH64:
-		// aarch64 always uses UEFI, so let's enforce the vendor
-		if c.SourceInfo.UEFIVendor == "" {
-			return nil, fmt.Errorf("UEFI vendor must be set for aarch64 ISO")
-		}
-		img.Platform = &platform.Aarch64{
-			BasePlatform: platform.BasePlatform{
-				ImageFormat: platform.FORMAT_ISO,
-			},
-			UEFIVendor: c.SourceInfo.UEFIVendor,
-		}
-	case arch.ARCH_S390X:
-		img.Platform = &platform.S390X{
-			Zipl: true,
-			BasePlatform: platform.BasePlatform{
-				ImageFormat: platform.FORMAT_ISO,
-			},
-		}
-	case arch.ARCH_PPC64LE:
-		img.Platform = &platform.PPC64LE{
-			BIOS: true,
-			BasePlatform: platform.BasePlatform{
-				ImageFormat: platform.FORMAT_ISO,
-			},
-		}
-	default:
-		return nil, fmt.Errorf("unsupported architecture %v", archi)
+	platform, err := platformFor(c.Architecture, platform.FORMAT_ISO, c.SourceInfo.UEFIVendor)
+	if err != nil {
+		return nil, err
 	}
-
+	img.Platform = platform
 	img.Filename = "install.iso"
 
 	mf := manifest.New()
