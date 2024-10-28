@@ -54,7 +54,7 @@ class TestCaseFedora42(TestCase):
 
 
 @dataclasses.dataclass
-class TestCaseCentos(TestCase):
+class TestCaseC9S(TestCase):
     container_ref: str = os.getenv(
         "BIB_TEST_BOOTC_CONTAINER_TAG",
         "quay.io/centos-bootc/centos-bootc:stream9")
@@ -70,27 +70,36 @@ def test_testcase_nameing():
     assert f"{tc}" == expected, f"{tc} != {expected}"
 
 
+@dataclasses.dataclass
+class TestCaseC10S(TestCase):
+    container_ref: str = os.getenv(
+        "BIB_TEST_BOOTC_CONTAINER_TAG",
+        "quay.io/centos-bootc/centos-bootc:stream10")
+    osinfo_template: str = "CentOS Stream 10 ({arch})"
+
+
 def gen_testcases(what):  # pylint: disable=too-many-return-statements
     if what == "manifest":
-        return [TestCaseCentos(), TestCaseFedora()]
+        return [TestCaseC9S(), TestCaseFedora(), TestCaseC10S()]
     if what == "default-rootfs":
         # Fedora doesn't have a default rootfs
-        return [TestCaseCentos()]
+        return [TestCaseC9S()]
     if what == "ami-boot":
-        return [TestCaseCentos(image="ami"), TestCaseFedora(image="ami")]
+        return [TestCaseC9S(image="ami"), TestCaseFedora(image="ami")]
     if what == "anaconda-iso":
         return [
             TestCaseFedora(image="anaconda-iso", sign=True),
-            TestCaseCentos(image="anaconda-iso"),
+            TestCaseC9S(image="anaconda-iso"),
+            TestCaseC10S(image="anaconda-iso"),
         ]
     if what == "qemu-boot":
         test_cases = [
             # test default partitioning
             TestCaseFedora(image="qcow2"),
             # test with custom disk configs
-            TestCaseCentos(image="qcow2", disk_config="swap"),
+            TestCaseC9S(image="qcow2", disk_config="swap"),
             TestCaseFedora(image="raw", disk_config="btrfs"),
-            TestCaseCentos(image="raw", disk_config="lvm"),
+            TestCaseC9S(image="raw", disk_config="lvm"),
         ]
         # do a cross arch test too
         if platform.machine() == "x86_64":
@@ -98,7 +107,7 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
             # https://github.com/osbuild/bootc-image-builder/issues/619
             # is resolved
             # test_cases.append(
-            #    TestCaseCentos(image="raw", target_arch="arm64"))
+            #    TestCaseC9S(image="raw", target_arch="arm64"))
             pass
         elif platform.machine() == "arm64":
             # TODO: add arm64->x86_64 cross build test too
@@ -107,21 +116,21 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
     if what == "all":
         return [
             klass(image=img)
-            for klass in (TestCaseCentos, TestCaseFedora)
+            for klass in (TestCaseC9S, TestCaseFedora)
             for img in CLOUD_BOOT_IMAGE_TYPES + DISK_IMAGE_TYPES + ["anaconda-iso"]
         ]
     if what == "multidisk":
         # single test that specifies all image types
         image = "+".join(DISK_IMAGE_TYPES)
         return [
-            TestCaseCentos(image=image),
+            TestCaseC9S(image=image),
             TestCaseFedora(image=image),
         ]
     # Smoke test that all supported --target-arch architecture can
     # create a manifest
     if what == "target-arch-smoke":
         return [
-            TestCaseCentos(target_arch="arm64"),
+            TestCaseC9S(target_arch="arm64"),
             # TODO: merge with TestCaseFedora once the arches are build there
             TestCaseFedora42(target_arch="ppc64le"),
             TestCaseFedora42(target_arch="s390x"),
