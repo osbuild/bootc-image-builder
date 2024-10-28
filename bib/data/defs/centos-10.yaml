@@ -24,7 +24,6 @@ anaconda-iso:
     - fcoe-utils
     - ftp
     - gdb-gdbserver
-    - gdisk
     - glibc-all-langpacks
     - gnome-kiosk
     - google-noto-sans-cjk-ttc-fonts
@@ -46,8 +45,6 @@ anaconda-iso:
     - less
     - libblockdev-lvm-dbus
     - libibverbs
-    - libreport-plugin-bugzilla
-    - libreport-plugin-reportuploader
     - librsvg2
     - linux-firmware
     - lldpad
