@@ -33,6 +33,10 @@ func TestDNFJsonWorks(t *testing.T) {
 
 	cnt, err := container.New(dnfTestingImageCentos)
 	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, cnt.Stop())
+	}()
+
 	err = cnt.InitDNF()
 	require.NoError(t, err)
 
@@ -116,6 +120,10 @@ func TestDNFJsonWorkWithSubscribedContent(t *testing.T) {
 
 	cnt, err := container.New(dnfTestingImageRHEL)
 	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, cnt.Stop())
+	}()
+
 	err = cnt.InitDNF()
 	require.NoError(t, err)
 
@@ -123,6 +131,7 @@ func TestDNFJsonWorkWithSubscribedContent(t *testing.T) {
 	require.NoError(t, err)
 	solver, err := cnt.NewContainerSolver(cacheRoot, arch.ARCH_X86_64, sourceInfo)
 	require.NoError(t, err)
+
 	res, err := solver.Depsolve([]rpmmd.PackageSet{
 		{
 			Include: []string{"coreutils"},
