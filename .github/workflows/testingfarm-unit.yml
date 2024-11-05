@@ -34,7 +34,7 @@ jobs:
       uses: sclorg/testing-farm-as-github-action@v3
       with:
         compose: Fedora-40
-        tmt_plan_filter: "unit-go.fmf"
+        tmt_plan_regex: "/plans/unit-go"
         api_key: ${{ secrets.TF_API_KEY }}
         git_url: ${{ github.event.pull_request.head.repo.clone_url }}
         git_ref: ${{ github.event.pull_request.head.ref }}
