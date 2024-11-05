@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,17 +19,29 @@ import (
 )
 
 const (
-	dnfTestingImageRHEL   = "registry.access.redhat.com/ubi9:latest"
-	dnfTestingImageCentos = "quay.io/centos/centos:stream9"
+	dnfTestingImageRHEL         = "registry.access.redhat.com/ubi9:latest"
+	dnfTestingImageCentos       = "quay.io/centos/centos:stream9"
+	dnfTestingImageFedoraLatest = "registry.fedoraproject.org/fedora:latest"
 )
 
-func TestDNFJsonWorks(t *testing.T) {
+func ensureCanRunDNFJsonTests(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("skipping test; not running as root")
 	}
 	if _, err := os.Stat("/usr/libexec/osbuild-depsolve-dnf"); err != nil {
 		t.Skip("cannot find /usr/libexec/osbuild-depsolve-dnf")
 	}
+}
+
+func ensureAMD64(t *testing.T) {
+	if runtime.GOARCH != "amd64" {
+		t.Skip("skipping test; only runs on x86_64")
+	}
+}
+
+func TestDNFJsonWorks(t *testing.T) {
+	ensureCanRunDNFJsonTests(t)
+
 	cacheRoot := t.TempDir()
 
 	cnt, err := container.New(dnfTestingImageCentos)
@@ -86,9 +99,7 @@ func TestDNFInitGivesAccessToSubscribedContent(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("skipping test; not running as root")
 	}
-	if runtime.GOARCH != "amd64" {
-		t.Skip("skipping test; only runs on x86_64")
-	}
+	ensureAMD64(t)
 
 	restore := subscribeMachine(t)
 	defer restore()
@@ -104,15 +115,8 @@ func TestDNFInitGivesAccessToSubscribedContent(t *testing.T) {
 }
 
 func TestDNFJsonWorkWithSubscribedContent(t *testing.T) {
-	if os.Geteuid() != 0 {
-		t.Skip("skipping test; not running as root")
-	}
-	if runtime.GOARCH != "amd64" {
-		t.Skip("skipping test; only runs on x86_64")
-	}
-	if _, err := os.Stat("/usr/libexec/osbuild-depsolve-dnf"); err != nil {
-		t.Skip("cannot find /usr/libexec/osbuild-depsolve-dnf")
-	}
+	ensureCanRunDNFJsonTests(t)
+	ensureAMD64(t)
 	cacheRoot := t.TempDir()
 
 	restore := subscribeMachine(t)
@@ -139,4 +143,56 @@ func TestDNFJsonWorkWithSubscribedContent(t *testing.T) {
 	}, 0)
 	require.NoError(t, err)
 	assert.True(t, len(res.Packages) > 0)
+}
+
+func runCmd(t *testing.T, args ...string) {
+	cmd := exec.Command(args[0], args[1:]...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	require.NoError(t, err)
+}
+
+func TestDNFJsonWorkWithSubscribedContentNestedContainers(t *testing.T) {
+	ensureCanRunDNFJsonTests(t)
+	ensureAMD64(t)
+	tmpdir := t.TempDir()
+
+	restore := subscribeMachine(t)
+	defer restore()
+
+	// build a test binary from the existing
+	// TestDNFJsonWorkWithSubscribedContent that is then
+	// transfered and run *inside* the centos container
+	testBinary := filepath.Join(tmpdir, "dnftest")
+	runCmd(t, "go", "test",
+		"-c",
+		"-o", testBinary,
+		"-run", "^TestDNFJsonWorkWithSubscribedContent$")
+
+	output, err := exec.Command(
+		"podman", "run", "--rm",
+		"--privileged",
+		"--init",
+		"--detach",
+		"--entrypoint", "sleep",
+		// use a fedora container as intermediate so that we
+		// always have the latest glibc (we cannot fully
+		// static link the test)
+		dnfTestingImageFedoraLatest,
+		"infinity",
+	).Output()
+	require.NoError(t, err, string(output))
+	cntID := strings.TrimSpace(string(output))
+	defer func() {
+		err := exec.Command("podman", "stop", cntID).Run()
+		assert.NoError(t, err)
+	}()
+
+	runCmd(t, "podman", "cp", testBinary, cntID+":/dnftest")
+	// we need these test dependencies inside the container
+	runCmd(t, "podman", "exec", cntID, "dnf", "install", "-y",
+		"gpgme", "podman")
+	// run the test
+	runCmd(t, "podman", "exec", cntID, "/dnftest")
 }
