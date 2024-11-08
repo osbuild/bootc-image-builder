@@ -79,7 +79,7 @@ jobs:
     - name: Install test dependencies
       run: |
         sudo apt update
-        sudo apt install -y python3-pytest python3-paramiko python3-boto3 flake8 qemu-system-x86 qemu-efi-aarch64 qemu-system-arm qemu-user-static pylint libosinfo-bin
+        sudo apt install -y python3-pytest python3-paramiko python3-boto3 flake8 pylint libosinfo-bin
     - name: Diskspace (before)
       run: |
         df -h
@@ -90,6 +90,18 @@ jobs:
         sudo rm -rf /var/lib/containers/storage
         sudo mkdir -p /etc/containers
         echo -e "[storage]\ndriver = \"overlay\"\nrunroot = \"/run/containers/storage\"\ngraphroot = \"/var/lib/containers/storage\"" | sudo tee /etc/containers/storage.conf
+    - name: Updating qemu-user
+      run: |
+        # get qemu-9 with openat2 patches via qemu-user-static, that
+        # has no dependencies so just install.
+        # XXX: remove once ubuntu ships qemu-9.1
+        sudo apt install -y software-properties-common
+        sudo apt-add-repository -y ppa:mvo/qemu
+        sudo apt install --no-install-recommends -y qemu-user-static
+        # Now remove ppa again, the metadata confuses apt. Then install
+        # qemu-system-* from the regular repo again.
+        sudo apt-add-repository --remove -y ppa:mvo/qemu
+        sudo apt install -y qemu-system-arm qemu-system-x86 qemu-efi-aarch64
     - name: Install python test deps
       run: |
         # make sure test deps are available for root
