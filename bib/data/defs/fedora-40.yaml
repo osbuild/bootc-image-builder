@@ -75,6 +75,7 @@ anaconda-iso:
     - perl-interpreter
     - pigz
     - plymouth
+    - python3-pam
     - python3-pyatspi
     - rdma-core
     - realtek-firmware
