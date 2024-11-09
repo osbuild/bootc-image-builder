@@ -31,7 +31,7 @@ func (f *FakeAwsUploader) UploadFromReader(r io.Reader, bucketName, keyName stri
 	return &s3manager.UploadOutput{Location: "some-location"}, nil
 }
 
-func (f *FakeAwsUploader) Register(name, bucket, key string, shareWith []string, rpmArch string, bootMode *string) (*string, *string, error) {
+func (f *FakeAwsUploader) Register(name, bucket, key string, shareWith []string, rpmArch string, bootMode, importRole *string) (*string, *string, error) {
 	f.registerCalled++
 
 	s1 := "ret1"
