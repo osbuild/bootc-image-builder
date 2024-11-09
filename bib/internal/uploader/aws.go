@@ -19,7 +19,7 @@ var osStdout io.Writer = os.Stdout
 
 type AwsUploader interface {
 	UploadFromReader(r io.Reader, bucketName, keyName string) (*s3manager.UploadOutput, error)
-	Register(name, bucket, key string, shareWith []string, rpmArch string, bootMode *string) (*string, *string, error)
+	Register(name, bucket, key string, shareWith []string, rpmArch string, bootMode, importRole *string) (*string, *string, error)
 }
 
 func doUpload(a AwsUploader, file *os.File, bucketName, keyName string, pbar *pb.ProgressBar) (*s3manager.UploadOutput, error) {
@@ -63,7 +63,7 @@ func UploadAndRegister(a AwsUploader, filename, bucketName, imageName, targetArc
 	}
 	bootMode := ec2.BootModeValuesUefiPreferred
 	fmt.Fprintf(osStdout, "Registering AMI %s\n", imageName)
-	ami, snapshot, err := a.Register(imageName, bucketName, keyName, nil, targetArch, &bootMode)
+	ami, snapshot, err := a.Register(imageName, bucketName, keyName, nil, targetArch, &bootMode, nil)
 	fmt.Fprintf(osStdout, "Deleted S3 object %s:%s\n", bucketName, keyName)
 	fmt.Fprintf(osStdout, "AMI registered: %s\nSnapshot ID: %s\n", aws.StringValue(ami), aws.StringValue(snapshot))
 	if err != nil {
