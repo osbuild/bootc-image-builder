@@ -373,7 +373,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	if c.Config != nil {
 		customizations = c.Config.Customizations
 	}
-
+	img.FIPS = customizations.GetFIPS()
 	img.Kickstart, err = kickstart.New(customizations)
 	if err != nil {
 		return nil, err
