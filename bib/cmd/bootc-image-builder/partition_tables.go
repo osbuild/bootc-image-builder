@@ -84,7 +84,7 @@ var rootPartition = disk.Partition{
 var partitionTables = distro.BasePartitionTableMap{
 	arch.ARCH_X86_64.String(): disk.PartitionTable{
 		UUID: diskUuidOfUnknownOrigin,
-		Type: "gpt",
+		Type: disk.PT_GPT,
 		Partitions: []disk.Partition{
 			{
 				Size:     1 * MebiByte,
@@ -99,7 +99,7 @@ var partitionTables = distro.BasePartitionTableMap{
 	},
 	arch.ARCH_AARCH64.String(): disk.PartitionTable{
 		UUID: diskUuidOfUnknownOrigin,
-		Type: "gpt",
+		Type: disk.PT_GPT,
 		Partitions: []disk.Partition{
 			efiPartition,
 			bootPartition,
@@ -108,7 +108,7 @@ var partitionTables = distro.BasePartitionTableMap{
 	},
 	arch.ARCH_S390X.String(): disk.PartitionTable{
 		UUID: diskUuidOfUnknownOrigin,
-		Type: "gpt",
+		Type: disk.PT_GPT,
 		Partitions: []disk.Partition{
 			bootPartition,
 			rootPartition,
@@ -116,7 +116,7 @@ var partitionTables = distro.BasePartitionTableMap{
 	},
 	arch.ARCH_PPC64LE.String(): disk.PartitionTable{
 		UUID: diskUuidOfUnknownOrigin,
-		Type: "gpt",
+		Type: disk.PT_GPT,
 		Partitions: []disk.Partition{
 			{
 				Size:     4 * MebiByte,
