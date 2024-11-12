@@ -518,3 +518,35 @@ def test_manifest_fs_customizations_xarch(tmp_path, build_container, fscustomiza
 
     # cross-arch builds only support ext4 (for now)
     assert_fs_customizations(fscustomizations, "ext4", output)
+
+
+def find_grub2_iso_stage_from(manifest_str):
+    manifest = json.loads(manifest_str)
+    for pipl in manifest["pipelines"]:
+        for st in pipl["stages"]:
+            if st["type"] == "org.osbuild.grub2.iso":
+                return st
+    raise ValueError(f"cannot find grub2.iso stage in manifest:\n{manifest_str}")
+
+
+def test_manifest_fips_customization(tmp_path, build_container):
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+
+    config = {
+        "customizations": {
+            "fips": True,
+        },
+    }
+    config_path = tmp_path / "config.json"
+    with config_path.open("w") as config_file:
+        json.dump(config, config_file)
+    output = subprocess.check_output([
+        *testutil.podman_run_common,
+        "-v", f"{config_path}:/config.json:ro",
+        build_container,
+        # XXX: test for qcow2 too
+        "--type=anaconda-iso",
+        "manifest", f"{container_ref}",
+    ], text=True)
+    st = find_grub2_iso_stage_from(output)
+    assert "fips=1" in st["options"]["kernel"]["opts"]
