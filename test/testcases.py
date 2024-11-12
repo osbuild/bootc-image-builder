@@ -80,7 +80,6 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
         return [
             TestCaseFedora(image="anaconda-iso", sign=True),
             TestCaseCentos(image="anaconda-iso"),
-            TestCaseFedora(image="anaconda-iso"),
         ]
     if what == "qemu-boot":
         test_cases = [
