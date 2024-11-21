@@ -25,8 +25,8 @@ class TestCase:
     rootfs: str = ""
     # Sign the container_ref and use the new signed image instead of the original one
     sign: bool = False
-    # use special partition_mode like "lvm"
-    partition_mode: str = ""
+    # use special disk_config like "lvm"
+    disk_config: str = ""
 
     def bib_rootfs_args(self):
         if self.rootfs:
@@ -92,9 +92,9 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
         # and custom with raw (this is arbitrary, we could do it the
         # other way around too
         test_cases.append(
-            TestCaseCentos(image="raw", partition_mode="lvm"))
+            TestCaseCentos(image="raw", disk_config="lvm"))
         test_cases.append(
-            TestCaseFedora(image="raw", partition_mode="btrfs"))
+            TestCaseFedora(image="raw", disk_config="btrfs"))
         # do a cross arch test too
         if platform.machine() == "x86_64":
             # TODO: re-enable once
