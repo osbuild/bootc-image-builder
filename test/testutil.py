@@ -109,18 +109,21 @@ def deregister_ami(ami_id):
         print(f"Error {err_code}: {err_msg}")
 
 
-def create_filesystem_customizations(rootfs: str):
-    if rootfs == "btrfs":
+def maybe_create_filesystem_customizations(cfg, tc):
+    # disk_config and filesystem_customization are mutually exclusive
+    if tc.disk_config:
+        return
+    if tc.rootfs == "btrfs":
         # only minimal customizations are supported for btrfs currently
-        return [
+        cfg["customizations"]["filesystem"] = [
             {
                 "mountpoint": "/",
                 "minsize": "12 GiB"
             },
         ]
-
+        return
     # add some custom mountpoints
-    return [
+    cfg["customizations"]["filesystem"] = [
         {
             "mountpoint": "/",
             "minsize": "12 GiB"
@@ -138,6 +141,46 @@ def create_filesystem_customizations(rootfs: str):
             "minsize": "2 GiB"
         },
     ]
+
+
+def maybe_create_disk_customizations(cfg, tc):
+    if not tc.disk_config:
+        return
+    if tc.disk_config == "lvm":
+        cfg["customizations"]["disk"] = {
+            "partitions": [
+                {
+                    "type": "lvm",
+                    # XXX: why is this minsize also needed? should we derrive
+                    # it from the LVs ?
+                    "minsize": "10 GiB",
+                    "logical_volumes": [
+                        {
+                            "minsize": "10 GiB",
+                            "fs_type": "xfs",
+                            "mountpoint": "/",
+                        }
+                    ]
+                }
+            ]
+        }
+    elif tc.disk_config == "btrfs":
+        cfg["customizations"]["disk"] = {
+            "partitions": [
+                {
+                    "type": "btrfs",
+                    "minsize": "10 GiB",
+                    "subvolumes": [
+                        {
+                            "name": "varlog",
+                            "mountpoint": "/var/log",
+                        }
+                    ]
+                }
+            ]
+        }
+    else:
+        raise ValueError(f"unsupported disk_config {tc.disk_config}")
 
 
 # podman_run_common has the common prefix for the podman run invocations

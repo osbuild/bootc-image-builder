@@ -572,8 +572,10 @@ def test_manifest_disk_customization_lvm(tmp_path, build_container):
                 "partitions": [
                     {
                         "type": "lvm",
+                        "minsize": "10 GiB",
                         "logical_volumes": [
                             {
+                                "minsize": "10 GiB",
                                 "fs_type": "ext4",
                                 "mountpoint": "/",
                             }
@@ -606,6 +608,7 @@ def test_manifest_disk_customization_btrfs(tmp_path, build_container):
                 "partitions": [
                     {
                         "type": "btrfs",
+                        "minsize": "10 GiB",
                         "subvolumes": [
                             {
                                 "name": "root",

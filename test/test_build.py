@@ -38,6 +38,7 @@ class ImageBuildResult(NamedTuple):
     img_arch: str
     container_ref: str
     rootfs: str
+    disk_config: str
     username: str
     password: str
     ssh_keyfile_private_path: str
@@ -203,7 +204,6 @@ def sign_container_image(gpg_conf: GPGConf, registry_conf: RegistryConf, contain
         f"docker://{container_ref}",
         f"docker://{signed_container_ref}",
     ]
-    print(cmd)
     subprocess.run(cmd, check=True, env={"GNUPGHOME": gpg_conf.home_dir})
 
 
@@ -280,7 +280,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
     # AF_UNIX) is derived from the path
     # hash the container_ref+target_arch, but exclude the image_type so that the output path is shared between calls to
     # different image type combinations
-    output_path = shared_tmpdir / format(abs(hash(container_ref + str(tc.target_arch))), "x")
+    output_path = shared_tmpdir / format(abs(hash(container_ref + str(tc.disk_config) + str(tc.target_arch))), "x")
     output_path.mkdir(exist_ok=True)
 
     # make sure that the test store exists, because podman refuses to start if the source directory for a volume
@@ -327,7 +327,8 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
             bib_output = bib_output_path.read_text(encoding="utf8")
             results.append(ImageBuildResult(
                 image_type, generated_img, tc.target_arch,
-                container_ref, tc.rootfs, username, password,
+                container_ref, tc.rootfs, tc.disk_config,
+                username, password,
                 ssh_keyfile_private_path, kargs, bib_output, journal_output))
 
     # generate new keyfile
@@ -368,12 +369,14 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
                     "groups": ["wheel"],
                 },
             ],
-            "filesystem": testutil.create_filesystem_customizations(tc.rootfs),
             "kernel": {
                 "append": kargs,
             },
         },
     }
+    testutil.maybe_create_filesystem_customizations(cfg, tc)
+    testutil.maybe_create_disk_customizations(cfg, tc)
+    print(f"config for {output_path} {tc=}: {cfg=}")
 
     config_json_path = output_path / "config.json"
     config_json_path.write_text(json.dumps(cfg), encoding="utf-8")
@@ -473,7 +476,8 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
     for image_type in image_types:
         results.append(ImageBuildResult(
             image_type, artifact[image_type], tc.target_arch,
-            container_ref, tc.rootfs, username, password,
+            container_ref, tc.rootfs, tc.disk_config,
+            username, password,
             ssh_keyfile_private_path, kargs, bib_output, journal_output, metadata))
     yield results
 
@@ -532,19 +536,10 @@ def test_image_boots(image_type):
         # XXX: read the fully yaml instead?
         assert f"image: {image_type.container_ref}" in output
 
-        # check the minsize specified in the build configuration for each mountpoint against the sizes in the image
-        # TODO: replace 'df' call with 'parted --json' and find the partition size for each mountpoint
-        exit_status, output = test_vm.run("df --output=target,size", user="root",
-                                          keyfile=image_type.ssh_keyfile_private_path)
-        assert exit_status == 0
-        # parse the output of 'df' to a mountpoint -> size dict for convenience
-        mountpoint_sizes = {}
-        for line in output.splitlines()[1:]:
-            fields = line.split()
-            # Note that df output is in 1k blocks, not bytes
-            mountpoint_sizes[fields[0]] = int(fields[1]) * 2 ** 10  # in bytes
-
-        assert_fs_customizations(image_type, mountpoint_sizes)
+        if image_type.disk_config:
+            assert_disk_customizations(image_type, test_vm)
+        else:
+            assert_fs_customizations(image_type, test_vm)
 
 
 @pytest.mark.parametrize("image_type", gen_testcases("ami-boot"), indirect=["image_type"])
@@ -663,17 +658,52 @@ def test_multi_build_request(images):
     assert artifacts == expected
 
 
-def assert_fs_customizations(image_type, mountpoint_sizes):
+def assert_fs_customizations(image_type, test_vm):
     """
     Asserts that each mountpoint that appears in the build configuration also appears in mountpoint_sizes.
 
     TODO: assert that the size of each filesystem (or partition) also matches the expected size based on the
     customization.
     """
-    fs_customizations = testutil.create_filesystem_customizations(image_type.rootfs)
-    for fs in fs_customizations:
+    # check the minsize specified in the build configuration for each mountpoint against the sizes in the image
+    # TODO: replace 'df' call with 'parted --json' and find the partition size for each mountpoint
+    exit_status, output = test_vm.run("df --output=target,size", user="root",
+                                      keyfile=image_type.ssh_keyfile_private_path)
+    assert exit_status == 0
+    # parse the output of 'df' to a mountpoint -> size dict for convenience
+    mountpoint_sizes = {}
+    for line in output.splitlines()[1:]:
+        fields = line.split()
+        # Note that df output is in 1k blocks, not bytes
+        mountpoint_sizes[fields[0]] = int(fields[1]) * 2 ** 10  # in bytes
+
+    cfg = {
+        "customizations": {},
+    }
+    testutil.maybe_create_filesystem_customizations(cfg, image_type)
+    for fs in cfg["customizations"]["filesystem"]:
         mountpoint = fs["mountpoint"]
         if mountpoint == "/":
             # / is actually /sysroot
             mountpoint = "/sysroot"
         assert mountpoint in mountpoint_sizes
+
+
+def assert_disk_customizations(image_type, test_vm):
+    exit_status, output = test_vm.run("findmnt --json", user="root",
+                                      keyfile=image_type.ssh_keyfile_private_path)
+    assert exit_status == 0
+    findmnt = json.loads(output)
+    if dc := image_type.disk_config:
+        if dc == "lvm":
+            mnts = [mnt for mnt in findmnt["filesystems"][0]["children"]
+                    if mnt["target"] == "/sysroot"]
+            assert len(mnts) == 1
+            assert "/dev/mapper/vg00-rootlv" == mnts[0]["source"]
+        elif dc == "btrfs":
+            mnts = [mnt for mnt in findmnt["filesystems"][0]["children"]
+                    if mnt["target"] == "/sysroot"]
+            assert len(mnts) == 1
+            assert "btrfs" == mnts[0]["fstype"]
+            # ensure sysroot comes from the "root" subvolume
+            assert mnts[0]["source"].endswith("[/root]")
