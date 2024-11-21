@@ -25,6 +25,8 @@ class TestCase:
     rootfs: str = ""
     # Sign the container_ref and use the new signed image instead of the original one
     sign: bool = False
+    # use special partition_mode like "lvm"
+    partition_mode: str = ""
 
     def bib_rootfs_args(self):
         if self.rootfs:
@@ -82,11 +84,17 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
             TestCaseCentos(image="anaconda-iso"),
         ]
     if what == "qemu-boot":
+        # test partition defaults with qcow2
         test_cases = [
-            klass(image=img)
+            klass(image="qcow2")
             for klass in (TestCaseCentos, TestCaseFedora)
-            for img in ("raw", "qcow2")
         ]
+        # and custom with raw (this is arbitrary, we could do it the
+        # other way around too
+        test_cases.append(
+            TestCaseCentos(image="raw", partition_mode="lvm"))
+        test_cases.append(
+            TestCaseFedora(image="raw", partition_mode="btrfs"))
         # do a cross arch test too
         if platform.machine() == "x86_64":
             # TODO: re-enable once

@@ -202,6 +202,44 @@ func setFSTypes(pt *disk.PartitionTable, rootfs string) error {
 }
 
 func genPartitionTable(c *ManifestConfig, customizations *blueprint.Customizations, rng *rand.Rand) (*disk.PartitionTable, error) {
+	fsCust := customizations.GetFilesystems()
+	diskCust, err := customizations.GetPartitioning()
+	if err != nil {
+		return nil, fmt.Errorf("error reading disk customizations: %w", err)
+	}
+	switch {
+	// XXX: move into images library
+	case fsCust != nil && diskCust != nil:
+		return nil, fmt.Errorf("cannot combine disk and filesystem customizations")
+	case diskCust != nil:
+		return genPartitionTableDiskCust(c, diskCust, rng)
+	default:
+		return genPartitionTableFsCust(c, fsCust, rng)
+	}
+}
+
+func genPartitionTableDiskCust(c *ManifestConfig, diskCust *blueprint.DiskCustomization, rng *rand.Rand) (*disk.PartitionTable, error) {
+	diskCust.MinSize = max(diskCust.MinSize, c.RootfsMinsize)
+
+	basept, ok := partitionTables[c.Architecture.String()]
+	if !ok {
+		return nil, fmt.Errorf("pipelines: no partition tables defined for %s", c.Architecture)
+	}
+	defaultFSType, err := disk.NewFSType(c.RootFSType)
+	if err != nil {
+		return nil, err
+	}
+
+	partOptions := &disk.CustomPartitionTableOptions{
+		PartitionTableType: basept.Type,
+		// XXX: not setting/defaults will fail to boot with btrfs/lvm
+		BootMode:      platform.BOOT_HYBRID,
+		DefaultFSType: defaultFSType,
+	}
+	return disk.NewCustomPartitionTable(diskCust, partOptions, rng)
+}
+
+func genPartitionTableFsCust(c *ManifestConfig, fsCust []blueprint.FilesystemCustomization, rng *rand.Rand) (*disk.PartitionTable, error) {
 	basept, ok := partitionTables[c.Architecture.String()]
 	if !ok {
 		return nil, fmt.Errorf("pipelines: no partition tables defined for %s", c.Architecture)
@@ -211,10 +249,10 @@ func genPartitionTable(c *ManifestConfig, customizations *blueprint.Customizatio
 	if c.RootFSType == "btrfs" {
 		partitioningMode = disk.BtrfsPartitioningMode
 	}
-	if err := checkFilesystemCustomizations(customizations.GetFilesystems(), partitioningMode); err != nil {
+	if err := checkFilesystemCustomizations(fsCust, partitioningMode); err != nil {
 		return nil, err
 	}
-	fsCustomizations := updateFilesystemSizes(customizations.GetFilesystems(), c.RootfsMinsize)
+	fsCustomizations := updateFilesystemSizes(fsCust, c.RootfsMinsize)
 
 	pt, err := disk.NewPartitionTable(&basept, fsCustomizations, DEFAULT_SIZE, partitioningMode, nil, rng)
 	if err != nil {
