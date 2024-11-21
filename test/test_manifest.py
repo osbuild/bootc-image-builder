@@ -550,3 +550,83 @@ def test_manifest_fips_customization(tmp_path, build_container):
     ], text=True)
     st = find_grub2_iso_stage_from(output)
     assert "fips=1" in st["options"]["kernel"]["opts"]
+
+
+def find_bootc_install_to_fs_stage_from(manifest_str):
+    manifest = json.loads(manifest_str)
+    for pipeline in manifest["pipelines"]:
+        # the fstab stage in cross-arch manifests is in the "ostree-deployment" pipeline
+        if pipeline["name"] == "image":
+            for st in pipeline["stages"]:
+                if st["type"] == "org.osbuild.bootc.install-to-filesystem":
+                    return st
+    raise ValueError(f"cannot find bootc.install-to-filesystem stage in manifest:\n{manifest_str}")
+
+
+def test_manifest_disk_customization_lvm(tmp_path, build_container):
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+
+    config = {
+        "customizations": {
+            "disk": {
+                "partitions": [
+                    {
+                        "type": "lvm",
+                        "logical_volumes": [
+                            {
+                                "fs_type": "ext4",
+                                "mountpoint": "/",
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    }
+    config_path = tmp_path / "config.json"
+    with config_path.open("w") as config_file:
+        json.dump(config, config_file)
+
+    output = subprocess.check_output([
+        *testutil.podman_run_common,
+        "-v", f"{config_path}:/config.json:ro",
+        build_container,
+        "manifest", f"{container_ref}",
+    ])
+    st = find_bootc_install_to_fs_stage_from(output)
+    assert st["devices"]["rootlv"]["type"] == "org.osbuild.lvm2.lv"
+
+
+def test_manifest_disk_customization_btrfs(tmp_path, build_container):
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+
+    config = {
+        "customizations": {
+            "disk": {
+                "partitions": [
+                    {
+                        "type": "btrfs",
+                        "subvolumes": [
+                            {
+                                "name": "root",
+                                "mountpoint": "/",
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    }
+    config_path = tmp_path / "config.json"
+    with config_path.open("w") as config_file:
+        json.dump(config, config_file)
+
+    output = subprocess.check_output([
+        *testutil.podman_run_common,
+        "-v", f"{config_path}:/config.json:ro",
+        build_container,
+        "manifest", f"{container_ref}",
+    ])
+    st = find_bootc_install_to_fs_stage_from(output)
+    assert st["mounts"][0]["type"] == "org.osbuild.btrfs"
+    assert st["mounts"][0]["target"] == "/"
