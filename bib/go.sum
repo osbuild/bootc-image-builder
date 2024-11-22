@@ -225,8 +225,8 @@ github.com/opencontainers/runtime-spec v1.2.0 h1:z97+pHb3uELt/yiAWD691HNHQIF07bE
 github.com/opencontainers/runtime-spec v1.2.0/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
 github.com/opencontainers/selinux v1.11.0 h1:+5Zbo97w3Lbmb3PeqQtpmTkMwsW5nRI3YaLpt7tQ7oU=
 github.com/opencontainers/selinux v1.11.0/go.mod h1:E5dMC3VPuVvVHDYmi78qvhJp8+M586T4DlDRYpFkyec=
-github.com/osbuild/images v0.99.0 h1:+L1Di9oP8bK0faYM/Zb2VmxYfFHJq4XWU4KH36e7wkY=
-github.com/osbuild/images v0.99.0/go.mod h1:4bNmMQOVadIKVC1q8zsLO8tdEQFH90zIp+MQBQUnCiE=
+github.com/osbuild/images v0.100.0 h1:wKpICYicrhX4Yqg46Ng1BSgedWTeroctBRYJazHUZcI=
+github.com/osbuild/images v0.100.0/go.mod h1:4bNmMQOVadIKVC1q8zsLO8tdEQFH90zIp+MQBQUnCiE=
 github.com/ostreedev/ostree-go v0.0.0-20210805093236-719684c64e4f h1:/UDgs8FGMqwnHagNDPGOlts35QkhAZ8by3DR7nMih7M=
 github.com/ostreedev/ostree-go v0.0.0-20210805093236-719684c64e4f/go.mod h1:J6OG6YJVEWopen4avK3VNQSnALmmjvniMmni/YFYAwc=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
