@@ -219,6 +219,10 @@ func genPartitionTable(c *ManifestConfig, customizations *blueprint.Customizatio
 }
 
 func genPartitionTableDiskCust(c *ManifestConfig, diskCust *blueprint.DiskCustomization, rng *rand.Rand) (*disk.PartitionTable, error) {
+	if err := diskCust.ValidateLayoutConstraints(); err != nil {
+		return nil, fmt.Errorf("cannot use disk customization: %w", err)
+	}
+
 	diskCust.MinSize = max(diskCust.MinSize, c.RootfsMinsize)
 
 	basept, ok := partitionTables[c.Architecture.String()]
