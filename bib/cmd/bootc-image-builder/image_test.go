@@ -423,3 +423,28 @@ func TestGenPartitionTableSetsRootfsForAllFilesystemsBtrfs(t *testing.T) {
 	mnt, _ = findMountableSizeableFor(pt, "/boot/efi")
 	assert.Equal(t, "vfat", mnt.GetFSType())
 }
+
+func TestGenPartitionTableDiskCustomizationRunsValidateLayoutConstraints(t *testing.T) {
+	rng := bib.CreateRand()
+
+	cnf := &bib.ManifestConfig{
+		Architecture: arch.FromString("amd64"),
+		RootFSType:   "xfs",
+	}
+	cus := &blueprint.Customizations{
+		Disk: &blueprint.DiskCustomization{
+			Partitions: []blueprint.PartitionCustomization{
+				{
+					Type:            "lvm",
+					VGCustomization: blueprint.VGCustomization{},
+				},
+				{
+					Type:            "lvm",
+					VGCustomization: blueprint.VGCustomization{},
+				},
+			},
+		},
+	}
+	_, err := bib.GenPartitionTable(cnf, cus, rng)
+	assert.EqualError(t, err, "cannot use disk customization: multiple LVM volume groups are not yet supported")
+}
