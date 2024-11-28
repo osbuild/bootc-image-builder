@@ -19,6 +19,12 @@ type fileReader interface {
 	ReadFile(string) ([]byte, error)
 }
 
+type SimpleFileReader struct{}
+
+func (SimpleFileReader) ReadFile(path string) ([]byte, error) {
+	return os.ReadFile(path)
+}
+
 func extractTLSKeys(reader fileReader, repoSets map[string][]rpmmd.RepoConfig) (*mTLSConfig, error) {
 	var keyPath, certPath, caPath string
 	for _, set := range repoSets {

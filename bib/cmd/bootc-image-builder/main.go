@@ -311,7 +311,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		return nil, nil, err
 	}
 
-	mTLS, err := extractTLSKeys(container, repos)
+	mTLS, err := extractTLSKeys(SimpleFileReader{}, repos)
 	if err != nil {
 		return nil, nil, err
 	}
