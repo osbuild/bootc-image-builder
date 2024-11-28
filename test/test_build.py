@@ -623,11 +623,18 @@ def test_iso_installs(image_type):
 
 
 def osinfo_for(it: ImageBuildResult, arch: str) -> str:
+    base = "Media is an installer for OS"
     if it.container_ref.endswith("/centos-bootc/centos-bootc:stream9"):
-        return f"CentOS Stream 9 ({arch})"
+        return f"{base} 'CentOS Stream 9 ({arch})'\n"
+    if it.container_ref.endswith("/centos-bootc/centos-bootc:stream10"):
+        # XXX: uncomment once
+        # https://gitlab.com/libosinfo/osinfo-db/-/commit/fc811ba5a792967e22a0108de5a245b23da3cc66
+        # gets released
+        # return f"CentOS Stream 10 ({arch})"
+        return ""
     if "/fedora/fedora-bootc:" in it.container_ref:
         ver = it.container_ref.rsplit(":", maxsplit=1)[1]
-        return f"Fedora Server {ver} ({arch})"
+        return f"{base} 'Fedora Server {ver} ({arch})'\n"
     raise ValueError(f"unknown osinfo string for '{it.container_ref}'")
 
 
@@ -643,7 +650,7 @@ def test_iso_os_detection(image_type):
         installer_iso_path,
     ], capture_output=True, text=True, check=True)
     osinfo_output = result.stdout
-    expected_output = f"Media is bootable.\nMedia is an installer for OS '{osinfo_for(image_type, arch)}'\n"
+    expected_output = f"Media is bootable.\n{osinfo_for(image_type, arch)}"
     assert osinfo_output == expected_output
 
 

@@ -60,6 +60,13 @@ class TestCaseC9S(TestCase):
         "quay.io/centos-bootc/centos-bootc:stream9")
 
 
+@dataclasses.dataclass
+class TestCaseC10S(TestCase):
+    container_ref: str = os.getenv(
+        "BIB_TEST_BOOTC_CONTAINER_TAG",
+        "quay.io/centos-bootc/centos-bootc:stream10")
+
+
 def test_testcase_nameing():
     """
     Ensure the testcase naming does not change without us knowing as those
@@ -68,14 +75,6 @@ def test_testcase_nameing():
     tc = TestCaseFedora()
     expected = "container_ref=quay.io/fedora/fedora-bootc:40,rootfs=btrfs"
     assert f"{tc}" == expected, f"{tc} != {expected}"
-
-
-@dataclasses.dataclass
-class TestCaseC10S(TestCase):
-    container_ref: str = os.getenv(
-        "BIB_TEST_BOOTC_CONTAINER_TAG",
-        "quay.io/centos-bootc/centos-bootc:stream10")
-    osinfo_template: str = "CentOS Stream 10 ({arch})"
 
 
 def gen_testcases(what):  # pylint: disable=too-many-return-statements
