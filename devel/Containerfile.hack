@@ -9,7 +9,7 @@
 #
 # To use this, do e.g.:
 #
-# make && podman build --no-cache -t localhost/bib -v $(pwd)/bin:/srcbin -f devel/Containerfile.hack .
+# make && podman build --no-cache -t localhost/bib -v ./bin:/srcbin -f devel/Containerfile.hack .
 #
 # (The use of the explicit bind mount here is to bypass .dockerignore)
 FROM quay.io/centos-bootc/bootc-image-builder:latest
