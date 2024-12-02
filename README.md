@@ -51,8 +51,8 @@ sudo podman run \
     --privileged \
     --pull=newer \
     --security-opt label=type:unconfined_t \
-    -v $(pwd)/config.toml:/config.toml:ro \
-    -v $(pwd)/output:/output \
+    -v ./config.toml:/config.toml:ro \
+    -v ./output:/output \
     -v /var/lib/containers/storage:/var/lib/containers/storage \
     quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
@@ -121,7 +121,7 @@ Usage:
     --privileged \
     --pull=newer \
     --security-opt label=type:unconfined_t \
-    -v $(pwd)/output:/output \
+    -v ./output:/output \
     quay.io/centos-bootc/bootc-image-builder:latest \
     <imgref>
 
@@ -294,8 +294,8 @@ sudo podman run \
     --privileged \
     --pull=newer \
     --security-opt label=type:unconfined_t \
-    -v $(pwd)/config.toml:/config.toml:ro \
-    -v $(pwd)/output:/output \
+    -v ./config.toml:/config.toml:ro \
+    -v ./output:/output \
     quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
     quay.io/centos-bootc/centos-bootc:stream9
@@ -517,7 +517,7 @@ FROM quay.io/centos-bootc/centos-bootc:stream9
 ADD wheel-passwordless-sudo /etc/sudoers.d/wheel-passwordless-sudo
 ```
 
-The contents of the file `$(pwd)/wheel-passwordless-sudo` should be
+The contents of the file `wheel-passwordless-sudo` should be
 
 ```text
 %wheel ALL=(ALL) NOPASSWD: ALL
