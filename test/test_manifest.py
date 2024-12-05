@@ -633,3 +633,95 @@ def test_manifest_disk_customization_btrfs(tmp_path, build_container):
     st = find_bootc_install_to_fs_stage_from(output)
     assert st["mounts"][0]["type"] == "org.osbuild.btrfs"
     assert st["mounts"][0]["target"] == "/"
+
+
+def find_mkswap_stage_from(manifest_str):
+    manifest = json.loads(manifest_str)
+    for pipeline in manifest["pipelines"]:
+        if pipeline["name"] == "image":
+            for st in pipeline["stages"]:
+                if st["type"] == "org.osbuild.mkswap":
+                    return st
+    raise ValueError(f"cannot find mkswap stage in manifest:\n{manifest_str}")
+
+
+def test_manifest_disk_customization_swap(tmp_path, build_container):
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+
+    config = {
+        "customizations": {
+            "disk": {
+                "partitions": [
+                    {
+                        "minsize": "2 GiB",
+                        "fs_type": "swap",
+                    }
+                ]
+            }
+        }
+    }
+    config_path = tmp_path / "config.json"
+    with config_path.open("w") as config_file:
+        json.dump(config, config_file)
+
+    output = subprocess.check_output([
+        *testutil.podman_run_common,
+        "-v", f"{config_path}:/config.json:ro",
+        build_container,
+        "manifest", f"{container_ref}",
+    ])
+    mkswap_stage = find_mkswap_stage_from(output)
+    assert mkswap_stage["options"].get("uuid")
+    swap_uuid = mkswap_stage["options"]["uuid"]
+    fstab_stage = find_fstab_stage_from(output)
+    filesystems = fstab_stage["options"]["filesystems"]
+    assert {
+        'uuid': swap_uuid,
+        "vfs_type": "swap",
+        "path": "none",
+        "options": "defaults",
+    } in filesystems
+
+
+def test_manifest_disk_customization_lvm_swap(tmp_path, build_container):
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+
+    config = {
+        "customizations": {
+            "disk": {
+                "partitions": [
+                    {
+                        "type": "lvm",
+                        "minsize": "10 GiB",
+                        "logical_volumes": [
+                            {
+                                "minsize": "2 GiB",
+                                "fs_type": "swap",
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    }
+    config_path = tmp_path / "config.json"
+    with config_path.open("w") as config_file:
+        json.dump(config, config_file)
+
+    output = subprocess.check_output([
+        *testutil.podman_run_common,
+        "-v", f"{config_path}:/config.json:ro",
+        build_container,
+        "manifest", f"{container_ref}",
+    ])
+    mkswap_stage = find_mkswap_stage_from(output)
+    assert mkswap_stage["options"].get("uuid")
+    swap_uuid = mkswap_stage["options"]["uuid"]
+    fstab_stage = find_fstab_stage_from(output)
+    filesystems = fstab_stage["options"]["filesystems"]
+    assert {
+        'uuid': swap_uuid,
+        "vfs_type": "swap",
+        "path": "none",
+        "options": "defaults",
+    } in filesystems

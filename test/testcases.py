@@ -84,17 +84,14 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
             TestCaseCentos(image="anaconda-iso"),
         ]
     if what == "qemu-boot":
-        # test partition defaults with qcow2
         test_cases = [
-            klass(image="qcow2")
-            for klass in (TestCaseCentos, TestCaseFedora)
+            # test default partitioning
+            TestCaseFedora(image="qcow2"),
+            # test with custom disk configs
+            TestCaseCentos(image="qcow2", disk_config="swap"),
+            TestCaseFedora(image="raw", disk_config="btrfs"),
+            TestCaseCentos(image="raw", disk_config="lvm"),
         ]
-        # and custom with raw (this is arbitrary, we could do it the
-        # other way around too
-        test_cases.append(
-            TestCaseCentos(image="raw", disk_config="lvm"))
-        test_cases.append(
-            TestCaseFedora(image="raw", disk_config="btrfs"))
         # do a cross arch test too
         if platform.machine() == "x86_64":
             # TODO: re-enable once
