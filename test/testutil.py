@@ -159,6 +159,10 @@ def maybe_create_disk_customizations(cfg, tc):
                             "minsize": "10 GiB",
                             "fs_type": "xfs",
                             "mountpoint": "/",
+                        },
+                        {
+                            "minsize": "7 GiB",
+                            "fs_type": "swap",
                         }
                     ]
                 }
@@ -176,6 +180,15 @@ def maybe_create_disk_customizations(cfg, tc):
                             "mountpoint": "/var/log",
                         }
                     ]
+                }
+            ]
+        }
+    elif tc.disk_config == "swap":
+        cfg["customizations"]["disk"] = {
+            "partitions": [
+                {
+                    "minsize": "123 MiB",
+                    "fs_type": "swap",
                 }
             ]
         }

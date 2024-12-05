@@ -694,12 +694,17 @@ def assert_disk_customizations(image_type, test_vm):
                                       keyfile=image_type.ssh_keyfile_private_path)
     assert exit_status == 0
     findmnt = json.loads(output)
+    exit_status, swapon_output = test_vm.run("swapon --show", user="root",
+                                             keyfile=image_type.ssh_keyfile_private_path)
+    assert exit_status == 0
     if dc := image_type.disk_config:
         if dc == "lvm":
             mnts = [mnt for mnt in findmnt["filesystems"][0]["children"]
                     if mnt["target"] == "/sysroot"]
             assert len(mnts) == 1
             assert "/dev/mapper/vg00-rootlv" == mnts[0]["source"]
+            # check swap too
+            assert "7G" in swapon_output
         elif dc == "btrfs":
             mnts = [mnt for mnt in findmnt["filesystems"][0]["children"]
                     if mnt["target"] == "/sysroot"]
@@ -707,3 +712,5 @@ def assert_disk_customizations(image_type, test_vm):
             assert "btrfs" == mnts[0]["fstype"]
             # ensure sysroot comes from the "root" subvolume
             assert mnts[0]["source"].endswith("[/root]")
+        elif dc == "swap":
+            assert "123M" in swapon_output
