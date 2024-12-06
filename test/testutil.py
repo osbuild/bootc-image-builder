@@ -156,9 +156,9 @@ def maybe_create_disk_customizations(cfg, tc):
                     "minsize": "10 GiB",
                     "logical_volumes": [
                         {
-                            "minsize": "10 GiB",
                             "fs_type": "xfs",
-                            "mountpoint": "/",
+                            "minsize": "1 GiB",
+                            "mountpoint": "/var/log",
                         },
                         {
                             "minsize": "7 GiB",
