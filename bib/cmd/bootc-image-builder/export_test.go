@@ -10,6 +10,7 @@ var (
 	GenPartitionTable             = genPartitionTable
 	CreateRand                    = createRand
 	BuildCobraCmdline             = buildCobraCmdline
+	CalcRequiredDirectorySizes    = calcRequiredDirectorySizes
 )
 
 func MockOsGetuid(new func() int) (restore func()) {

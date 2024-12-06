@@ -9,6 +9,7 @@ import (
 
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/blueprint"
+	"github.com/osbuild/images/pkg/datasizes"
 	"github.com/osbuild/images/pkg/disk"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/runner"
@@ -447,4 +448,235 @@ func TestGenPartitionTableDiskCustomizationRunsValidateLayoutConstraints(t *test
 	}
 	_, err := bib.GenPartitionTable(cnf, cus, rng)
 	assert.EqualError(t, err, "cannot use disk customization: multiple LVM volume groups are not yet supported")
+}
+
+func TestGenPartitionTableDiskCustomizationUnknownTypesError(t *testing.T) {
+	cus := &blueprint.Customizations{
+		Disk: &blueprint.DiskCustomization{
+			Partitions: []blueprint.PartitionCustomization{
+				{
+					Type: "rando",
+				},
+			},
+		},
+	}
+	_, err := bib.CalcRequiredDirectorySizes(cus.Disk, 5*datasizes.GiB)
+	assert.EqualError(t, err, `unknown disk customization type "rando"`)
+}
+
+func TestGenPartitionTableDiskCustomizationSizes(t *testing.T) {
+	rng := bib.CreateRand()
+
+	for _, tc := range []struct {
+		name                string
+		rootfsMinSize       uint64
+		partitions          []blueprint.PartitionCustomization
+		expectedMinRootSize uint64
+	}{
+		{
+			"empty disk customizaton, root expands to rootfsMinsize",
+			2 * datasizes.GiB,
+			nil,
+			2 * datasizes.GiB,
+		},
+		// plain
+		{
+			"plain, no root minsize, expands to rootfsMinSize",
+			5 * datasizes.GiB,
+			[]blueprint.PartitionCustomization{
+				{
+					MinSize: 10 * datasizes.GiB,
+					FilesystemTypedCustomization: blueprint.FilesystemTypedCustomization{
+						Mountpoint: "/var",
+						FSType:     "xfs",
+					},
+				},
+			},
+			5 * datasizes.GiB,
+		},
+		{
+			"plain, small root minsize, expands to rootfsMnSize",
+			5 * datasizes.GiB,
+			[]blueprint.PartitionCustomization{
+				{
+					MinSize: 1 * datasizes.GiB,
+					FilesystemTypedCustomization: blueprint.FilesystemTypedCustomization{
+						Mountpoint: "/",
+						FSType:     "xfs",
+					},
+				},
+			},
+			5 * datasizes.GiB,
+		},
+		{
+			"plain, big root minsize",
+			5 * datasizes.GiB,
+			[]blueprint.PartitionCustomization{
+				{
+					MinSize: 10 * datasizes.GiB,
+					FilesystemTypedCustomization: blueprint.FilesystemTypedCustomization{
+						Mountpoint: "/",
+						FSType:     "xfs",
+					},
+				},
+			},
+			10 * datasizes.GiB,
+		},
+		// btrfs
+		{
+			"btrfs, no root minsize, expands to rootfsMinSize",
+			5 * datasizes.GiB,
+			[]blueprint.PartitionCustomization{
+				{
+					Type:    "btrfs",
+					MinSize: 10 * datasizes.GiB,
+					BtrfsVolumeCustomization: blueprint.BtrfsVolumeCustomization{
+						Subvolumes: []blueprint.BtrfsSubvolumeCustomization{
+							{
+								Mountpoint: "/var",
+								Name:       "varvol",
+							},
+						},
+					},
+				},
+			},
+			5 * datasizes.GiB,
+		},
+		{
+			"btrfs, small root minsize, expands to rootfsMnSize",
+			5 * datasizes.GiB,
+			[]blueprint.PartitionCustomization{
+				{
+					Type:    "btrfs",
+					MinSize: 1 * datasizes.GiB,
+					BtrfsVolumeCustomization: blueprint.BtrfsVolumeCustomization{
+						Subvolumes: []blueprint.BtrfsSubvolumeCustomization{
+							{
+								Mountpoint: "/",
+								Name:       "rootvol",
+							},
+						},
+					},
+				},
+			},
+			5 * datasizes.GiB,
+		},
+		{
+			"btrfs, big root minsize",
+			5 * datasizes.GiB,
+			[]blueprint.PartitionCustomization{
+				{
+					Type:    "btrfs",
+					MinSize: 10 * datasizes.GiB,
+					BtrfsVolumeCustomization: blueprint.BtrfsVolumeCustomization{
+						Subvolumes: []blueprint.BtrfsSubvolumeCustomization{
+							{
+								Mountpoint: "/",
+								Name:       "rootvol",
+							},
+						},
+					},
+				},
+			},
+			10 * datasizes.GiB,
+		},
+		// lvm
+		{
+			"lvm, no root minsize, expands to rootfsMinSize",
+			5 * datasizes.GiB,
+			[]blueprint.PartitionCustomization{
+				{
+					Type:    "lvm",
+					MinSize: 10 * datasizes.GiB,
+					VGCustomization: blueprint.VGCustomization{
+						LogicalVolumes: []blueprint.LVCustomization{
+							{
+								MinSize: 10 * datasizes.GiB,
+								FilesystemTypedCustomization: blueprint.FilesystemTypedCustomization{
+									Mountpoint: "/var",
+									FSType:     "xfs",
+								},
+							},
+						},
+					},
+				},
+			},
+			5 * datasizes.GiB,
+		},
+		{
+			"lvm, small root minsize, expands to rootfsMnSize",
+			5 * datasizes.GiB,
+			[]blueprint.PartitionCustomization{
+				{
+					Type:    "lvm",
+					MinSize: 1 * datasizes.GiB,
+					VGCustomization: blueprint.VGCustomization{
+						LogicalVolumes: []blueprint.LVCustomization{
+							{
+								MinSize: 1 * datasizes.GiB,
+								FilesystemTypedCustomization: blueprint.FilesystemTypedCustomization{
+									Mountpoint: "/",
+									FSType:     "xfs",
+								},
+							},
+						},
+					},
+				},
+			},
+			5 * datasizes.GiB,
+		},
+		{
+			"lvm, big root minsize",
+			5 * datasizes.GiB,
+			[]blueprint.PartitionCustomization{
+				{
+					Type:    "lvm",
+					MinSize: 10 * datasizes.GiB,
+					VGCustomization: blueprint.VGCustomization{
+						LogicalVolumes: []blueprint.LVCustomization{
+							{
+								MinSize: 10 * datasizes.GiB,
+								FilesystemTypedCustomization: blueprint.FilesystemTypedCustomization{
+									Mountpoint: "/",
+									FSType:     "xfs",
+								},
+							},
+						},
+					},
+				},
+			},
+			10 * datasizes.GiB,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cnf := &bib.ManifestConfig{
+				Architecture:  arch.FromString("amd64"),
+				RootFSType:    "xfs",
+				RootfsMinsize: tc.rootfsMinSize,
+			}
+			cus := &blueprint.Customizations{
+				Disk: &blueprint.DiskCustomization{
+					Partitions: tc.partitions,
+				},
+			}
+			pt, err := bib.GenPartitionTable(cnf, cus, rng)
+			assert.NoError(t, err)
+
+			var rootSize uint64
+			err = pt.ForEachMountable(func(mnt disk.Mountable, path []disk.Entity) error {
+				if mnt.GetMountpoint() == "/" {
+					for idx := len(path) - 1; idx >= 0; idx-- {
+						if parent, ok := path[idx].(disk.Sizeable); ok {
+							rootSize = parent.GetSize()
+							break
+						}
+					}
+				}
+				return nil
+			})
+			assert.NoError(t, err)
+			// expected size is within a reasonable limit
+			assert.True(t, rootSize >= tc.expectedMinRootSize && rootSize < tc.expectedMinRootSize+5*datasizes.MiB)
+		})
+	}
 }

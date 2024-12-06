@@ -16,7 +16,6 @@ import (
 	"github.com/osbuild/images/pkg/customizations/anaconda"
 	"github.com/osbuild/images/pkg/customizations/kickstart"
 	"github.com/osbuild/images/pkg/customizations/users"
-	"github.com/osbuild/images/pkg/datasizes"
 	"github.com/osbuild/images/pkg/disk"
 	"github.com/osbuild/images/pkg/image"
 	"github.com/osbuild/images/pkg/manifest"
@@ -219,6 +218,44 @@ func genPartitionTable(c *ManifestConfig, customizations *blueprint.Customizatio
 	}
 }
 
+// calcRequiredDirectorySizes will calculate the minimum sizes for /
+// for disk customizations. We need this because with advanced partitioning
+// we never grow the rootfs to the size of the disk (unlike the tranditional
+// filesystem customizations).
+//
+// So we need to go over the customizations and ensure the min-size for "/"
+// is at least rootfsMinSize.
+//
+// Note that a custom "/usr" is not supported in image mode so splitting
+// rootfsMinSize between / and /usr is not a concern.
+func calcRequiredDirectorySizes(distCust *blueprint.DiskCustomization, rootfsMinSize uint64) (map[string]uint64, error) {
+	// XXX: this has *way* too much low-level knowledge about the
+	// inner workings of blueprint.DiskCustomizations plus when
+	// a new type it needs to get added here too, think about
+	// moving into "images" instead (at least partly)
+	mounts := map[string]uint64{}
+	for _, part := range distCust.Partitions {
+		switch part.Type {
+		case "", "plain":
+			mounts[part.Mountpoint] = part.MinSize
+		case "lvm":
+			for _, lv := range part.LogicalVolumes {
+				mounts[lv.Mountpoint] = part.MinSize
+			}
+		case "btrfs":
+			for _, subvol := range part.Subvolumes {
+				mounts[subvol.Mountpoint] = part.MinSize
+			}
+		default:
+			return nil, fmt.Errorf("unknown disk customization type %q", part.Type)
+		}
+	}
+	// ensure rootfsMinSize is respected
+	return map[string]uint64{
+		"/": max(rootfsMinSize, mounts["/"]),
+	}, nil
+}
+
 func genPartitionTableDiskCust(c *ManifestConfig, diskCust *blueprint.DiskCustomization, rng *rand.Rand) (*disk.PartitionTable, error) {
 	if err := diskCust.ValidateLayoutConstraints(); err != nil {
 		return nil, fmt.Errorf("cannot use disk customization: %w", err)
@@ -234,19 +271,16 @@ func genPartitionTableDiskCust(c *ManifestConfig, diskCust *blueprint.DiskCustom
 	if err != nil {
 		return nil, err
 	}
-
-	// XXX: copied from images, take from container instead?
-	requiredDirectorySizes := map[string]uint64{
-		"/":    1 * datasizes.GiB,
-		"/usr": 2 * datasizes.GiB,
+	requiredMinSizes, err := calcRequiredDirectorySizes(diskCust, c.RootfsMinsize)
+	if err != nil {
+		return nil, err
 	}
 	partOptions := &disk.CustomPartitionTableOptions{
 		PartitionTableType: basept.Type,
 		// XXX: not setting/defaults will fail to boot with btrfs/lvm
-		BootMode:      platform.BOOT_HYBRID,
-		DefaultFSType: defaultFSType,
-		// ensure sensible defaults for /,/usr
-		RequiredMinSizes: requiredDirectorySizes,
+		BootMode:         platform.BOOT_HYBRID,
+		DefaultFSType:    defaultFSType,
+		RequiredMinSizes: requiredMinSizes,
 	}
 	return disk.NewCustomPartitionTable(diskCust, partOptions, rng)
 }
