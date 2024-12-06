@@ -725,3 +725,9 @@ def test_manifest_disk_customization_lvm_swap(tmp_path, build_container):
         "path": "none",
         "options": "defaults",
     } in filesystems
+    # run osbuild schema validation, see gh#748
+    if not testutil.has_executable("osbuild"):
+        pytest.skip("no osbuild executable")
+    osbuild_manifest_path = tmp_path / "manifest.json"
+    osbuild_manifest_path.write_bytes(output)
+    subprocess.run(["osbuild", osbuild_manifest_path.as_posix()], check=True)
