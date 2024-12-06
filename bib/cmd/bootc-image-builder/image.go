@@ -16,6 +16,7 @@ import (
 	"github.com/osbuild/images/pkg/customizations/anaconda"
 	"github.com/osbuild/images/pkg/customizations/kickstart"
 	"github.com/osbuild/images/pkg/customizations/users"
+	"github.com/osbuild/images/pkg/datasizes"
 	"github.com/osbuild/images/pkg/disk"
 	"github.com/osbuild/images/pkg/image"
 	"github.com/osbuild/images/pkg/manifest"
@@ -234,11 +235,18 @@ func genPartitionTableDiskCust(c *ManifestConfig, diskCust *blueprint.DiskCustom
 		return nil, err
 	}
 
+	// XXX: copied from images, take from container instead?
+	requiredDirectorySizes := map[string]uint64{
+		"/":    1 * datasizes.GiB,
+		"/usr": 2 * datasizes.GiB,
+	}
 	partOptions := &disk.CustomPartitionTableOptions{
 		PartitionTableType: basept.Type,
 		// XXX: not setting/defaults will fail to boot with btrfs/lvm
 		BootMode:      platform.BOOT_HYBRID,
 		DefaultFSType: defaultFSType,
+		// ensure sensible defaults for /,/usr
+		RequiredMinSizes: requiredDirectorySizes,
 	}
 	return disk.NewCustomPartitionTable(diskCust, partOptions, rng)
 }
