@@ -530,14 +530,6 @@ Please report bugs to the [Bug Tracker](https://github.com/osbuild/bootc-image-b
 $ sudo podman run --rm -it quay.io/centos-bootc/bootc-image-builder:latest version
 ```
 
-## 📊 Project
-
-- **Website**: <https://www.osbuild.org>
-- **Bug Tracker**: <https://github.com/osbuild/bootc-image-builder/issues>
-- **Matrix**: #image-builder on [fedoraproject.org](https://matrix.to/#/#image-builder:fedoraproject.org)
-- **Mailing List**: <image-builder@redhat.com>
-- **Changelog**: <https://github.com/osbuild/bootc-image-builder/releases>
-
 ### Contributing
 
 Please refer to the [developer guide](https://www.osbuild.org/docs/developer-guide/index) to learn about our
@@ -548,6 +540,13 @@ workflow, code style and more.
 - **web**:   <https://github.com/osbuild/bootc-image-builder>
 - **https**: `https://github.com/osbuild/bootc-image-builder.git`
 - **ssh**:   `git@github.com:osbuild/bootc-image-builder.git`
+
+## 📊 Project
+
+- **Website**: <https://www.osbuild.org>
+- **Bug Tracker**: <https://github.com/osbuild/bootc-image-builder/issues>
+- **Matrix**: #image-builder on [fedoraproject.org](https://matrix.to/#/#image-builder:fedoraproject.org)
+* **Discussions**: https://github.com/orgs/osbuild/discussions
 
 ## 🧾 License
 
