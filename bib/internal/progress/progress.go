@@ -7,18 +7,30 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/cheggaaa/pb/v3"
-	"github.com/mattn/go-isatty"
 	"github.com/sirupsen/logrus"
 
 	"github.com/osbuild/images/pkg/osbuild"
 )
 
 var (
-	osStderr         io.Writer = os.Stderr
-	isattyIsTerminal           = isatty.IsTerminal
+	osStderr io.Writer = os.Stderr
+
+	// This is only needed because pb.Pool require a real terminal.
+	// It sets it into "raw-mode" but there is really no need for
+	// this (see "func render()" below) so once this is fixed
+	// upstream we should remove this.
+	ESC         = "\x1b"
+	ERASE_LINE  = ESC + "[2K"
+	CURSOR_HIDE = ESC + "[?25l"
+	CURSOR_SHOW = ESC + "[?25h"
 )
+
+func cursorUp(i int) string {
+	return fmt.Sprintf("%s[%dA", ESC, i)
+}
 
 // ProgressBar is an interface for progress reporting when there is
 // an arbitrary amount of sub-progress information (like osbuild)
@@ -47,6 +59,8 @@ type ProgressBar interface {
 // New creates a new progressbar based on the requested type
 func New(typ string) (ProgressBar, error) {
 	switch typ {
+	// XXX: autoseelct based on PS1 value (i.e. use term in
+	// interactive shells only?)
 	case "", "plain":
 		return NewPlainProgressBar()
 	case "term":
@@ -63,28 +77,21 @@ type terminalProgressBar struct {
 	msgPb       *pb.ProgressBar
 	subLevelPbs []*pb.ProgressBar
 
-	pool        *pb.Pool
-	poolStarted bool
+	shutdownCh chan bool
+
+	out io.Writer
 }
 
 // NewTerminalProgressBar creates a new default pb3 based progressbar suitable for
 // most terminals.
 func NewTerminalProgressBar() (ProgressBar, error) {
-	f, ok := osStderr.(*os.File)
-	if !ok {
-		return nil, fmt.Errorf("cannot use %T as a terminal", f)
+	b := &terminalProgressBar{
+		out: osStderr,
 	}
-	if !isattyIsTerminal(f.Fd()) {
-		return nil, fmt.Errorf("cannot use term progress without a terminal")
-	}
-
-	b := &terminalProgressBar{}
 	b.spinnerPb = pb.New(0)
 	b.spinnerPb.SetTemplate(`[{{ (cycle . "|" "/" "-" "\\") }}] {{ string . "spinnerMsg" }}`)
 	b.msgPb = pb.New(0)
 	b.msgPb.SetTemplate(`Message: {{ string . "msg" }}`)
-	b.pool = pb.NewPool(b.spinnerPb, b.msgPb)
-	b.pool.Output = osStderr
 	return b, nil
 }
 
@@ -97,16 +104,13 @@ func (b *terminalProgressBar) SetProgress(subLevel int, msg string, done int, to
 		b.subLevelPbs = append(b.subLevelPbs, apb)
 		progressBarTmpl := `[{{ counters . }}] {{ string . "prefix" }} {{ bar .}} {{ percent . }}`
 		apb.SetTemplateString(progressBarTmpl)
-		b.pool.Add(apb)
 	case subLevel > len(b.subLevelPbs):
 		return fmt.Errorf("sublevel added out of order, have %v sublevels but want level %v", len(b.subLevelPbs), subLevel)
 	}
 	apb := b.subLevelPbs[subLevel]
 	apb.SetTotal(int64(total) + 1)
 	apb.SetCurrent(int64(done) + 1)
-	if msg != "" {
-		apb.Set("prefix", msg)
-	}
+	apb.Set("prefix", msg)
 	return nil
 }
 
@@ -127,21 +131,66 @@ func (b *terminalProgressBar) SetMessagef(msg string, args ...interface{}) {
 	b.msgPb.Set("msg", shorten(fmt.Sprintf(msg, args...)))
 }
 
-func (b *terminalProgressBar) Start() error {
-	if err := b.pool.Start(); err != nil {
-		return fmt.Errorf("progress bar failed: %w", err)
+func (b *terminalProgressBar) render() {
+	var renderedLines int
+	fmt.Fprintf(b.out, "%s%s\n", ERASE_LINE, b.spinnerPb.String())
+	renderedLines++
+	for _, prog := range b.subLevelPbs {
+		fmt.Fprintf(b.out, "%s%s\n", ERASE_LINE, prog.String())
+		renderedLines++
 	}
-	b.poolStarted = true
+	fmt.Fprintf(b.out, "%s%s\n", ERASE_LINE, b.msgPb.String())
+	renderedLines++
+	fmt.Fprint(b.out, cursorUp(renderedLines))
+}
+
+// Workaround for the pb.Pool requiring "raw-mode" - see here how to avoid
+// it. Once fixes upstream we should remove this.
+func (b *terminalProgressBar) renderLoop() {
+	for {
+		select {
+		case <-b.shutdownCh:
+			b.render()
+			// finally move cursor down again
+			fmt.Fprint(b.out, CURSOR_SHOW)
+			fmt.Fprint(b.out, strings.Repeat("\n", 2+len(b.subLevelPbs)))
+			// close last to avoid race with b.out
+			close(b.shutdownCh)
+			return
+		case <-time.After(200 * time.Millisecond):
+			// break to redraw the screen
+		}
+		b.render()
+	}
+}
+
+func (b *terminalProgressBar) Start() error {
+	// render() already running
+	if b.shutdownCh != nil {
+		return nil
+	}
+	fmt.Fprintf(b.out, "%s", CURSOR_HIDE)
+	b.shutdownCh = make(chan bool)
+	go b.renderLoop()
+
 	return nil
 }
 
 func (b *terminalProgressBar) Stop() (err error) {
-	// pb.Stop() will deadlock if it was not started before
-	if b.poolStarted {
-		err = b.pool.Stop()
+	if b.shutdownCh == nil {
+		return nil
 	}
-	b.poolStarted = false
-	return err
+	// request shutdown
+	b.shutdownCh <- true
+	// wait for ack
+	select {
+	case <-b.shutdownCh:
+	// shudown complete
+	case <-time.After(1 * time.Second):
+		logrus.Warnf("no progress channel shutdown after 1sec")
+	}
+	b.shutdownCh = nil
+	return nil
 }
 
 type plainProgressBar struct {

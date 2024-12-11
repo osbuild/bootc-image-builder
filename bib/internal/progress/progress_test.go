@@ -12,9 +12,6 @@ import (
 )
 
 func TestProgressNew(t *testing.T) {
-	restore := progress.MockIsattyIsTerminal(true)
-	defer restore()
-
 	for _, tc := range []struct {
 		typ         string
 		expected    interface{}
@@ -23,6 +20,7 @@ func TestProgressNew(t *testing.T) {
 		{"term", &progress.TerminalProgressBar{}, ""},
 		{"debug", &progress.DebugProgressBar{}, ""},
 		{"plain", &progress.PlainProgressBar{}, ""},
+		// unknown progress type
 		{"bad", nil, `unknown progress type: "bad"`},
 	} {
 		pb, err := progress.New(tc.typ)
@@ -95,13 +93,26 @@ func TestDebugProgress(t *testing.T) {
 	buf.Reset()
 }
 
-func TestTermProgressNoTerm(t *testing.T) {
+func TestTermProgress(t *testing.T) {
 	var buf bytes.Buffer
 	restore := progress.MockOsStderr(&buf)
 	defer restore()
 
-	// TODO: use something like "github.com/creack/pty" to create
-	// a real pty to test this for real
-	_, err := progress.NewTerminalProgressBar()
-	assert.EqualError(t, err, "cannot use *os.File as a terminal")
+	pbar, err := progress.NewTerminalProgressBar()
+	assert.NoError(t, err)
+
+	err = pbar.Start()
+	assert.NoError(t, err)
+	pbar.SetPulseMsgf("pulse-msg")
+	pbar.SetMessagef("some-message")
+	err = pbar.SetProgress(0, "set-progress-msg", 0, 5)
+	assert.NoError(t, err)
+	err = pbar.Stop()
+	assert.NoError(t, err)
+
+	assert.Contains(t, buf.String(), "[1 / 6] set-progress-msg")
+	assert.Contains(t, buf.String(), "[|] pulse-msg\n")
+	assert.Contains(t, buf.String(), "Message: some-message\n")
+	// check shutdown
+	assert.Contains(t, buf.String(), progress.CURSOR_SHOW)
 }
