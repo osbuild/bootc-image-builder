@@ -49,6 +49,7 @@ sudo podman run \
     --rm \
     -it \
     --privileged \
+    --log-driver=passthrough-tty \
     --pull=newer \
     --security-opt label=type:unconfined_t \
     -v ./config.toml:/config.toml:ro \
@@ -119,6 +120,7 @@ Usage:
     --rm \
     -it \
     --privileged \
+    --log-driver=passthrough-tty \
     --pull=newer \
     --security-opt label=type:unconfined_t \
     -v ./output:/output \
@@ -208,6 +210,7 @@ For example:
   --rm \
   -it \
   --privileged \
+  --log-driver=passthrough-tty \
   --pull=newer \
   --security-opt label=type:unconfined_t \
   -v $HOME/.aws:/root/.aws:ro \
@@ -248,6 +251,7 @@ $ sudo podman run \
   --rm \
   -it \
   --privileged \
+  --log-driver=passthrough-tty \
   --pull=newer \
   --security-opt label=type:unconfined_t \
   --env-file=aws.secrets \
@@ -292,6 +296,7 @@ sudo podman run \
     --rm \
     -it \
     --privileged \
+    --log-driver=passthrough-tty \
     --pull=newer \
     --security-opt label=type:unconfined_t \
     -v ./config.toml:/config.toml:ro \
