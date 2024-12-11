@@ -21,12 +21,12 @@ import (
 	"github.com/osbuild/images/pkg/container"
 	"github.com/osbuild/images/pkg/dnfjson"
 	"github.com/osbuild/images/pkg/manifest"
-	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/rpmmd"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
 	podman_container "github.com/osbuild/bootc-image-builder/bib/internal/container"
 	"github.com/osbuild/bootc-image-builder/bib/internal/imagetypes"
+	"github.com/osbuild/bootc-image-builder/bib/internal/progress"
 	"github.com/osbuild/bootc-image-builder/bib/internal/setup"
 	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 	"github.com/osbuild/bootc-image-builder/bib/internal/util"
@@ -171,7 +171,16 @@ func saveManifest(ms manifest.OSBuildManifest, fpath string) error {
 	return nil
 }
 
-func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, error) {
+func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.ProgressBar) ([]byte, *mTLSConfig, error) {
+	if pbar == nil {
+		var err error
+		pbar, err = progress.New("plain")
+		// this should never happen
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	cntArch := arch.Current()
 
 	imgref := args[0]
@@ -232,6 +241,11 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 		}
 	} else {
 		logrus.Debug("Using local container")
+	}
+
+	pbar.SetPulseMsg("Manifest generation step")
+	if err := pbar.Start(); err != nil {
+		return nil, nil, fmt.Errorf("cannot start progress: %v", err)
 	}
 
 	if err := setup.ValidateHasContainerTags(imgref); err != nil {
@@ -320,7 +334,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string) ([]byte, *mTLSConfig, 
 }
 
 func cmdManifest(cmd *cobra.Command, args []string) error {
-	mf, _, err := manifestFromCobra(cmd, args)
+	mf, _, err := manifestFromCobra(cmd, args, nil)
 	if err != nil {
 		return fmt.Errorf("cannot generate manifest: %w", err)
 	}
@@ -383,6 +397,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	osbuildStore, _ := cmd.Flags().GetString("store")
 	outputDir, _ := cmd.Flags().GetString("output")
 	targetArch, _ := cmd.Flags().GetString("target-arch")
+	progressType, _ := cmd.Flags().GetString("progress")
 
 	logrus.Debug("Validating environment")
 	if err := setup.Validate(targetArch); err != nil {
@@ -415,13 +430,23 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("chowning is not allowed in output directory")
 	}
 
+	pbar, err := progress.New(progressType)
+	if err != nil {
+		return fmt.Errorf("cannto create progress bar: %w", err)
+	}
+	defer func() {
+		if err := pbar.Stop(); err != nil {
+			logrus.Warnf("progressbar stopping failed: %v", err)
+		}
+	}()
+
 	manifest_fname := fmt.Sprintf("manifest-%s.json", strings.Join(imgTypes, "-"))
-	fmt.Printf("Generating manifest %s\n", manifest_fname)
-	mf, mTLS, err := manifestFromCobra(cmd, args)
+	pbar.SetMessage("Generating manifest %s", manifest_fname)
+	mf, mTLS, err := manifestFromCobra(cmd, args, pbar)
 	if err != nil {
 		return fmt.Errorf("cannot build manifest: %w", err)
 	}
-	fmt.Print("DONE\n")
+	pbar.SetMessage("Done generating manifest")
 
 	// collect pipeline exports for each image type
 	imageTypes, err := imagetypes.New(imgTypes...)
@@ -434,7 +459,8 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot save manifest: %w", err)
 	}
 
-	fmt.Printf("Building %s\n", manifest_fname)
+	pbar.SetPulseMsg("Image generation step")
+	pbar.SetMessage("Building %s", manifest_fname)
 
 	var osbuildEnv []string
 	if !canChown {
@@ -453,12 +479,11 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		osbuildEnv = append(osbuildEnv, envVars...)
 	}
 
-	_, err = osbuild.RunOSBuild(mf, osbuildStore, outputDir, exports, nil, osbuildEnv, false, os.Stderr)
-	if err != nil {
+	if err = progress.RunOSBuild(pbar, mf, osbuildStore, outputDir, exports, osbuildEnv); err != nil {
 		return fmt.Errorf("cannot run osbuild: %w", err)
 	}
 
-	fmt.Println("Build complete!")
+	pbar.SetMessage("Build complete!")
 	if upload {
 		for idx, imgType := range imgTypes {
 			switch imgType {
@@ -472,7 +497,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 			}
 		}
 	} else {
-		fmt.Printf("Results saved in\n%s\n", outputDir)
+		pbar.SetMessage("Results saved in %s", outputDir)
 	}
 
 	if err := chownR(outputDir, chown); err != nil {
@@ -607,8 +632,9 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	buildCmd.Flags().String("aws-region", "", "target region for AWS uploads (only for type=ami)")
 	buildCmd.Flags().String("chown", "", "chown the ouput directory to match the specified UID:GID")
 	buildCmd.Flags().String("output", ".", "artifact output directory")
-	buildCmd.Flags().String("progress", "text", "type of progress bar to use")
 	buildCmd.Flags().String("store", "/store", "osbuild store for intermediate pipeline trees")
+	//TODO: add json progress for higher level tools like "podman bootc"
+	buildCmd.Flags().String("progress", "", "type of progress bar to use")
 	// flag rules
 	for _, dname := range []string{"output", "store", "rpmmd"} {
 		if err := buildCmd.MarkFlagDirname(dname); err != nil {
