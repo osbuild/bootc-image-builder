@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -110,4 +111,24 @@ func TestTermProgress(t *testing.T) {
 	assert.Contains(t, buf.String(), "Message: some-message\n")
 	// check shutdown
 	assert.Contains(t, buf.String(), progress.CURSOR_SHOW)
+}
+
+func TestProgressNewAutoselect(t *testing.T) {
+	for _, tc := range []struct {
+		env      string
+		expected interface{}
+	}{
+		{"", &progress.PlainProgressBar{}},
+		{"PS1=foo", &progress.TerminalProgressBar{}},
+	} {
+
+		if l := strings.SplitN(tc.env, "=", 2); len(l) == 2 {
+			t.Setenv(l[0], l[1])
+		}
+
+		pb, err := progress.New("")
+		assert.NoError(t, err)
+		assert.Equal(t, reflect.TypeOf(pb), reflect.TypeOf(tc.expected), fmt.Sprintf("[%v] %T not the expected %T", tc.env, pb, tc.expected))
+	}
+
 }

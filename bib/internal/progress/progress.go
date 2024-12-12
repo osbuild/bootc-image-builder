@@ -69,9 +69,14 @@ type ProgressBar interface {
 // New creates a new progressbar based on the requested type
 func New(typ string) (ProgressBar, error) {
 	switch typ {
-	// XXX: autoseelct based on PS1 value (i.e. use term in
-	// interactive shells only?)
-	case "", "plain":
+	case "":
+		// autoselect based on if we are on an interactive
+		// shell, use plain progress for scripts
+		if _, ok := os.LookupEnv("PS1"); ok {
+			return NewTerminalProgressBar()
+		}
+		return NewPlainProgressBar()
+	case "plain":
 		return NewPlainProgressBar()
 	case "term":
 		return NewTerminalProgressBar()
