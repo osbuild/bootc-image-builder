@@ -54,11 +54,9 @@ func TestPlainProgress(t *testing.T) {
 	assert.Equal(t, "message", buf.String())
 	buf.Reset()
 
-	err = pbar.Start()
-	assert.NoError(t, err)
+	pbar.Start()
 	assert.Equal(t, "", buf.String())
-	err = pbar.Stop()
-	assert.NoError(t, err)
+	pbar.Stop()
 	assert.Equal(t, "", buf.String())
 }
 
@@ -82,13 +80,11 @@ func TestDebugProgress(t *testing.T) {
 	assert.Equal(t, "msg: some-message\n", buf.String())
 	buf.Reset()
 
-	err = pbar.Start()
-	assert.NoError(t, err)
+	pbar.Start()
 	assert.Equal(t, "Start progressbar\n", buf.String())
 	buf.Reset()
 
-	err = pbar.Stop()
-	assert.NoError(t, err)
+	pbar.Stop()
 	assert.Equal(t, "Stop progressbar\n", buf.String())
 	buf.Reset()
 }
@@ -101,14 +97,12 @@ func TestTermProgress(t *testing.T) {
 	pbar, err := progress.NewTerminalProgressBar()
 	assert.NoError(t, err)
 
-	err = pbar.Start()
-	assert.NoError(t, err)
+	pbar.Start()
 	pbar.SetPulseMsgf("pulse-msg")
 	pbar.SetMessagef("some-message")
 	err = pbar.SetProgress(0, "set-progress-msg", 0, 5)
 	assert.NoError(t, err)
-	err = pbar.Stop()
-	assert.NoError(t, err)
+	pbar.Stop()
 
 	assert.Contains(t, buf.String(), "[1 / 6] set-progress-msg")
 	assert.Contains(t, buf.String(), "[|] pulse-msg\n")

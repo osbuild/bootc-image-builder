@@ -38,6 +38,10 @@ type ProgressBar interface {
 	// SetProgress sets the progress details at the given "level".
 	// Levels should start with "0" and increase as the nesting
 	// gets deeper.
+	//
+	// Note that reducing depth is currently not supported, once
+	// a sub-progress is added it cannot be removed/hidden
+	// (but if required it can be added, its a SMOP)
 	SetProgress(level int, msg string, done int, total int) error
 
 	// The high-level message that is displayed in a spinner
@@ -52,8 +56,13 @@ type ProgressBar interface {
 	// For us this usually comes from the stages and has information
 	// like "Starting module org.osbuild.selinux"
 	SetMessagef(fmt string, args ...interface{})
-	Start() error
-	Stop() error
+
+	// Start will start rendering the progress information
+	Start()
+
+	// Stop will stop rendering the progress information, the
+	// screen is not cleared, the last few lines will be visible
+	Stop()
 }
 
 // New creates a new progressbar based on the requested type
@@ -164,21 +173,19 @@ func (b *terminalProgressBar) renderLoop() {
 	}
 }
 
-func (b *terminalProgressBar) Start() error {
+func (b *terminalProgressBar) Start() {
 	// render() already running
 	if b.shutdownCh != nil {
-		return nil
+		return
 	}
 	fmt.Fprintf(b.out, "%s", CURSOR_HIDE)
 	b.shutdownCh = make(chan bool)
 	go b.renderLoop()
-
-	return nil
 }
 
-func (b *terminalProgressBar) Stop() (err error) {
+func (b *terminalProgressBar) Stop() {
 	if b.shutdownCh == nil {
-		return nil
+		return
 	}
 	// request shutdown
 	b.shutdownCh <- true
@@ -187,10 +194,12 @@ func (b *terminalProgressBar) Stop() (err error) {
 	case <-b.shutdownCh:
 	// shudown complete
 	case <-time.After(1 * time.Second):
+		// I cannot think of how this could happen, i.e. why
+		// closing would not work but lets be conservative -
+		// without a timeout we hang here forever
 		logrus.Warnf("no progress channel shutdown after 1sec")
 	}
 	b.shutdownCh = nil
-	return nil
 }
 
 type plainProgressBar struct {
@@ -212,12 +221,10 @@ func (b *plainProgressBar) SetMessagef(msg string, args ...interface{}) {
 	fmt.Fprintf(b.w, msg, args...)
 }
 
-func (b *plainProgressBar) Start() (err error) {
-	return nil
+func (b *plainProgressBar) Start() {
 }
 
-func (b *plainProgressBar) Stop() (err error) {
-	return nil
+func (b *plainProgressBar) Stop() {
 }
 
 func (b *plainProgressBar) SetProgress(subLevel int, msg string, done int, total int) error {
@@ -249,14 +256,12 @@ func (b *debugProgressBar) SetMessagef(msg string, args ...interface{}) {
 	fmt.Fprintf(b.w, "\n")
 }
 
-func (b *debugProgressBar) Start() (err error) {
+func (b *debugProgressBar) Start() {
 	fmt.Fprintf(b.w, "Start progressbar\n")
-	return nil
 }
 
-func (b *debugProgressBar) Stop() (err error) {
+func (b *debugProgressBar) Stop() {
 	fmt.Fprintf(b.w, "Stop progressbar\n")
-	return nil
 }
 
 func (b *debugProgressBar) SetProgress(subLevel int, msg string, done int, total int) error {

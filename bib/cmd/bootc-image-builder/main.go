@@ -244,9 +244,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	}
 
 	pbar.SetPulseMsgf("Manifest generation step")
-	if err := pbar.Start(); err != nil {
-		return nil, nil, fmt.Errorf("cannot start progress: %v", err)
-	}
+	pbar.Start()
 
 	if err := setup.ValidateHasContainerTags(imgref); err != nil {
 		return nil, nil, err
@@ -434,11 +432,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("cannto create progress bar: %w", err)
 	}
-	defer func() {
-		if err := pbar.Stop(); err != nil {
-			logrus.Warnf("progressbar stopping failed: %v", err)
-		}
-	}()
+	defer pbar.Stop()
 
 	manifest_fname := fmt.Sprintf("manifest-%s.json", strings.Join(imgTypes, "-"))
 	pbar.SetMessagef("Generating manifest %s", manifest_fname)
