@@ -111,3 +111,22 @@ func TestTermProgress(t *testing.T) {
 	// check shutdown
 	assert.Contains(t, buf.String(), progress.CURSOR_SHOW)
 }
+
+func TestProgressNewAutoselect(t *testing.T) {
+	for _, tc := range []struct {
+		onTerm   bool
+		expected interface{}
+	}{
+		{false, &progress.PlainProgressBar{}},
+		{true, &progress.TerminalProgressBar{}},
+	} {
+		restore := progress.MockIsattyIsTerminal(func(uintptr) bool {
+			return tc.onTerm
+		})
+		defer restore()
+
+		pb, err := progress.New("")
+		assert.NoError(t, err)
+		assert.Equal(t, reflect.TypeOf(pb), reflect.TypeOf(tc.expected), fmt.Sprintf("[%v] %T not the expected %T", tc.onTerm, pb, tc.expected))
+	}
+}
