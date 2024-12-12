@@ -5,21 +5,18 @@ from test_opts import container_storage_fixture
 from containerbuild import build_container_fixture, build_fake_container_fixture
 
 
-def test_progress_debug(tmp_path, container_storage, build_fake_container):
+def test_progress_debug(tmp_path, build_fake_container):
     output_path = tmp_path / "output"
     output_path.mkdir(exist_ok=True)
 
     cmdline = [
         "podman", "run", "--rm",
         "--privileged",
-        "--security-opt", "label=type:unconfined_t",
-        "-v", f"{container_storage}:/var/lib/containers/storage",
-        "-v", f"{output_path}:/output",
         build_fake_container,
         "build",
+        "--progress=debug",
         "quay.io/centos-bootc/centos-bootc:stream9",
     ]
-    cmdline.append("--progress=debug")
     res = subprocess.run(cmdline, capture_output=True, check=True, text=True)
     assert res.stderr.count("Start progressbar") == 1
     assert res.stderr.count("Manifest generation step") == 1
@@ -29,22 +26,41 @@ def test_progress_debug(tmp_path, container_storage, build_fake_container):
     assert res.stdout.strip() == ""
 
 
-def test_progress_term(tmp_path, container_storage, build_fake_container):
+def test_progress_term_works_without_tty(tmp_path, build_fake_container):
     output_path = tmp_path / "output"
     output_path.mkdir(exist_ok=True)
 
     cmdline = [
         "podman", "run", "--rm",
+        # note that "-t" is missing here
         "--privileged",
-        "--security-opt", "label=type:unconfined_t",
-        "-v", f"{container_storage}:/var/lib/containers/storage",
-        "-v", f"{output_path}:/output",
         build_fake_container,
         "build",
-        # explicitly select term progress
+        # explicitly selecting term progress works even when there is no tty
+        # (i.e. we just need ansi terminal support)
         "--progress=term",
         "quay.io/centos-bootc/centos-bootc:stream9",
     ]
     res = subprocess.run(cmdline, capture_output=True, text=True, check=False)
     assert res.returncode == 0
     assert "[|] Manifest generation step" in res.stderr
+
+
+def test_progress_term_autoselect(tmp_path, build_fake_container):
+    output_path = tmp_path / "output"
+    output_path.mkdir(exist_ok=True)
+
+    cmdline = [
+        "podman", "run", "--rm",
+        # we have a terminal
+        "-t",
+        "--privileged",
+        build_fake_container,
+        "build",
+        # note that we do not select a --progress here so auto-select is used
+        "quay.io/centos-bootc/centos-bootc:stream9",
+    ]
+    res = subprocess.run(cmdline, capture_output=True, text=True, check=False)
+    assert res.returncode == 0
+    # its curious that we get the output on stdout here, podman weirdness?
+    assert "[|] Manifest generation step" in res.stdout

@@ -17,3 +17,11 @@ func MockOsStderr(w io.Writer) (restore func()) {
 		osStderr = saved
 	}
 }
+
+func MockIsattyIsTerminal(fn func(uintptr) bool) (restore func()) {
+	saved := isattyIsTerminal
+	isattyIsTerminal = fn
+	return func() {
+		isattyIsTerminal = saved
+	}
+}
