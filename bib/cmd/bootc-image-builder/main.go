@@ -171,16 +171,17 @@ func saveManifest(ms manifest.OSBuildManifest, fpath string) error {
 	return nil
 }
 
+// manifestFromCobra generate an osbuild manifest from a cobra commandline.
+//
+// It takes an unstarted progres bar and will start it at the right
+// point (it cannot be started yet to avoid the "podman pull" progress
+// and our progress fighting). The caller is responsible for stopping
+// the progress bar (this function cannot know what else needs to happen
+// after manifest generation).
+//
+// TODO: provide a podman progress reader to integrate the podman progress
+// into our progress.
 func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.ProgressBar) ([]byte, *mTLSConfig, error) {
-	if pbar == nil {
-		var err error
-		pbar, err = progress.New("plain")
-		// this should never happen
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-
 	cntArch := arch.Current()
 
 	imgref := args[0]
@@ -332,7 +333,14 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 }
 
 func cmdManifest(cmd *cobra.Command, args []string) error {
-	mf, _, err := manifestFromCobra(cmd, args, nil)
+	pbar, err := progress.New("")
+	if err != nil {
+		// this should never happen
+		return fmt.Errorf("cannot create progress bar: %w", err)
+	}
+	defer pbar.Stop()
+
+	mf, _, err := manifestFromCobra(cmd, args, pbar)
 	if err != nil {
 		return fmt.Errorf("cannot generate manifest: %w", err)
 	}
