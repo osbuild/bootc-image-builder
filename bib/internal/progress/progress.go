@@ -2,6 +2,7 @@ package progress
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -113,6 +114,9 @@ func (b *terminalProgressBar) SetProgress(subLevel int, msg string, done int, to
 		b.subLevelPbs = append(b.subLevelPbs, apb)
 		progressBarTmpl := `[{{ counters . }}] {{ string . "prefix" }} {{ bar .}} {{ percent . }}`
 		apb.SetTemplateString(progressBarTmpl)
+		if err := apb.Err(); err != nil {
+			return fmt.Errorf("error setting the progressbarTemplat: %w", err)
+		}
 	case subLevel > len(b.subLevelPbs):
 		return fmt.Errorf("sublevel added out of order, have %v sublevels but want level %v", len(b.subLevelPbs), subLevel)
 	}
@@ -183,6 +187,22 @@ func (b *terminalProgressBar) Start() {
 	go b.renderLoop()
 }
 
+func (b *terminalProgressBar) Err() error {
+	var errs []error
+	if err := b.spinnerPb.Err(); err != nil {
+		errs = append(errs, fmt.Errorf("error on spinner progressbar: %w", err))
+	}
+	if err := b.msgPb.Err(); err != nil {
+		errs = append(errs, fmt.Errorf("error on spinner progressbar: %w", err))
+	}
+	for _, pb := range b.subLevelPbs {
+		if err := pb.Err(); err != nil {
+			errs = append(errs, fmt.Errorf("error on spinner progressbar: %w", err))
+		}
+	}
+	return errors.Join(errs...)
+}
+
 func (b *terminalProgressBar) Stop() {
 	if b.shutdownCh == nil {
 		return
@@ -200,6 +220,12 @@ func (b *terminalProgressBar) Stop() {
 		logrus.Warnf("no progress channel shutdown after 1sec")
 	}
 	b.shutdownCh = nil
+	// This should never happen but be paranoid, this should
+	// never happen but ensure we did not accumulate error while
+	// running
+	if err := b.Err(); err != nil {
+		fmt.Fprintf(b.out, "error from pb.ProgressBar: %v", err)
+	}
 }
 
 type plainProgressBar struct {

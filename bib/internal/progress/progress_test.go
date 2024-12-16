@@ -103,6 +103,7 @@ func TestTermProgress(t *testing.T) {
 	err = pbar.SetProgress(0, "set-progress-msg", 0, 5)
 	assert.NoError(t, err)
 	pbar.Stop()
+	assert.NoError(t, pbar.(*progress.TerminalProgressBar).Err())
 
 	assert.Contains(t, buf.String(), "[1 / 6] set-progress-msg")
 	assert.Contains(t, buf.String(), "[|] pulse-msg\n")
