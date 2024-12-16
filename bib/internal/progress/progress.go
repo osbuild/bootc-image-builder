@@ -111,12 +111,17 @@ func (b *terminalProgressBar) SetProgress(subLevel int, msg string, done int, to
 	switch {
 	case subLevel == len(b.subLevelPbs):
 		apb := pb.New(0)
-		b.subLevelPbs = append(b.subLevelPbs, apb)
 		progressBarTmpl := `[{{ counters . }}] {{ string . "prefix" }} {{ bar .}} {{ percent . }}`
 		apb.SetTemplateString(progressBarTmpl)
 		if err := apb.Err(); err != nil {
 			return fmt.Errorf("error setting the progressbarTemplat: %w", err)
 		}
+		// workaround bug when running tests in tmt
+		if apb.Width() == 0 {
+			// this is pb.defaultBarWidth
+			apb.SetWidth(100)
+		}
+		b.subLevelPbs = append(b.subLevelPbs, apb)
 	case subLevel > len(b.subLevelPbs):
 		return fmt.Errorf("sublevel added out of order, have %v sublevels but want level %v", len(b.subLevelPbs), subLevel)
 	}
