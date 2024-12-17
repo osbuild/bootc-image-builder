@@ -529,25 +529,55 @@ func rootPreRunE(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-// TODO: provide more version info (like actual version number) once we
-// release a real version
-func cmdVersion(_ *cobra.Command, _ []string) error {
+func cmdVersion() (string, error) {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
-		return fmt.Errorf("cannot read build info")
+		return "", fmt.Errorf("cannot read build info")
 	}
 	var gitRev string
+	var buildTime string
+	var buildTainted bool
+	ret := []string{}
 	for _, bs := range info.Settings {
 		if bs.Key == "vcs.revision" {
 			gitRev = bs.Value
-			break
+			continue
+		}
+		if bs.Key == "vcs.time" {
+			buildTime = bs.Value
+			continue
+		}
+		if bs.Key == "vcs.modified" {
+			bT, err := strconv.ParseBool(bs.Value)
+			if err != nil {
+				logrus.Errorf("Error parsing 'vcs.modified': %v", err)
+				bT = true
+			}
+
+			buildTainted = bT
+			continue
 		}
 	}
 	if gitRev != "" {
-		fmt.Printf("revision: %s\n", gitRev[:7])
+		ret = append(ret, fmt.Sprintf("revision: %s", gitRev[:7]))
 	} else {
-		fmt.Printf("revision: unknown\n")
+		ret = append(ret, "revision: unknown")
 	}
+	if buildTime != "" {
+		ret = append(ret, fmt.Sprintf("build time: %s", buildTime))
+	}
+	if buildTainted {
+		ret = append(ret, "tainted")
+	}
+	return strings.Join(ret, ", "), nil
+}
+
+func cmdVersionCobra(_ *cobra.Command, _ []string) error {
+	v, err := cmdVersion()
+	if err != nil {
+		return err
+	}
+	fmt.Println(v)
 	return nil
 }
 
@@ -580,11 +610,13 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	}
 	versionCmd := &cobra.Command{
 		Use:          "version",
+		Short:        "Show the version and quit",
 		SilenceUsage: true,
-		Hidden:       true,
-		RunE:         cmdVersion,
+		RunE:         cmdVersionCobra,
 	}
+
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.Flags().BoolP("version", "V", false, "Show the version and quit")
 
 	rootCmd.AddCommand(manifestCmd)
 	manifestCmd.Flags().Bool("tls-verify", true, "require HTTPS and verify certificates when contacting registries")
@@ -649,6 +681,20 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	printVersion, err := rootCmd.Flags().GetBool("version");
+	if err != nil {
+		return err
+	}
+	if printVersion {
+		v, err := cmdVersion()
+		if err != nil {
+			return err
+		}
+		fmt.Println(v)
+		return nil
+	}
+
+
 	return rootCmd.Execute()
 }
 
