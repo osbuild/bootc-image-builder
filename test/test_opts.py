@@ -148,7 +148,8 @@ def test_bib_errors_only_once(tmp_path, container_storage, build_fake_container)
     assert res.stderr.count(needle) == 1
 
 
-def test_bib_version(tmp_path, container_storage, build_fake_container):
+@pytest.mark.parametrize("version_argument", ["version", "--version", "-v"])
+def test_bib_version(tmp_path, container_storage, build_fake_container, version_argument):
     output_path = tmp_path / "output"
     output_path.mkdir(exist_ok=True)
 
@@ -159,7 +160,7 @@ def test_bib_version(tmp_path, container_storage, build_fake_container):
         "-v", f"{container_storage}:/var/lib/containers/storage",
         "-v", f"{output_path}:/output",
         build_fake_container,
-        "version",
+        version_argument,
     ], check=True, capture_output=True, text=True)
 
     expected_rev = "unknown"
