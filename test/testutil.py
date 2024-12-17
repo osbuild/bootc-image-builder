@@ -215,7 +215,7 @@ def get_ip_from_default_route():
     return default_route.split()[8]
 
 
-def pull_container(container_ref, target_arch=""):
+def pull_container(container_ref, target_arch="", tls_verify=True):
     if target_arch == "":
         target_arch = platform.machine()
 
@@ -225,5 +225,6 @@ def pull_container(container_ref, target_arch=""):
     subprocess.run([
         "podman", "pull",
         "--arch", target_arch,
+        "--tls-verify" if tls_verify else "--tls-verify=false",
         container_ref,
     ], check=True)

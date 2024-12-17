@@ -606,6 +606,7 @@ def test_manifest_disk_customization_lvm(tmp_path, build_container):
     with config_path.open("w") as config_file:
         json.dump(config, config_file)
 
+    testutil.pull_container(container_ref)
     output = subprocess.check_output([
         *testutil.podman_run_common,
         "-v", f"{config_path}:/config.json:ro",
@@ -641,6 +642,7 @@ def test_manifest_disk_customization_btrfs(tmp_path, build_container):
     with config_path.open("w") as config_file:
         json.dump(config, config_file)
 
+    testutil.pull_container(container_ref)
     output = subprocess.check_output([
         *testutil.podman_run_common,
         "-v", f"{config_path}:/config.json:ro",
@@ -681,6 +683,7 @@ def test_manifest_disk_customization_swap(tmp_path, build_container):
     with config_path.open("w") as config_file:
         json.dump(config, config_file)
 
+    testutil.pull_container(container_ref)
     output = subprocess.check_output([
         *testutil.podman_run_common,
         "-v", f"{config_path}:/config.json:ro",
@@ -725,6 +728,7 @@ def test_manifest_disk_customization_lvm_swap(tmp_path, build_container):
     with config_path.open("w") as config_file:
         json.dump(config, config_file)
 
+    testutil.pull_container(container_ref)
     output = subprocess.check_output([
         *testutil.podman_run_common,
         "-v", f"{config_path}:/config.json:ro",
