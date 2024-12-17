@@ -7,8 +7,8 @@ import subprocess
 import textwrap
 
 import pytest
-import testutil
 
+import testutil
 from containerbuild import build_container_fixture  # pylint: disable=unused-import
 from containerbuild import make_container
 from testcases import gen_testcases
@@ -69,6 +69,8 @@ def test_iso_manifest_smoke(build_container, tc):
 
 @pytest.mark.parametrize("tc", gen_testcases("manifest"))
 def test_manifest_disksize(tmp_path, build_container, tc):
+    testutil.pull_container(tc.container_ref, tc.target_arch)
+
     # create derrived container with 6G silly file to ensure that
     # bib doubles the size to 12G+
     cntf_path = tmp_path / "Containerfile"
@@ -114,6 +116,8 @@ def test_manifest_local_checks_containers_storage_errors(build_container):
 
 @pytest.mark.parametrize("tc", gen_testcases("manifest"))
 def test_manifest_local_checks_containers_storage_works(tmp_path, build_container, tc):
+    testutil.pull_container(tc.container_ref, tc.target_arch)
+
     cntf_path = tmp_path / "Containerfile"
     cntf_path.write_text(textwrap.dedent(f"""\n
     FROM {tc.container_ref}
@@ -360,6 +364,8 @@ def find_image_anaconda_stage(manifest_str):
 
 @pytest.mark.parametrize("tc", gen_testcases("anaconda-iso"))
 def test_manifest_anaconda_module_customizations(tmpdir_factory, build_container, tc):
+    testutil.pull_container(tc.container_ref, tc.target_arch)
+
     cfg = {
         "customizations": {
             "installer": {
@@ -383,8 +389,6 @@ def test_manifest_anaconda_module_customizations(tmpdir_factory, build_container
     output_path.mkdir(exist_ok=True)
     config_json_path = output_path / "config.json"
     config_json_path.write_text(json.dumps(cfg), encoding="utf-8")
-
-    testutil.pull_container(tc.container_ref, tc.target_arch)
 
     output = subprocess.check_output([
         *testutil.podman_run_common,
@@ -548,6 +552,7 @@ def find_grub2_iso_stage_from(manifest_str):
 
 def test_manifest_fips_customization(tmp_path, build_container):
     container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
 
     config = {
         "customizations": {
@@ -582,6 +587,7 @@ def find_bootc_install_to_fs_stage_from(manifest_str):
 
 def test_manifest_disk_customization_lvm(tmp_path, build_container):
     container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
 
     config = {
         "customizations": {
@@ -606,6 +612,7 @@ def test_manifest_disk_customization_lvm(tmp_path, build_container):
     with config_path.open("w") as config_file:
         json.dump(config, config_file)
 
+    testutil.pull_container(container_ref)
     output = subprocess.check_output([
         *testutil.podman_run_common,
         "-v", f"{config_path}:/config.json:ro",
@@ -641,6 +648,7 @@ def test_manifest_disk_customization_btrfs(tmp_path, build_container):
     with config_path.open("w") as config_file:
         json.dump(config, config_file)
 
+    testutil.pull_container(container_ref)
     output = subprocess.check_output([
         *testutil.podman_run_common,
         "-v", f"{config_path}:/config.json:ro",
@@ -681,6 +689,7 @@ def test_manifest_disk_customization_swap(tmp_path, build_container):
     with config_path.open("w") as config_file:
         json.dump(config, config_file)
 
+    testutil.pull_container(container_ref)
     output = subprocess.check_output([
         *testutil.podman_run_common,
         "-v", f"{config_path}:/config.json:ro",
@@ -725,6 +734,7 @@ def test_manifest_disk_customization_lvm_swap(tmp_path, build_container):
     with config_path.open("w") as config_file:
         json.dump(config, config_file)
 
+    testutil.pull_container(container_ref)
     output = subprocess.check_output([
         *testutil.podman_run_common,
         "-v", f"{config_path}:/config.json:ro",
@@ -754,6 +764,7 @@ def test_manifest_disk_customization_lvm_swap(tmp_path, build_container):
 def test_iso_manifest_use_librepo(build_container, use_librepo):
     # no need to parameterize this test, --use-librepo behaves same for all containers
     container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
 
     output = subprocess.check_output([
         *testutil.podman_run_common,
