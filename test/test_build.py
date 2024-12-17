@@ -416,6 +416,9 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
             ]
             cmd.extend(signed_image_args)
 
+            # Pull the signed image
+            testutil.pull_container(container_ref, tls_verify=False)
+
         cmd.extend([
             *creds_args,
             build_container,
@@ -424,8 +427,8 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
             *upload_args,
             *target_arch_args,
             *tc.bib_rootfs_args(),
-            "--tls-verify=false" if tc.sign else "--tls-verify=true",
             f"--use-librepo={tc.use_librepo}",
+            *tc.bib_rootfs_args()
         ])
 
         # print the build command for easier tracing
