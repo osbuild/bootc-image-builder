@@ -153,7 +153,9 @@ func validateCanRunTargetArch(targetArch string) error {
 func ValidateHasContainerTags(imgref string) error {
 	output, err := exec.Command("podman", "image", "inspect", imgref, "--format", "{{.Labels}}").Output()
 	if err != nil {
-		return fmt.Errorf("failed inspect image: %w", util.OutputErr(err))
+		return fmt.Errorf(`failed to inspect the image: %w
+bootc-image-builder no longer pulls images, make sure to pull it before running bootc-image-builder:
+    sudo podman pull %s`, util.OutputErr(err), imgref)
 	}
 
 	tags := string(output)
