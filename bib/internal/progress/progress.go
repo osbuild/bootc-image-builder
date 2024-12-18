@@ -40,7 +40,7 @@ type ProgressBar interface {
 	// SetProgress sets the progress details at the given "level".
 	// Levels should start with "0" and increase as the nesting
 	// gets deeper.
-	SetProgress(level int, msg string, done int, total int) error
+	SetProgress(level int, msg string, done int64, total int64) error
 
 	// The high-level message that is displayed in a spinner
 	// that contains the current top level step, for bib this
@@ -107,7 +107,7 @@ func NewTerminalProgressBar() (ProgressBar, error) {
 	return b, nil
 }
 
-func (b *terminalProgressBar) SetProgress(subLevel int, msg string, done int, total int) error {
+func (b *terminalProgressBar) SetProgress(subLevel int, msg string, done int64, total int64) error {
 	// auto-add as needed, requires sublevels to get added in order
 	// i.e. adding 0 and then 2 will fail
 	switch {
@@ -282,7 +282,7 @@ func (b *plainProgressBar) Start() {
 func (b *plainProgressBar) Stop() {
 }
 
-func (b *plainProgressBar) SetProgress(subLevel int, msg string, done int, total int) error {
+func (b *plainProgressBar) SetProgress(subLevel int, msg string, done int64, total int64) error {
 	return nil
 }
 
@@ -322,7 +322,7 @@ func (b *debugProgressBar) Stop() {
 	fmt.Fprintf(b.w, "Stop progressbar\n")
 }
 
-func (b *debugProgressBar) SetProgress(subLevel int, msg string, done int, total int) error {
+func (b *debugProgressBar) SetProgress(subLevel int, msg string, done int64, total int64) error {
 	fmt.Fprintf(b.w, "%s[%v / %v] %s", strings.Repeat("  ", subLevel), done, total, msg)
 	fmt.Fprintf(b.w, "\n")
 	return nil
@@ -398,7 +398,7 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirect
 		}
 		i := 0
 		for p := st.Progress; p != nil; p = p.SubProgress {
-			if err := pb.SetProgress(i, p.Message, p.Done, p.Total); err != nil {
+			if err := pb.SetProgress(i, p.Message, int64(p.Done), int64(p.Total)); err != nil {
 				logrus.Warnf("cannot set progress: %v", err)
 			}
 			i++
