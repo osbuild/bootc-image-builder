@@ -487,6 +487,11 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 
 	pbar.SetMessagef("Build complete!")
 	if upload {
+		// XXX: pass our own progress.ProgressBar here
+		// *for now* just stop our own progress and let the uploadAMI
+		// progress take over - but we really need to fix this in a
+		// followup
+		pbar.Stop()
 		for idx, imgType := range imgTypes {
 			switch imgType {
 			case "ami":

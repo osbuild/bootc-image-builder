@@ -34,7 +34,7 @@ func uploadAMI(path, targetArch string, flags *pflag.FlagSet) error {
 	// similar. Eventually we may provide json progress here too.
 	var pbar *pb.ProgressBar
 	switch progress {
-	case "text":
+	case "", "plain", "term":
 		pbar = pb.New(0)
 	}
 
