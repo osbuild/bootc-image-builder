@@ -58,6 +58,8 @@ func TestPlainProgress(t *testing.T) {
 	assert.Equal(t, "", buf.String())
 	pbar.Stop()
 	assert.Equal(t, "", buf.String())
+	pbar.Clear()
+	assert.Equal(t, "", buf.String())
 }
 
 func TestDebugProgress(t *testing.T) {
@@ -87,6 +89,10 @@ func TestDebugProgress(t *testing.T) {
 	pbar.Stop()
 	assert.Equal(t, "Stop progressbar\n", buf.String())
 	buf.Reset()
+
+	pbar.Clear()
+	assert.Equal(t, "Clear progressbar\n", buf.String())
+	buf.Reset()
 }
 
 func TestTermProgress(t *testing.T) {
@@ -102,12 +108,15 @@ func TestTermProgress(t *testing.T) {
 	pbar.SetMessagef("some-message")
 	err = pbar.SetProgress(0, "set-progress-msg", 0, 5)
 	assert.NoError(t, err)
+	pbar.Clear()
 	pbar.Stop()
 	assert.NoError(t, pbar.(*progress.TerminalProgressBar).Err())
 
 	assert.Contains(t, buf.String(), "[1 / 6] set-progress-msg")
 	assert.Contains(t, buf.String(), "[|] pulse-msg\n")
 	assert.Contains(t, buf.String(), "Message: some-message\n")
+	// check clear (clear 3 lines)
+	assert.Contains(t, buf.String(), "\x1b[2K\n\x1b[2K\n\x1b[2K\n")
 	// check shutdown
 	assert.Contains(t, buf.String(), progress.CURSOR_SHOW)
 }
