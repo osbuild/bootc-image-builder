@@ -246,10 +246,12 @@ func NewPlainProgressBar() (ProgressBar, error) {
 
 func (b *plainProgressBar) SetPulseMsgf(msg string, args ...interface{}) {
 	fmt.Fprintf(b.w, msg, args...)
+	fmt.Fprintf(b.w, "\n")
 }
 
 func (b *plainProgressBar) SetMessagef(msg string, args ...interface{}) {
 	fmt.Fprintf(b.w, msg, args...)
+	fmt.Fprintf(b.w, "\n")
 }
 
 func (b *plainProgressBar) Start() {
