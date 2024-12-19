@@ -66,12 +66,29 @@ type ProgressBar interface {
 	Stop()
 }
 
+func isTerminal() bool {
+	// Note that we cannot simply use "isatty()" here because
+	// "podman run -it" will not give us a full terminal to
+	// prevent TIOCSTI - this is the next best we can do.
+	for _, env := range []string{"TERM", "SSH_CONNECTION"} {
+		if s := os.Getenv(env); s != "" {
+			return true
+		}
+	}
+	return false
+}
+
 // New creates a new progressbar based on the requested type
 func New(typ string) (ProgressBar, error) {
 	switch typ {
-	// XXX: autoseelct based on PS1 value (i.e. use term in
-	// interactive shells only?)
-	case "", "plain":
+	case "":
+		// autoselect based on if we are on an interactive
+		// terminal, use plain progress for scripts
+		if isTerminal() {
+			return NewTerminalProgressBar()
+		}
+		return NewPlainProgressBar()
+	case "plain":
 		return NewPlainProgressBar()
 	case "term":
 		return NewTerminalProgressBar()
