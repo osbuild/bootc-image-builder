@@ -87,7 +87,9 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
         return [TestCaseC9S(image="ami"), TestCaseFedora(image="ami")]
     if what == "anaconda-iso":
         return [
-            TestCaseFedora(image="anaconda-iso", sign=True),
+            # 2024-12-19: disabled for now until the mirror situation becomes
+            # a bit more stable
+            # TestCaseFedora(image="anaconda-iso", sign=True),
             TestCaseC9S(image="anaconda-iso"),
             TestCaseC10S(image="anaconda-iso"),
         ]
