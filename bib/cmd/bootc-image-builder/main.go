@@ -586,7 +586,7 @@ func cmdVersion(_ *cobra.Command, _ []string) error {
 func buildCobraCmdline() (*cobra.Command, error) {
 	rootCmd := &cobra.Command{
 		Use:               "bootc-image-builder",
-		Long:              "create a bootable image from an ostree native container",
+		Long:              "Create a bootable image from an ostree native container",
 		PersistentPreRunE: rootPreRunE,
 		SilenceErrors:     true,
 	}
@@ -594,17 +594,22 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	rootCmd.PersistentFlags().StringVar(&rootLogLevel, "log-level", "", "logging level (debug, info, error); default error")
 
 	buildCmd := &cobra.Command{
-		Use:                   "build",
-		Long:                  rootCmd.Long,
+		Use:                   "build IMAGE_NAME",
+		Short:                 rootCmd.Long + " (default command)",
+		Long:                  rootCmd.Long + "\n" +
+			"(default action if no command is given)\n" +
+			"IMAGE_NAME: container image to build into a bootable image",
 		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
 		RunE:                  cmdBuild,
 		SilenceUsage:          true,
+		Example: rootCmd.Use + " build quay.io/centos-bootc/centos-bootc:stream9\n" +
+			rootCmd.Use + " quay.io/centos-bootc/centos-bootc:stream9\n",
 	}
 	rootCmd.AddCommand(buildCmd)
 	manifestCmd := &cobra.Command{
 		Use:                   "manifest",
-		Long:                  rootCmd.Long,
+		Short:                 "Only create the manifest but don't build the image.",
 		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
 		RunE:                  cmdManifest,
