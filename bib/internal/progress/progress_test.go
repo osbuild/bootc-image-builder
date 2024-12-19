@@ -47,11 +47,11 @@ func TestPlainProgress(t *testing.T) {
 
 	// but it shows the messages
 	pbar.SetPulseMsgf("pulse")
-	assert.Equal(t, "pulse", buf.String())
+	assert.Equal(t, "pulse\n", buf.String())
 	buf.Reset()
 
 	pbar.SetMessagef("message")
-	assert.Equal(t, "message", buf.String())
+	assert.Equal(t, "message\n", buf.String())
 	buf.Reset()
 
 	pbar.Start()
