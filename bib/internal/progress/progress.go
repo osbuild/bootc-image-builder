@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/cheggaaa/pb/v3"
+	"github.com/mattn/go-isatty"
 	"github.com/sirupsen/logrus"
 
 	"github.com/osbuild/images/pkg/osbuild"
@@ -66,12 +67,19 @@ type ProgressBar interface {
 	Stop()
 }
 
+var isattyIsTerminal = isatty.IsTerminal
+
 // New creates a new progressbar based on the requested type
 func New(typ string) (ProgressBar, error) {
 	switch typ {
-	// XXX: autoseelct based on PS1 value (i.e. use term in
-	// interactive shells only?)
-	case "", "plain":
+	case "":
+		// autoselect based on if we are on an interactive
+		// terminal, use plain progress for scripts
+		if isattyIsTerminal(os.Stdin.Fd()) {
+			return NewTerminalProgressBar()
+		}
+		return NewPlainProgressBar()
+	case "plain":
 		return NewPlainProgressBar()
 	case "term":
 		return NewTerminalProgressBar()
