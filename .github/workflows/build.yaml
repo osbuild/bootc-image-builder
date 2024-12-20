@@ -8,6 +8,7 @@ on:
       - "main"
   # for merge queue
   merge_group:
+  workflow_dispatch:
 
 env:
   IMAGE_NAME: ${{ github.repository }}
