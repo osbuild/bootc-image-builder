@@ -51,7 +51,7 @@ jobs:
         if: github.event_name != 'pull_request'
         id: push
         with:
-          registry: ${{ steps.registry_case.outputs.lowercase }}
+          registry: "ghcr.io"
           image: ${{ env.IMAGE_NAME }}
           tags: "latest"
           extra-args: |
