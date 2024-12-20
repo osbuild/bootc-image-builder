@@ -3,6 +3,9 @@ name: Build containers
 on:
   pull_request:
     branches: [main]
+  push:
+    branches:
+      - "main"
   # for merge queue
   merge_group:
 
