@@ -25,3 +25,30 @@ jobs:
           image: ${{ env.IMAGE_NAME }}
           tags: "latest"
           containerfiles: Containerfile
+          
+      # Workaround bug where capital letters in your GitHub username make it impossible to push to GHCR.
+      # https://github.com/macbre/push-to-ghcr/issues/12
+      - name: Lowercase Registry
+        id: registry_case
+        uses: ASzc/change-string-case-action@v6
+        with:
+          string: ${{ env.IMAGE_REGISTRY }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Push the image to GHCR (Image Registry)
+      - name: Push To GHCR
+        uses: redhat-actions/push-to-registry@v2
+        if: github.event_name != 'pull_request'
+        id: push
+        with:
+          registry: ${{ steps.registry_case.outputs.lowercase }}
+          image: ${{ env.IMAGE_NAME }}
+          tags: "latest"
+          extra-args: |
+            --disable-content-trust
