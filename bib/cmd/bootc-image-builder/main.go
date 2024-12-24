@@ -487,16 +487,13 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 
 	pbar.SetMessagef("Build complete!")
 	if upload {
-		// XXX: pass our own progress.ProgressBar here
-		// *for now* just stop our own progress and let the uploadAMI
-		// progress take over - but we really need to fix this in a
-		// followup
-		pbar.Stop()
 		for idx, imgType := range imgTypes {
 			switch imgType {
 			case "ami":
+				pbar.Clear()
+				pbar.SetPulseMsgf("AWS uploading step")
 				diskpath := filepath.Join(outputDir, exports[idx], "disk.raw")
-				if err := uploadAMI(diskpath, targetArch, cmd.Flags()); err != nil {
+				if err := uploadAMI(pbar, diskpath, targetArch, cmd.Flags()); err != nil {
 					return fmt.Errorf("cannot upload AMI: %w", err)
 				}
 			default:

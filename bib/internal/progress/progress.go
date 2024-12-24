@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cheggaaa/pb/v3"
@@ -40,11 +41,7 @@ type ProgressBar interface {
 	// SetProgress sets the progress details at the given "level".
 	// Levels should start with "0" and increase as the nesting
 	// gets deeper.
-	//
-	// Note that reducing depth is currently not supported, once
-	// a sub-progress is added it cannot be removed/hidden
-	// (but if required it can be added, its a SMOP)
-	SetProgress(level int, msg string, done int, total int) error
+	SetProgress(level int, msg string, done int64, total int64) error
 
 	// The high-level message that is displayed in a spinner
 	// that contains the current top level step, for bib this
@@ -58,6 +55,10 @@ type ProgressBar interface {
 	// For us this usually comes from the stages and has information
 	// like "Starting module org.osbuild.selinux"
 	SetMessagef(fmt string, args ...interface{})
+
+	// Clear clears all the subprogress/pulse/messages. This is
+	// useful when there is a need to reduce the sublevels.
+	Clear()
 
 	// Start will start rendering the progress information
 	Start()
@@ -97,7 +98,8 @@ type terminalProgressBar struct {
 
 	shutdownCh chan bool
 
-	out io.Writer
+	outMu sync.Mutex
+	out   io.Writer
 }
 
 // NewTerminalProgressBar creates a new default pb3 based progressbar suitable for
@@ -113,7 +115,7 @@ func NewTerminalProgressBar() (ProgressBar, error) {
 	return b, nil
 }
 
-func (b *terminalProgressBar) SetProgress(subLevel int, msg string, done int, total int) error {
+func (b *terminalProgressBar) SetProgress(subLevel int, msg string, done int64, total int64) error {
 	// auto-add as needed, requires sublevels to get added in order
 	// i.e. adding 0 and then 2 will fail
 	switch {
@@ -157,7 +159,29 @@ func (b *terminalProgressBar) SetMessagef(msg string, args ...interface{}) {
 	b.msgPb.Set("msg", shorten(fmt.Sprintf(msg, args...)))
 }
 
+func (b *terminalProgressBar) Clear() {
+	// ensure anything pending is output
+	b.render()
+
+	b.outMu.Lock()
+	defer b.outMu.Unlock()
+
+	// pulseMsg line + subLevel lines + message line
+	linesToClear := len(b.subLevelPbs) + 2
+	for i := 0; i < linesToClear; i++ {
+		fmt.Fprintf(b.out, "%s\n", ERASE_LINE)
+	}
+	fmt.Fprint(b.out, cursorUp(linesToClear))
+
+	b.subLevelPbs = nil
+	b.SetPulseMsgf("")
+	b.SetMessagef("")
+}
+
 func (b *terminalProgressBar) render() {
+	b.outMu.Lock()
+	defer b.outMu.Unlock()
+
 	var renderedLines int
 	fmt.Fprintf(b.out, "%s%s\n", ERASE_LINE, b.spinnerPb.String())
 	renderedLines++
@@ -268,8 +292,11 @@ func (b *plainProgressBar) Start() {
 func (b *plainProgressBar) Stop() {
 }
 
-func (b *plainProgressBar) SetProgress(subLevel int, msg string, done int, total int) error {
+func (b *plainProgressBar) SetProgress(subLevel int, msg string, done int64, total int64) error {
 	return nil
+}
+
+func (b *plainProgressBar) Clear() {
 }
 
 type debugProgressBar struct {
@@ -305,10 +332,13 @@ func (b *debugProgressBar) Stop() {
 	fmt.Fprintf(b.w, "Stop progressbar\n")
 }
 
-func (b *debugProgressBar) SetProgress(subLevel int, msg string, done int, total int) error {
+func (b *debugProgressBar) SetProgress(subLevel int, msg string, done int64, total int64) error {
 	fmt.Fprintf(b.w, "%s[%v / %v] %s", strings.Repeat("  ", subLevel), done, total, msg)
 	fmt.Fprintf(b.w, "\n")
 	return nil
+}
+func (b *debugProgressBar) Clear() {
+	fmt.Fprintf(b.w, "Clear progressbar\n")
 }
 
 // XXX: merge variant back into images/pkg/osbuild/osbuild-exec.go
@@ -378,7 +408,7 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirect
 		}
 		i := 0
 		for p := st.Progress; p != nil; p = p.SubProgress {
-			if err := pb.SetProgress(i, p.Message, p.Done, p.Total); err != nil {
+			if err := pb.SetProgress(i, p.Message, int64(p.Done), int64(p.Total)); err != nil {
 				logrus.Warnf("cannot set progress: %v", err)
 			}
 			i++
