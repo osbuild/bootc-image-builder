@@ -1,0 +1,7 @@
+version: "1"
+rules:
+  - base: main
+    upstream: osbuild:main # Required. Must be in the same fork network.
+    mergeMethod: rebase # Optional, one of [none, merge, squash, rebase, hardreset], Default: none.
+
+
