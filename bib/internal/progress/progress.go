@@ -74,13 +74,13 @@ func New(typ string) (ProgressBar, error) {
 	switch typ {
 	case "", "auto":
 		// autoselect based on if we are on an interactive
-		// terminal, use plain progress for scripts
+		// terminal, use verbose progress for scripts
 		if isattyIsTerminal(os.Stdin.Fd()) {
 			return NewTerminalProgressBar()
 		}
-		return NewPlainProgressBar()
-	case "plain":
-		return NewPlainProgressBar()
+		return NewVerboseProgressBar()
+	case "verbose":
+		return NewVerboseProgressBar()
 	case "term":
 		return NewTerminalProgressBar()
 	case "debug":
@@ -241,34 +241,34 @@ func (b *terminalProgressBar) Stop() {
 	}
 }
 
-type plainProgressBar struct {
+type verboseProgressBar struct {
 	w io.Writer
 }
 
-// NewPlainProgressBar starts a new "plain" progressbar that will just
+// NewVerboseProgressBar starts a new "verbose" progressbar that will just
 // prints message but does not show any progress.
-func NewPlainProgressBar() (ProgressBar, error) {
-	b := &plainProgressBar{w: osStderr}
+func NewVerboseProgressBar() (ProgressBar, error) {
+	b := &verboseProgressBar{w: osStderr}
 	return b, nil
 }
 
-func (b *plainProgressBar) SetPulseMsgf(msg string, args ...interface{}) {
+func (b *verboseProgressBar) SetPulseMsgf(msg string, args ...interface{}) {
 	fmt.Fprintf(b.w, msg, args...)
 	fmt.Fprintf(b.w, "\n")
 }
 
-func (b *plainProgressBar) SetMessagef(msg string, args ...interface{}) {
+func (b *verboseProgressBar) SetMessagef(msg string, args ...interface{}) {
 	fmt.Fprintf(b.w, msg, args...)
 	fmt.Fprintf(b.w, "\n")
 }
 
-func (b *plainProgressBar) Start() {
+func (b *verboseProgressBar) Start() {
 }
 
-func (b *plainProgressBar) Stop() {
+func (b *verboseProgressBar) Stop() {
 }
 
-func (b *plainProgressBar) SetProgress(subLevel int, msg string, done int, total int) error {
+func (b *verboseProgressBar) SetProgress(subLevel int, msg string, done int, total int) error {
 	return nil
 }
 

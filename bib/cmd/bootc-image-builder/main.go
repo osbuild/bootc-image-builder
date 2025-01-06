@@ -691,7 +691,7 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	buildCmd.Flags().String("output", ".", "artifact output directory")
 	buildCmd.Flags().String("store", "/store", "osbuild store for intermediate pipeline trees")
 	//TODO: add json progress for higher level tools like "podman bootc"
-	buildCmd.Flags().String("progress", "auto", "type of progress bar to use (e.g. plain,term)")
+	buildCmd.Flags().String("progress", "auto", "type of progress bar to use (e.g. verbose,term)")
 	// flag rules
 	for _, dname := range []string{"output", "store", "rpmmd"} {
 		if err := buildCmd.MarkFlagDirname(dname); err != nil {

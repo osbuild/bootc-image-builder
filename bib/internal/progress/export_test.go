@@ -7,7 +7,7 @@ import (
 type (
 	TerminalProgressBar = terminalProgressBar
 	DebugProgressBar    = debugProgressBar
-	PlainProgressBar    = plainProgressBar
+	VerboseProgressBar  = verboseProgressBar
 )
 
 func MockOsStderr(w io.Writer) (restore func()) {

@@ -128,7 +128,7 @@ Usage:
 Flags:
       --chown string           chown the ouput directory to match the specified UID:GID
       --tls-verify             require HTTPS and verify certificates when contacting registries (default true)
-      --progress string        type of progress bar to use (e.g. plain,term)
+      --progress string        type of progress bar to use (e.g. verbose, term)
       --type string            image type to build [qcow2, ami] (default "qcow2")
       --target-arch string     architecture to build image for (default is the native architecture)
 ```
@@ -138,7 +138,7 @@ Flags:
 | Argument          | Description                                                                                               | Default Value |
 |-------------------|-----------------------------------------------------------------------------------------------------------|:-------------:|
 | **--chown**       | chown the output directory to match the specified UID:GID                                                 |       ❌      |
-| **--progress**   | Show progress in the given format, supported: plain,term,debug. If empty it is auto-detected               |   `auto`      |
+| **--progress**   | Show progress in the given format, supported: verbose,term,debug. If empty it is auto-detected               |   `auto`      |
 | **--rootfs**      | Root filesystem type. Overrides the default from the source container. Supported values: ext4, xfs, btrfs |       ❌      |
 | **--tls-verify**  | Require HTTPS and verify certificates when contacting registries                                          |    `true`     |
 | **--type**        | [Image type](#-image-types) to build                                                                      |    `qcow2`    |
@@ -178,11 +178,11 @@ you should provide `--target-arch amd64` when running the `bootc-image-builder` 
 
 The following progress types are supported:
 
-* plain: No spinners or progress bar, just information and full osbuild output
+* verbose: No spinners or progress bar, just information and full osbuild output
 * term: Terminal based output, spinner, progressbar and most details of osbuild are hidden
 * debug: Details how the progress is called, mostly useful for bugreports
 
-Note that when no value is given the progress is auto-detected baed on the environment. When `stdin` is a terminal the "term" progress is used, otherwise "plain". The output of `plain` is exactaly the same as it was before progress reporting was implemented.
+Note that when no value is given the progress is auto-detected baed on the environment. When `stdin` is a terminal the "term" progress is used, otherwise "verbose". The output of `verbose` is exactaly the same as it was before progress reporting was implemented.
 
 ## ☁️ Cloud uploaders
 
