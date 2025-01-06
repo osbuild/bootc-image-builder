@@ -19,7 +19,7 @@ func TestProgressNew(t *testing.T) {
 	}{
 		{"term", &progress.TerminalProgressBar{}, ""},
 		{"debug", &progress.DebugProgressBar{}, ""},
-		{"plain", &progress.PlainProgressBar{}, ""},
+		{"verbose", &progress.VerboseProgressBar{}, ""},
 		// unknown progress type
 		{"bad", nil, `unknown progress type: "bad"`},
 	} {
@@ -33,13 +33,13 @@ func TestProgressNew(t *testing.T) {
 	}
 }
 
-func TestPlainProgress(t *testing.T) {
+func TestVerboseProgress(t *testing.T) {
 	var buf bytes.Buffer
 	restore := progress.MockOsStderr(&buf)
 	defer restore()
 
-	// plain progress never generates progress output
-	pbar, err := progress.NewPlainProgressBar()
+	// verbose progress never generates progress output
+	pbar, err := progress.NewVerboseProgressBar()
 	assert.NoError(t, err)
 	err = pbar.SetProgress(0, "set-progress", 1, 100)
 	assert.NoError(t, err)
@@ -117,7 +117,7 @@ func TestProgressNewAutoselect(t *testing.T) {
 		onTerm   bool
 		expected interface{}
 	}{
-		{false, &progress.PlainProgressBar{}},
+		{false, &progress.VerboseProgressBar{}},
 		{true, &progress.TerminalProgressBar{}},
 	} {
 		restore := progress.MockIsattyIsTerminal(func(uintptr) bool {
