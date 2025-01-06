@@ -518,7 +518,8 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	default:
 		return nil, fmt.Errorf("unsupported architecture %v", c.Architecture)
 	}
-
+	// see https://github.com/osbuild/bootc-image-builder/issues/733
+	img.RootfsType = manifest.SquashfsRootfs
 	img.Filename = "install.iso"
 
 	mf := manifest.New()

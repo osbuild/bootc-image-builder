@@ -58,7 +58,7 @@ def test_iso_manifest_smoke(build_container, tc):
     ])
     manifest = json.loads(output)
     # just some basic validation
-    expected_pipeline_names = ["build", "anaconda-tree", "rootfs-image", "efiboot-tree", "bootiso-tree", "bootiso"]
+    expected_pipeline_names = ["build", "anaconda-tree", "efiboot-tree", "bootiso-tree", "bootiso"]
     assert manifest["version"] == "2"
     assert [pipeline["name"] for pipeline in manifest["pipelines"]] == expected_pipeline_names
 

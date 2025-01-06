@@ -79,7 +79,7 @@ jobs:
     - name: Install test dependencies
       run: |
         sudo apt update
-        sudo apt install -y python3-pytest python3-paramiko python3-boto3 flake8 pylint libosinfo-bin
+        sudo apt install -y python3-pytest python3-paramiko python3-boto3 flake8 pylint libosinfo-bin squashfs-tools
     - name: Diskspace (before)
       run: |
         df -h

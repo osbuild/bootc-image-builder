@@ -9,7 +9,7 @@ import string
 import subprocess
 import tempfile
 import uuid
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 from typing import NamedTuple
 from dataclasses import dataclass
 
@@ -652,6 +652,22 @@ def test_iso_os_detection(image_type):
     osinfo_output = result.stdout
     expected_output = f"Media is bootable.\n{osinfo_for(image_type, arch)}"
     assert osinfo_output == expected_output
+
+
+@pytest.mark.skipif(platform.system() != "Linux", reason="osinfo detect test only runs on linux right now")
+@pytest.mark.skipif(not testutil.has_executable("unsquashfs"), reason="need unsquashfs")
+@pytest.mark.parametrize("image_type", gen_testcases("anaconda-iso"), indirect=["image_type"])
+def test_iso_install_img_is_squashfs(tmp_path, image_type):
+    installer_iso_path = image_type.img_path
+    with ExitStack() as cm:
+        mount_point = tmp_path / "cdrom"
+        mount_point.mkdir()
+        subprocess.check_call(["mount", installer_iso_path, os.fspath(mount_point)])
+        cm.callback(subprocess.check_call, ["umount", os.fspath(mount_point)])
+        # ensure install.img is the "flat" squashfs, before PR#777 the content
+        # was an intermediate ext4 image "squashfs-root/LiveOS/rootfs.img"
+        output = subprocess.check_output(["unsquashfs", "-ls", mount_point / "images/install.img"], text=True)
+        assert "usr/bin/bootc" in output
 
 
 @pytest.mark.parametrize("images", gen_testcases("multidisk"), indirect=["images"])
