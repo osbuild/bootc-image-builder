@@ -125,7 +125,7 @@ func TestProgressNewAutoselect(t *testing.T) {
 		})
 		defer restore()
 
-		pb, err := progress.New("")
+		pb, err := progress.New("auto")
 		assert.NoError(t, err)
 		assert.Equal(t, reflect.TypeOf(pb), reflect.TypeOf(tc.expected), fmt.Sprintf("[%v] %T not the expected %T", tc.onTerm, pb, tc.expected))
 	}

@@ -72,7 +72,7 @@ var isattyIsTerminal = isatty.IsTerminal
 // New creates a new progressbar based on the requested type
 func New(typ string) (ProgressBar, error) {
 	switch typ {
-	case "":
+	case "", "auto":
 		// autoselect based on if we are on an interactive
 		// terminal, use plain progress for scripts
 		if isattyIsTerminal(os.Stdin.Fd()) {
