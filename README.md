@@ -138,7 +138,7 @@ Flags:
 | Argument          | Description                                                                                               | Default Value |
 |-------------------|-----------------------------------------------------------------------------------------------------------|:-------------:|
 | **--chown**       | chown the output directory to match the specified UID:GID                                                 |       ❌      |
-| **--progress**   | Show progress in the given format, supported: plain,term,debug. If empty it is auto-detected               |       ❌      |
+| **--progress**   | Show progress in the given format, supported: plain,term,debug. If empty it is auto-detected               |   `auto`      |
 | **--rootfs**      | Root filesystem type. Overrides the default from the source container. Supported values: ext4, xfs, btrfs |       ❌      |
 | **--tls-verify**  | Require HTTPS and verify certificates when contacting registries                                          |    `true`     |
 | **--type**        | [Image type](#-image-types) to build                                                                      |    `qcow2`    |

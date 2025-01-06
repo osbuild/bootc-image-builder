@@ -628,9 +628,9 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	rootCmd.PersistentFlags().StringVar(&rootLogLevel, "log-level", "", "logging level (debug, info, error); default error")
 
 	buildCmd := &cobra.Command{
-		Use:                   "build IMAGE_NAME",
-		Short:                 rootCmd.Long + " (default command)",
-		Long:                  rootCmd.Long + "\n" +
+		Use:   "build IMAGE_NAME",
+		Short: rootCmd.Long + " (default command)",
+		Long: rootCmd.Long + "\n" +
 			"(default action if no command is given)\n" +
 			"IMAGE_NAME: container image to build into a bootable image",
 		Args:                  cobra.ExactArgs(1),
@@ -691,7 +691,7 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	buildCmd.Flags().String("output", ".", "artifact output directory")
 	buildCmd.Flags().String("store", "/store", "osbuild store for intermediate pipeline trees")
 	//TODO: add json progress for higher level tools like "podman bootc"
-	buildCmd.Flags().String("progress", "", "type of progress bar to use (e.g. plain,term)")
+	buildCmd.Flags().String("progress", "auto", "type of progress bar to use (e.g. plain,term)")
 	// flag rules
 	for _, dname := range []string{"output", "store", "rpmmd"} {
 		if err := buildCmd.MarkFlagDirname(dname); err != nil {
