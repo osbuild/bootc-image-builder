@@ -591,18 +591,22 @@ func cmdVersion() (string, error) {
 		}
 	}
 	if gitRev != "" {
-		ret = append(ret, fmt.Sprintf("revision: %s", gitRev[:7]))
+		ret = append(ret, fmt.Sprintf("build_revision: %s", gitRev[:7]))
 	} else {
-		ret = append(ret, "revision: unknown")
+		ret = append(ret, "build_revision: unknown")
 	}
 	if buildTime != "" {
-		ret = append(ret, fmt.Sprintf("build time: %s", buildTime))
+		ret = append(ret, fmt.Sprintf("build_time: %s", buildTime))
 	}
 	if buildTainted {
-		ret = append(ret, "build status: tainted")
+		ret = append(ret, "build_status: tainted")
 	} else {
-		ret = append(ret, "build status: ok")
+		ret = append(ret, "build_status: ok")
 	}
+
+	// append final newline
+	ret = append(ret, "")
+
 	return strings.Join(ret, "\n"), nil
 }
 
@@ -619,6 +623,7 @@ func buildCobraCmdline() (*cobra.Command, error) {
 		SilenceErrors:     true,
 		Version:           version,
 	}
+	rootCmd.SetVersionTemplate(version)
 
 	rootCmd.PersistentFlags().StringVar(&rootLogLevel, "log-level", "", "logging level (debug, info, error); default error")
 
@@ -636,6 +641,8 @@ func buildCobraCmdline() (*cobra.Command, error) {
 			rootCmd.Use + " quay.io/centos-bootc/centos-bootc:stream9\n",
 		Version:               rootCmd.Version,
 	}
+	buildCmd.SetVersionTemplate(version)
+
 	rootCmd.AddCommand(buildCmd)
 	manifestCmd := &cobra.Command{
 		Use:                   "manifest",
@@ -646,6 +653,8 @@ func buildCobraCmdline() (*cobra.Command, error) {
 		SilenceUsage:          true,
 		Version:               rootCmd.Version,
 	}
+	manifestCmd.SetVersionTemplate(version)
+
 	versionCmd := &cobra.Command{
 		Use:          "version",
 		Short:        "Show the version and quit",
