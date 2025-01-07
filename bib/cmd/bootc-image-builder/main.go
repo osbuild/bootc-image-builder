@@ -659,10 +659,10 @@ func buildCobraCmdline() (*cobra.Command, error) {
 		Use:          "version",
 		Short:        "Show the version and quit",
 		SilenceUsage: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			root := cmd.Root()
 			root.SetArgs([]string{"--version"})
-			root.Execute()
+			return root.Execute()
 		},
 	}
 
