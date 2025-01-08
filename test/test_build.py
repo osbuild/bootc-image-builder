@@ -10,13 +10,14 @@ import subprocess
 import tempfile
 import uuid
 from contextlib import contextmanager, ExitStack
-from typing import NamedTuple
 from dataclasses import dataclass
+from typing import NamedTuple
 
 import pytest
 # local test utils
 import testutil
 from containerbuild import build_container_fixture    # pylint: disable=unused-import
+from filelock import FileLock
 from testcases import CLOUD_BOOT_IMAGE_TYPES, DISK_IMAGE_TYPES, gen_testcases
 from vm import AWS, QEMU
 
@@ -67,12 +68,6 @@ class RegistryConf:
     lookaside_conf: str
 
 
-@pytest.fixture(name="shared_tmpdir", scope='session')
-def shared_tmpdir_fixture(tmpdir_factory):
-    tmp_path = pathlib.Path(tmpdir_factory.mktemp("shared"))
-    yield tmp_path
-
-
 @pytest.fixture(name="gpg_conf", scope='session')
 def gpg_conf_fixture(shared_tmpdir):
     key_params_tmpl = """
@@ -90,19 +85,25 @@ def gpg_conf_fixture(shared_tmpdir):
     pub_key_file = f"{shared_tmpdir}/GPG-KEY-bib-tests"
     key_params = key_params_tmpl.format(key_length=key_length, email=email)
 
-    os.makedirs(home_dir, mode=0o700, exist_ok=False)
-    subprocess.run(
-        ["gpg", "--gen-key", "--batch"],
-        check=True, env={"GNUPGHOME": home_dir},
-        input=key_params,
-        text=True)
-    subprocess.run(
-        ["gpg", "--output", pub_key_file,
-         "--armor", "--export", email],
-        check=True, env={"GNUPGHOME": home_dir})
+    # XXX: fugly
+    with FileLock(home_dir + ".lock"):
+        if os.path.exists(home_dir):
+            yield GPGConf(email=email, home_dir=home_dir,
+                          key_length=key_length, pub_key_file=pub_key_file, key_params=key_params)
+        else:
+            os.makedirs(home_dir, mode=0o700, exist_ok=False)
+            subprocess.run(
+                ["gpg", "--gen-key", "--batch"],
+                check=True, env={"GNUPGHOME": home_dir},
+                input=key_params,
+                text=True)
+            subprocess.run(
+                ["gpg", "--output", pub_key_file,
+                 "--armor", "--export", email],
+                check=True, env={"GNUPGHOME": home_dir})
 
-    yield GPGConf(email=email, home_dir=home_dir,
-                  key_length=key_length, pub_key_file=pub_key_file, key_params=key_params)
+            yield GPGConf(email=email, home_dir=home_dir,
+                          key_length=key_length, pub_key_file=pub_key_file, key_params=key_params)
 
 
 @pytest.fixture(name="registry_conf", scope='session')
@@ -276,226 +277,235 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
     if tc.sign:
         container_ref = get_signed_container_ref(registry_conf.local_registry, tc.container_ref)
 
-    # params can be long and the qmp socket (that has a limit of 100ish
-    # AF_UNIX) is derived from the path
-    # hash the container_ref+target_arch, but exclude the image_type so that the output path is shared between calls to
-    # different image type combinations
-    output_path = shared_tmpdir / format(abs(hash(container_ref + str(tc.disk_config) + str(tc.target_arch))), "x")
-    output_path.mkdir(exist_ok=True)
+    # Wait until the image with this ID is generated, the first woker
+    img_id = format(abs(hash(container_ref + str(tc.disk_config) + str(tc.target_arch))), "x")
+    fn = shared_tmpdir / f"{img_id}.lock"
+    print(f"Using lockfile {fn}")
+    # XXX: the diff for this is huge now, this is really just the previous
+    # code moved 4 spaces to the right, the code is already capable of dealing
+    # with existing output dirs, so the filelock just ensures the part below
+    # is serialized
+    with FileLock(fn):
+        # params can be long and the qmp socket (that has a limit of 100ish
+        # AF_UNIX) is derived from the path
+        # hash the container_ref+target_arch, but exclude the image_type so that the output path is shared between calls to
+        # different image type combinations
+        output_path = shared_tmpdir / img_id
+        output_path.mkdir(exist_ok=True)
 
-    # make sure that the test store exists, because podman refuses to start if the source directory for a volume
-    # doesn't exist
-    pathlib.Path("/var/tmp/osbuild-test-store").mkdir(exist_ok=True, parents=True)
+        # make sure that the test store exists, because podman refuses to start if the source directory for a volume
+        # doesn't exist
+        pathlib.Path("/var/tmp/osbuild-test-store").mkdir(exist_ok=True, parents=True)
 
-    journal_log_path = output_path / "journal.log"
-    bib_output_path = output_path / "bib-output.log"
+        journal_log_path = output_path / "journal.log"
+        bib_output_path = output_path / "bib-output.log"
 
-    ssh_keyfile_private_path = output_path / "ssh-keyfile"
-    ssh_keyfile_public_path = ssh_keyfile_private_path.with_suffix(".pub")
+        ssh_keyfile_private_path = output_path / "ssh-keyfile"
+        ssh_keyfile_public_path = ssh_keyfile_private_path.with_suffix(".pub")
 
-    artifact = {
-        "qcow2": pathlib.Path(output_path) / "qcow2/disk.qcow2",
-        "ami": pathlib.Path(output_path) / "image/disk.raw",
-        "raw": pathlib.Path(output_path) / "image/disk.raw",
-        "vmdk": pathlib.Path(output_path) / "vmdk/disk.vmdk",
-        "vhd": pathlib.Path(output_path) / "vpc/disk.vhd",
-        "gce": pathlib.Path(output_path) / "gce/image.tar.gz",
-        "anaconda-iso": pathlib.Path(output_path) / "bootiso/install.iso",
-    }
-    assert len(artifact) == len(set(tc.image for tc in gen_testcases("all"))), \
-        "please keep artifact mapping and supported images in sync"
+        artifact = {
+            "qcow2": pathlib.Path(output_path) / "qcow2/disk.qcow2",
+            "ami": pathlib.Path(output_path) / "image/disk.raw",
+            "raw": pathlib.Path(output_path) / "image/disk.raw",
+            "vmdk": pathlib.Path(output_path) / "vmdk/disk.vmdk",
+            "vhd": pathlib.Path(output_path) / "vpc/disk.vhd",
+            "gce": pathlib.Path(output_path) / "gce/image.tar.gz",
+            "anaconda-iso": pathlib.Path(output_path) / "bootiso/install.iso",
+        }
+        assert len(artifact) == len(set(tc.image for tc in gen_testcases("all"))), \
+            "please keep artifact mapping and supported images in sync"
 
-    # this helper checks the cache
-    results = []
-    for image_type in image_types:
-        # TODO: properly cache amis here. The issue right now is that
-        # ami and raw are the same image on disk which means that if a test
-        # like "boots_in_aws" requests an ami it will get the raw file on
-        # disk. However that is not sufficient because part of the ami test
-        # is the upload to AWS and the generated metadata. The fix could be
-        # to make the boot-in-aws a new image type like "ami-aws" where we
-        # cache the metadata instead of the disk image. Alternatively we
-        # could stop testing ami locally at all and just skip any ami tests
-        # if there are no AWS credentials.
-        if image_type in CLOUD_BOOT_IMAGE_TYPES:
-            continue
-        generated_img = artifact[image_type]
-        print(f"Checking for cached image {image_type} -> {generated_img}")
-        if generated_img.exists():
-            print(f"NOTE: reusing cached image {generated_img}")
-            journal_output = journal_log_path.read_text(encoding="utf8")
-            bib_output = bib_output_path.read_text(encoding="utf8")
+        # this helper checks the cache
+        results = []
+        for image_type in image_types:
+            # TODO: properly cache amis here. The issue right now is that
+            # ami and raw are the same image on disk which means that if a test
+            # like "boots_in_aws" requests an ami it will get the raw file on
+            # disk. However that is not sufficient because part of the ami test
+            # is the upload to AWS and the generated metadata. The fix could be
+            # to make the boot-in-aws a new image type like "ami-aws" where we
+            # cache the metadata instead of the disk image. Alternatively we
+            # could stop testing ami locally at all and just skip any ami tests
+            # if there are no AWS credentials.
+            if image_type in CLOUD_BOOT_IMAGE_TYPES:
+                continue
+            generated_img = artifact[image_type]
+            print(f"Checking for cached image {image_type} -> {generated_img}")
+            if generated_img.exists():
+                print(f"NOTE: reusing cached image {generated_img}")
+                journal_output = journal_log_path.read_text(encoding="utf8")
+                bib_output = bib_output_path.read_text(encoding="utf8")
+                results.append(ImageBuildResult(
+                    image_type, generated_img, tc.target_arch,
+                    container_ref, tc.rootfs, tc.disk_config,
+                    username, password,
+                    ssh_keyfile_private_path, kargs, bib_output, journal_output))
+
+        # generate new keyfile
+        if not ssh_keyfile_private_path.exists():
+            subprocess.run([
+                "ssh-keygen",
+                "-N", "",
+                # be very conservative with keys for paramiko
+                "-b", "2048",
+                "-t", "rsa",
+                "-f", os.fspath(ssh_keyfile_private_path),
+            ], check=True)
+        ssh_pubkey = ssh_keyfile_public_path.read_text(encoding="utf8").strip()
+
+        # Because we always build all image types, regardless of what was requested, we should either have 0 results or all
+        # should be available, so if we found at least one result but not all of them, this is a problem with our setup
+        assert not results or len(results) == len(image_types), \
+            f"unexpected number of results found: requested {image_types} but got {results}"
+
+        if results:
+            yield results
+            return
+
+        print(f"Requested {len(image_types)} images but found {len(results)} cached images. Building...")
+
+        # not all requested image types are available - build them
+        cfg = {
+            "customizations": {
+                "user": [
+                    {
+                        "name": "root",
+                        "key": ssh_pubkey,
+                        # cannot use default /root as is on a read-only place
+                        "home": "/var/roothome",
+                    }, {
+                        "name": username,
+                        "password": password,
+                        "groups": ["wheel"],
+                    },
+                ],
+                "kernel": {
+                    "append": kargs,
+                },
+            },
+        }
+        testutil.maybe_create_filesystem_customizations(cfg, tc)
+        testutil.maybe_create_disk_customizations(cfg, tc)
+        print(f"config for {output_path} {tc=}: {cfg=}")
+
+        config_json_path = output_path / "config.json"
+        config_json_path.write_text(json.dumps(cfg), encoding="utf-8")
+
+        cursor = testutil.journal_cursor()
+
+        upload_args = []
+        creds_args = []
+        target_arch_args = []
+        if tc.target_arch:
+            target_arch_args = ["--target-arch", tc.target_arch]
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            if "ami" in image_types:
+                creds_file = pathlib.Path(tempdir) / "aws.creds"
+                if testutil.write_aws_creds(creds_file):
+                    creds_args = ["-v", f"{creds_file}:/root/.aws/credentials:ro",
+                                  "--env", "AWS_PROFILE=default"]
+
+                    upload_args = [
+                        f"--aws-ami-name=bootc-image-builder-test-{str(uuid.uuid4())}",
+                        f"--aws-region={testutil.AWS_REGION}",
+                        "--aws-bucket=bootc-image-builder-ci",
+                    ]
+                elif force_aws_upload:
+                    # upload forced but credentials aren't set
+                    raise RuntimeError("AWS credentials not available (upload forced)")
+
+            # all disk-image types can be generated via a single build
+            if image_types[0] in DISK_IMAGE_TYPES:
+                types_arg = [f"--type={it}" for it in DISK_IMAGE_TYPES]
+            else:
+                types_arg = [f"--type={image_types[0]}"]
+
+            # run container to deploy an image into a bootable disk and upload to a cloud service if applicable
+            cmd = [
+                *testutil.podman_run_common,
+                "-v", f"{config_json_path}:/config.json:ro",
+                "-v", f"{output_path}:/output",
+                "-v", "/var/tmp/osbuild-test-store:/store",  # share the cache between builds
+            ]
+
+            # we need to mount the host's container store
+            if tc.local:
+                cmd.extend(["-v", "/var/lib/containers/storage:/var/lib/containers/storage"])
+
+            if tc.sign:
+                sign_container_image(gpg_conf, registry_conf, tc.container_ref)
+                signed_image_args = [
+                    "-v", f"{registry_conf.policy_file}:/etc/containers/policy.json",
+                    "-v", f"{registry_conf.lookaside_conf_file}:/etc/containers/registries.d/bib-lookaside.yaml",
+                    "-v", f"{registry_conf.sigstore_dir}:{registry_conf.sigstore_dir}",
+                    "-v", f"{gpg_conf.pub_key_file}:{gpg_conf.pub_key_file}",
+                ]
+                cmd.extend(signed_image_args)
+
+            cmd.extend([
+                *creds_args,
+                build_container,
+                container_ref,
+                *types_arg,
+                *upload_args,
+                *target_arch_args,
+                *tc.bib_rootfs_args(),
+                "--local" if tc.local else "--local=false",
+                "--tls-verify=false" if tc.sign else "--tls-verify=true"
+            ])
+
+            # print the build command for easier tracing
+            print(" ".join(cmd))
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            # not using subprocss.check_output() to ensure we get live output
+            # during the text
+            bib_output = ""
+            while True:
+                line = p.stdout.readline()
+                if not line:
+                    break
+                print(line, end="")
+                bib_output += line
+            rc = p.wait(timeout=10)
+            assert rc == 0, f"bootc-image-builder failed with return code {rc}"
+
+        journal_output = testutil.journal_after_cursor(cursor)
+        metadata = {}
+        if "ami" in image_types and upload_args:
+            metadata["ami_id"] = parse_ami_id_from_log(journal_output)
+
+            def del_ami():
+                testutil.deregister_ami(metadata["ami_id"])
+            request.addfinalizer(del_ami)
+
+        journal_log_path.write_text(journal_output, encoding="utf8")
+        bib_output_path.write_text(bib_output, encoding="utf8")
+
+        results = []
+        for image_type in image_types:
             results.append(ImageBuildResult(
-                image_type, generated_img, tc.target_arch,
+                image_type, artifact[image_type], tc.target_arch,
                 container_ref, tc.rootfs, tc.disk_config,
                 username, password,
-                ssh_keyfile_private_path, kargs, bib_output, journal_output))
-
-    # generate new keyfile
-    if not ssh_keyfile_private_path.exists():
-        subprocess.run([
-            "ssh-keygen",
-            "-N", "",
-            # be very conservative with keys for paramiko
-            "-b", "2048",
-            "-t", "rsa",
-            "-f", os.fspath(ssh_keyfile_private_path),
-        ], check=True)
-    ssh_pubkey = ssh_keyfile_public_path.read_text(encoding="utf8").strip()
-
-    # Because we always build all image types, regardless of what was requested, we should either have 0 results or all
-    # should be available, so if we found at least one result but not all of them, this is a problem with our setup
-    assert not results or len(results) == len(image_types), \
-        f"unexpected number of results found: requested {image_types} but got {results}"
-
-    if results:
+                ssh_keyfile_private_path, kargs, bib_output, journal_output, metadata))
         yield results
+
+        # Try to cache as much as possible
+        for image_type in image_types:
+            img = artifact[image_type]
+            print(f"Checking disk usage for {img}")
+            if os.path.exists(img):
+                # might already be removed if we're deleting 'raw' and 'ami'
+                disk_usage = shutil.disk_usage(img)
+                print(f"NOTE: disk usage after {img}: {disk_usage.free / 1_000_000} / {disk_usage.total / 1_000_000}")
+                if disk_usage.free < 1_000_000_000:
+                    print(f"WARNING: running low on disk space, removing {img}")
+                    img.unlink()
+            else:
+                print("does not exist")
+        subprocess.run(["podman", "rmi", container_ref], check=False)
         return
-
-    print(f"Requested {len(image_types)} images but found {len(results)} cached images. Building...")
-
-    # not all requested image types are available - build them
-    cfg = {
-        "customizations": {
-            "user": [
-                {
-                    "name": "root",
-                    "key": ssh_pubkey,
-                    # cannot use default /root as is on a read-only place
-                    "home": "/var/roothome",
-                }, {
-                    "name": username,
-                    "password": password,
-                    "groups": ["wheel"],
-                },
-            ],
-            "kernel": {
-                "append": kargs,
-            },
-        },
-    }
-    testutil.maybe_create_filesystem_customizations(cfg, tc)
-    testutil.maybe_create_disk_customizations(cfg, tc)
-    print(f"config for {output_path} {tc=}: {cfg=}")
-
-    config_json_path = output_path / "config.json"
-    config_json_path.write_text(json.dumps(cfg), encoding="utf-8")
-
-    cursor = testutil.journal_cursor()
-
-    upload_args = []
-    creds_args = []
-    target_arch_args = []
-    if tc.target_arch:
-        target_arch_args = ["--target-arch", tc.target_arch]
-
-    with tempfile.TemporaryDirectory() as tempdir:
-        if "ami" in image_types:
-            creds_file = pathlib.Path(tempdir) / "aws.creds"
-            if testutil.write_aws_creds(creds_file):
-                creds_args = ["-v", f"{creds_file}:/root/.aws/credentials:ro",
-                              "--env", "AWS_PROFILE=default"]
-
-                upload_args = [
-                    f"--aws-ami-name=bootc-image-builder-test-{str(uuid.uuid4())}",
-                    f"--aws-region={testutil.AWS_REGION}",
-                    "--aws-bucket=bootc-image-builder-ci",
-                ]
-            elif force_aws_upload:
-                # upload forced but credentials aren't set
-                raise RuntimeError("AWS credentials not available (upload forced)")
-
-        # all disk-image types can be generated via a single build
-        if image_types[0] in DISK_IMAGE_TYPES:
-            types_arg = [f"--type={it}" for it in DISK_IMAGE_TYPES]
-        else:
-            types_arg = [f"--type={image_types[0]}"]
-
-        # run container to deploy an image into a bootable disk and upload to a cloud service if applicable
-        cmd = [
-            *testutil.podman_run_common,
-            "-v", f"{config_json_path}:/config.json:ro",
-            "-v", f"{output_path}:/output",
-            "-v", "/var/tmp/osbuild-test-store:/store",  # share the cache between builds
-        ]
-
-        # we need to mount the host's container store
-        if tc.local:
-            cmd.extend(["-v", "/var/lib/containers/storage:/var/lib/containers/storage"])
-
-        if tc.sign:
-            sign_container_image(gpg_conf, registry_conf, tc.container_ref)
-            signed_image_args = [
-                "-v", f"{registry_conf.policy_file}:/etc/containers/policy.json",
-                "-v", f"{registry_conf.lookaside_conf_file}:/etc/containers/registries.d/bib-lookaside.yaml",
-                "-v", f"{registry_conf.sigstore_dir}:{registry_conf.sigstore_dir}",
-                "-v", f"{gpg_conf.pub_key_file}:{gpg_conf.pub_key_file}",
-            ]
-            cmd.extend(signed_image_args)
-
-        cmd.extend([
-            *creds_args,
-            build_container,
-            container_ref,
-            *types_arg,
-            *upload_args,
-            *target_arch_args,
-            *tc.bib_rootfs_args(),
-            "--local" if tc.local else "--local=false",
-            "--tls-verify=false" if tc.sign else "--tls-verify=true"
-        ])
-
-        # print the build command for easier tracing
-        print(" ".join(cmd))
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        # not using subprocss.check_output() to ensure we get live output
-        # during the text
-        bib_output = ""
-        while True:
-            line = p.stdout.readline()
-            if not line:
-                break
-            print(line, end="")
-            bib_output += line
-        rc = p.wait(timeout=10)
-        assert rc == 0, f"bootc-image-builder failed with return code {rc}"
-
-    journal_output = testutil.journal_after_cursor(cursor)
-    metadata = {}
-    if "ami" in image_types and upload_args:
-        metadata["ami_id"] = parse_ami_id_from_log(journal_output)
-
-        def del_ami():
-            testutil.deregister_ami(metadata["ami_id"])
-        request.addfinalizer(del_ami)
-
-    journal_log_path.write_text(journal_output, encoding="utf8")
-    bib_output_path.write_text(bib_output, encoding="utf8")
-
-    results = []
-    for image_type in image_types:
-        results.append(ImageBuildResult(
-            image_type, artifact[image_type], tc.target_arch,
-            container_ref, tc.rootfs, tc.disk_config,
-            username, password,
-            ssh_keyfile_private_path, kargs, bib_output, journal_output, metadata))
-    yield results
-
-    # Try to cache as much as possible
-    for image_type in image_types:
-        img = artifact[image_type]
-        print(f"Checking disk usage for {img}")
-        if os.path.exists(img):
-            # might already be removed if we're deleting 'raw' and 'ami'
-            disk_usage = shutil.disk_usage(img)
-            print(f"NOTE: disk usage after {img}: {disk_usage.free / 1_000_000} / {disk_usage.total / 1_000_000}")
-            if disk_usage.free < 1_000_000_000:
-                print(f"WARNING: running low on disk space, removing {img}")
-                img.unlink()
-        else:
-            print("does not exist")
-    subprocess.run(["podman", "rmi", container_ref], check=False)
-    return
 
 
 def test_container_builds(build_container):

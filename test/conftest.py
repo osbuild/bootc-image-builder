@@ -20,3 +20,10 @@ def pytest_make_parametrize_id(config, val):  # pylint: disable=W0613
     if isinstance(val, TestCase):
         return f"{val}"
     return None
+
+
+@pytest.fixture(name="shared_tmpdir", scope='session')
+def shared_tmpdir_fixture(tmp_path_factory):
+    tmp_path = tmp_path_factory.getbasetemp().parent / "shared"
+    tmp_path.mkdir(exist_ok=True)
+    yield tmp_path
