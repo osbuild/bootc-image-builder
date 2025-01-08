@@ -21,6 +21,7 @@ import (
 	"github.com/osbuild/images/pkg/container"
 	"github.com/osbuild/images/pkg/dnfjson"
 	"github.com/osbuild/images/pkg/manifest"
+	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/rpmmd"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
@@ -103,20 +104,20 @@ func getContainerSize(imgref string) (uint64, error) {
 }
 
 func makeManifest(c *ManifestConfig, solver *dnfjson.Solver, cacheRoot string) (manifest.OSBuildManifest, map[string][]rpmmd.RepoConfig, error) {
-	manifest, err := Manifest(c)
+	mani, err := Manifest(c)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot get manifest: %w", err)
 	}
 
 	// depsolve packages
-	depsolvedSets := make(map[string][]rpmmd.PackageSpec)
+	depsolvedSets := make(map[string]dnfjson.DepsolveResult)
 	depsolvedRepos := make(map[string][]rpmmd.RepoConfig)
-	for name, pkgSet := range manifest.GetPackageSetChains() {
+	for name, pkgSet := range mani.GetPackageSetChains() {
 		res, err := solver.Depsolve(pkgSet, 0)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot depsolve: %w", err)
 		}
-		depsolvedSets[name] = res.Packages
+		depsolvedSets[name] = *res
 		depsolvedRepos[name] = res.Repos
 	}
 
@@ -131,7 +132,7 @@ func makeManifest(c *ManifestConfig, solver *dnfjson.Solver, cacheRoot string) (
 	resolver := container.NewResolver(c.Architecture.String())
 
 	containerSpecs := make(map[string][]container.Spec)
-	for plName, sourceSpecs := range manifest.GetContainerSourceSpecs() {
+	for plName, sourceSpecs := range mani.GetContainerSourceSpecs() {
 		for _, c := range sourceSpecs {
 			resolver.Add(c)
 		}
@@ -147,7 +148,11 @@ func makeManifest(c *ManifestConfig, solver *dnfjson.Solver, cacheRoot string) (
 		containerSpecs[plName] = specs
 	}
 
-	mf, err := manifest.Serialize(depsolvedSets, containerSpecs, nil, depsolvedRepos)
+	var opts manifest.SerializeOptions
+	if c.UseLibrepo {
+		opts.RpmDownloader = osbuild.RpmDownloaderLibrepo
+	}
+	mf, err := mani.Serialize(depsolvedSets, containerSpecs, nil, &opts)
 	if err != nil {
 		return nil, nil, fmt.Errorf("[ERROR] manifest serialization failed: %s", err.Error())
 	}
@@ -192,6 +197,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	tlsVerify, _ := cmd.Flags().GetBool("tls-verify")
 	localStorage, _ := cmd.Flags().GetBool("local")
 	rootFs, _ := cmd.Flags().GetString("rootfs")
+	useLibrepo, _ := cmd.Flags().GetBool("use-librepo")
 
 	if targetArch != "" && arch.FromString(targetArch) != arch.Current() {
 		// TODO: detect if binfmt_misc for target arch is
@@ -317,6 +323,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 		DistroDefPaths: distroDefPaths,
 		SourceInfo:     sourceinfo,
 		RootFSType:     rootfsType,
+		UseLibrepo:     useLibrepo,
 	}
 
 	manifest, repos, err := makeManifest(manifestConfig, solver, rpmCacheRoot)
@@ -665,6 +672,7 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, fmt.Sprintf("image types to build [%s]", imagetypes.Available()))
 	manifestCmd.Flags().Bool("local", false, "use a local container rather than a container from a registry")
 	manifestCmd.Flags().String("rootfs", "", "Root filesystem type. If not given, the default configured in the source container image is used.")
+	manifestCmd.Flags().Bool("use-librepo", false, "(experimenal) switch to librepo for pkg download, needs new enough osbuild")
 	// --config is only useful for developers who run bib outside
 	// of a container to generate a manifest. so hide it by
 	// default from users.

@@ -17,6 +17,7 @@ import (
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/container"
+	"github.com/osbuild/images/pkg/dnfjson"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/rpmmd"
 
@@ -63,7 +64,7 @@ func TestCanChownInPathCannotChange(t *testing.T) {
 type manifestTestCase struct {
 	config            *main.ManifestConfig
 	imageTypes        imagetypes.ImageTypes
-	packages          map[string][]rpmmd.PackageSpec
+	depsolved         map[string]dnfjson.DepsolveResult
 	containers        map[string][]container.Spec
 	expStages         map[string][]string
 	notExpectedStages map[string][]string
@@ -228,39 +229,46 @@ func TestManifestSerialization(t *testing.T) {
 			containerSpec,
 		},
 	}
-	isoPackages := map[string][]rpmmd.PackageSpec{
+	isoPackages := map[string]dnfjson.DepsolveResult{
 		"build": {
-			{
-				Name:     "package",
-				Version:  "113",
-				Checksum: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			Packages: []rpmmd.PackageSpec{
+				{
+					Name:     "package",
+					Version:  "113",
+					Checksum: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+				},
 			},
 		},
 		"anaconda-tree": {
-			{
-				Name:     "kernel",
-				Version:  "10.11",
-				Checksum: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-			},
-			{
-				Name:     "package",
-				Version:  "113",
-				Checksum: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			Packages: []rpmmd.PackageSpec{
+				{
+					Name:     "kernel",
+					Version:  "10.11",
+					Checksum: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+				},
+				{
+					Name:     "package",
+					Version:  "113",
+					Checksum: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+				},
 			},
 		},
 	}
 
-	pkgsNoBuild := map[string][]rpmmd.PackageSpec{
+	pkgsNoBuild := map[string]dnfjson.DepsolveResult{
 		"anaconda-tree": {
-			{
-				Name:     "kernel",
-				Version:  "10.11",
-				Checksum: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-			},
-			{
-				Name:     "package",
-				Version:  "113",
-				Checksum: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			Packages: []rpmmd.PackageSpec{
+
+				{
+					Name:     "kernel",
+					Version:  "10.11",
+					Checksum: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+				},
+				{
+					Name:     "package",
+					Version:  "113",
+					Checksum: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+				},
 			},
 		},
 	}
@@ -368,7 +376,7 @@ func TestManifestSerialization(t *testing.T) {
 			config:     userConfig,
 			imageTypes: []string{"iso"},
 			containers: isoContainers,
-			packages:   isoPackages,
+			depsolved:  isoPackages,
 			expStages: map[string][]string{
 				"build":        {"org.osbuild.rpm"},
 				"bootiso-tree": {"org.osbuild.skopeo"}, // adds the container to the ISO tree
@@ -378,13 +386,13 @@ func TestManifestSerialization(t *testing.T) {
 			config:     userConfig,
 			imageTypes: []string{"iso"},
 			containers: isoContainers,
-			packages:   pkgsNoBuild,
+			depsolved:  pkgsNoBuild,
 			err:        "serialization not started",
 		},
 		"iso-nocontainer": {
 			config:     userConfig,
 			imageTypes: []string{"iso"},
-			packages:   isoPackages,
+			depsolved:  isoPackages,
 			err:        "missing ostree, container, or ospipeline parameters in ISO tree pipeline",
 		},
 		"ami-nocontainer": {
@@ -421,11 +429,11 @@ func TestManifestSerialization(t *testing.T) {
 
 			if tc.err != nil {
 				assert.PanicsWithValue(tc.err, func() {
-					_, err := mf.Serialize(tc.packages, tc.containers, nil, nil)
+					_, err := mf.Serialize(tc.depsolved, tc.containers, nil, nil)
 					assert.NoError(err)
 				})
 			} else {
-				manifestJson, err := mf.Serialize(tc.packages, tc.containers, nil, nil)
+				manifestJson, err := mf.Serialize(tc.depsolved, tc.containers, nil, nil)
 				assert.NoError(err)
 				assert.NoError(checkStages(manifestJson, tc.expStages, tc.notExpectedStages))
 			}

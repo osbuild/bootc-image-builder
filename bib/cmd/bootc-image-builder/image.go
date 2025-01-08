@@ -62,6 +62,9 @@ type ManifestConfig struct {
 
 	// RootFSType specifies the filesystem type for the root partition
 	RootFSType string
+
+	// use librepo ad the rpm downlaod backend
+	UseLibrepo bool
 }
 
 func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
