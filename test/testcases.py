@@ -27,6 +27,8 @@ class TestCase:
     sign: bool = False
     # use special disk_config like "lvm"
     disk_config: str = ""
+    # use librepo for the downloading
+    use_librepo: bool = False
 
     def bib_rootfs_args(self):
         if self.rootfs:
@@ -45,12 +47,14 @@ class TestCase:
 class TestCaseFedora(TestCase):
     container_ref: str = "quay.io/fedora/fedora-bootc:40"
     rootfs: str = "btrfs"
+    use_librepo: bool = True
 
 
 @dataclasses.dataclass
 class TestCaseFedora42(TestCase):
     container_ref: str = "quay.io/fedora/fedora-bootc:42"
     rootfs: str = "btrfs"
+    use_librepo: bool = True
 
 
 @dataclasses.dataclass
@@ -65,6 +69,7 @@ class TestCaseC10S(TestCase):
     container_ref: str = os.getenv(
         "BIB_TEST_BOOTC_CONTAINER_TAG",
         "quay.io/centos-bootc/centos-bootc:stream10")
+    use_librepo: bool = True
 
 
 def test_testcase_nameing():
