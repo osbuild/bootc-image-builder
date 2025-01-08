@@ -731,3 +731,23 @@ def test_manifest_disk_customization_lvm_swap(tmp_path, build_container):
     osbuild_manifest_path = tmp_path / "manifest.json"
     osbuild_manifest_path.write_bytes(output)
     subprocess.run(["osbuild", osbuild_manifest_path.as_posix()], check=True)
+
+
+@pytest.mark.parametrize("use_librepo", [False, True])
+def test_iso_manifest_use_librepo(build_container, use_librepo):
+    # no need to parameterize this test, --use-librepo behaves same for all containers
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+
+    output = subprocess.check_output([
+        *testutil.podman_run_common,
+        build_container,
+        "manifest",
+        "--type=anaconda-iso",
+        container_ref,
+        f"--use-librepo={use_librepo}",
+    ])
+    manifest = json.loads(output)
+    if use_librepo:
+        assert "org.osbuild.librepo" in manifest["sources"]
+    else:
+        assert "org.osbuild.curl" in manifest["sources"]
