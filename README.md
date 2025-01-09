@@ -131,6 +131,9 @@ Flags:
       --progress string        type of progress bar to use (e.g. verbose, term)
       --type string            image type to build [qcow2, ami] (default "qcow2")
       --target-arch string     architecture to build image for (default is the native architecture)
+
+Global Flags:
+  -v, --verbose            Switch to verbose mode
 ```
 
 ### Detailed description of optional flags
@@ -143,6 +146,7 @@ Flags:
 | **--tls-verify**  | Require HTTPS and verify certificates when contacting registries                                          |    `true`     |
 | **--type**        | [Image type](#-image-types) to build                                                                      |    `qcow2`    |
 | **--target-arch** | [Target arch](#-target-architecture) to build                                                             |       ❌      |
+| **--verbose**     | Switch output/progress to verbose mode    |   `false`   |
 
 The `--type` parameter can be given multiple times and multiple outputs will
 be produced.

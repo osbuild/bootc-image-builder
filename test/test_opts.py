@@ -148,7 +148,7 @@ def test_bib_errors_only_once(tmp_path, container_storage, build_fake_container)
     assert res.stderr.count(needle) == 1
 
 
-@pytest.mark.parametrize("version_argument", ["version", "--version", "-v"])
+@pytest.mark.parametrize("version_argument", ["version", "--version"])
 def test_bib_version(tmp_path, container_storage, build_fake_container, version_argument):
     output_path = tmp_path / "output"
     output_path.mkdir(exist_ok=True)

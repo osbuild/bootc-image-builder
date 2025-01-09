@@ -546,17 +546,25 @@ func chownR(path string, chown string) error {
 var rootLogLevel string
 
 func rootPreRunE(cmd *cobra.Command, _ []string) error {
-	if rootLogLevel == "" {
+	verbose, _ := cmd.Flags().GetBool("verbose")
+	progress, _ := cmd.Flags().GetString("progress")
+	switch {
+	case rootLogLevel != "":
+		level, err := logrus.ParseLevel(rootLogLevel)
+		if err != nil {
+			return err
+		}
+		logrus.SetLevel(level)
+	case verbose:
+		logrus.SetLevel(logrus.InfoLevel)
+	default:
 		logrus.SetLevel(logrus.ErrorLevel)
-		return nil
 	}
-
-	level, err := logrus.ParseLevel(rootLogLevel)
-	if err != nil {
-		return err
+	if verbose && progress == "auto" {
+		if err := cmd.Flags().Set("progress", "verbose"); err != nil {
+			return err
+		}
 	}
-
-	logrus.SetLevel(level)
 
 	return nil
 }
@@ -607,6 +615,7 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	rootCmd.SetVersionTemplate(version)
 
 	rootCmd.PersistentFlags().StringVar(&rootLogLevel, "log-level", "", "logging level (debug, info, error); default error")
+	rootCmd.PersistentFlags().BoolP("verbose", "v", false, `Switch to verbose mode`)
 
 	buildCmd := &cobra.Command{
 		Use:   "build IMAGE_NAME",
@@ -620,7 +629,7 @@ func buildCobraCmdline() (*cobra.Command, error) {
 		SilenceUsage:          true,
 		Example: rootCmd.Use + " build quay.io/centos-bootc/centos-bootc:stream9\n" +
 			rootCmd.Use + " quay.io/centos-bootc/centos-bootc:stream9\n",
-		Version:               rootCmd.Version,
+		Version: rootCmd.Version,
 	}
 	buildCmd.SetVersionTemplate(version)
 
