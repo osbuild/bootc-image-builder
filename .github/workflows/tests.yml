@@ -132,7 +132,7 @@ jobs:
         # TODO: figure out what exactly podman needs
         # TODO2: figure out how much wecan run in parallel before running
         # out of diskspace
-        sudo -E XDG_RUNTIME_DIR= pytest-3 --basetemp=/mnt/var/tmp/bib-tests -n 4 --dist worksteal --maxschedchunk=1
+        sudo -E XDG_RUNTIME_DIR= pytest-3 --basetemp=/mnt/var/tmp/bib-tests -n 8 --dist worksteal --maxschedchunk=1
     - name: Diskspace (after)
       if: ${{ always() }}
       run: |
