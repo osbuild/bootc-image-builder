@@ -126,13 +126,17 @@ Usage:
     <imgref>
 
 Flags:
-      --chown string           chown the ouput directory to match the specified UID:GID
-      --tls-verify             require HTTPS and verify certificates when contacting registries (default true)
-      --progress string        type of progress bar to use (e.g. verbose, term)
-      --type string            image type to build [qcow2, ami] (default "qcow2")
-      --target-arch string     architecture to build image for (default is the native architecture)
+      --chown string          chown the ouput directory to match the specified UID:GID
+      --output string         artifact output directory (default ".")
+      --progress string       type of progress bar to use (e.g. verbose,term) (default "auto")
+      --rootfs string         Root filesystem type. If not given, the default configured in the source container image is used.
+      --target-arch string    build for the given target architecture (experimental)
+      --tls-verify            require HTTPS and verify certificates when contacting registries (default true)
+      --type stringArray      image types to build [ami, anaconda-iso, gce, iso, qcow2, raw, vhd, vmdk] (default [qcow2])
+      --version               version for bootc-image-builder
 
 Global Flags:
+      --log-level string   logging level (debug, info, error); default error
   -v, --verbose            Switch to verbose mode
 ```
 
@@ -140,16 +144,21 @@ Global Flags:
 
 | Argument          | Description                                                                                               | Default Value |
 |-------------------|-----------------------------------------------------------------------------------------------------------|:-------------:|
-| **--chown**       | chown the output directory to match the specified UID:GID                                                 |       ❌      |
-| **--progress**   | Show progress in the given format, supported: verbose,term,debug. If empty it is auto-detected               |   `auto`      |
+| --chown           | chown the output directory to match the specified UID:GID                                                 |       ❌      |
+| --output          | output the artifact into the given output directory                                                       |      `.`      |
+| --progress        | Show progress in the given format, supported: verbose,term,debug. If empty it is auto-detected            |     `auto`    |
 | **--rootfs**      | Root filesystem type. Overrides the default from the source container. Supported values: ext4, xfs, btrfs |       ❌      |
-| **--tls-verify**  | Require HTTPS and verify certificates when contacting registries                                          |    `true`     |
-| **--type**        | [Image type](#-image-types) to build                                                                      |    `qcow2`    |
-| **--target-arch** | [Target arch](#-target-architecture) to build                                                             |       ❌      |
-| **--verbose**     | Switch output/progress to verbose mode    |   `false`   |
+| --tls-verify      | Require HTTPS and verify certificates when contacting registries                                          |     `true`    |
+| **--type**        | [Image type](#-image-types) to build (can be passed multiple times)                                       |     `qcow2`   |
+| --target-arch     | [Target arch](#-target-architecture) to build                                                             |       ❌      |
+| --log-level       | Change log level (debug, info, error)                                                                     |     `error`   |
+| -v,--verbose      | Switch output/progress to verbose mode (implies --log-level=info)                                         |     `false`   |
 
-The `--type` parameter can be given multiple times and multiple outputs will
-be produced.
+The `--type` parameter can be given multiple times and multiple
+outputs will be produced. Note that comma or space separating the
+`image-types`will not work, but this example will: `--type qcow2
+--type ami`.
+
 
 *💡 Tip: Flags in **bold** are the most important ones.*
 
