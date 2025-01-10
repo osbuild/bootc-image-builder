@@ -1,15 +1,15 @@
+import atexit
 import json
 import os
 import pathlib
 import platform
 import random
 import re
-import shutil
 import string
 import subprocess
 import tempfile
 import uuid
-from contextlib import contextmanager, ExitStack
+from contextlib import ExitStack
 from dataclasses import dataclass
 from typing import NamedTuple
 
@@ -208,22 +208,21 @@ def sign_container_image(gpg_conf: GPGConf, registry_conf: RegistryConf, contain
     subprocess.run(cmd, check=True, env={"GNUPGHOME": gpg_conf.home_dir})
 
 
-@pytest.fixture(name="image_type", scope="session")
 # pylint: disable=too-many-arguments
-def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload, gpg_conf, registry_conf):
+def image_type_fixture(shared_tmpdir, build_container, tc, force_aws_upload=False, gpg_conf=None, registry_conf=None):
     """
     Build an image inside the passed build_container and return an
     ImageBuildResult with the resulting image path and user/password
     In the case an image is being built from a local container, the
     function will build the required local container for the test.
     """
-    container_ref = request.param.container_ref
+    container_ref = tc.container_ref
 
-    if request.param.local:
+    if tc.local:
         cont_tag = "localhost/cont-base-" + "".join(random.choices(string.digits, k=12))
 
         # we are not cross-building local images (for now)
-        request.param.target_arch = ""
+        tc.target_arch = ""
 
         # copy the container into containers-storage
         subprocess.check_call([
@@ -232,41 +231,34 @@ def image_type_fixture(shared_tmpdir, build_container, request, force_aws_upload
             f"containers-storage:[overlay@/var/lib/containers/storage+/run/containers/storage]{cont_tag}"
         ])
 
-    with build_images(shared_tmpdir, build_container,
-                      request, force_aws_upload, gpg_conf, registry_conf) as build_results:
-        yield build_results[0]
+    build_results = build_images(shared_tmpdir, build_container,
+                                 tc, force_aws_upload, gpg_conf, registry_conf)
+    return build_results[0]
 
 
-@pytest.fixture(name="images", scope="session")
 # pylint: disable=too-many-arguments
-def images_fixture(shared_tmpdir, build_container, request, force_aws_upload, gpg_conf, registry_conf):
+def images_fixture(shared_tmpdir, build_container, request, force_aws_upload=False, gpg_conf=None, registry_conf=None):
     """
     Build one or more images inside the passed build_container and return an
     ImageBuildResult array with the resulting image path and user/password
     """
-    with build_images(shared_tmpdir, build_container,
-                      request, force_aws_upload, gpg_conf, registry_conf) as build_results:
-        yield build_results
+    return build_images(shared_tmpdir, build_container,
+                        request, force_aws_upload, gpg_conf, registry_conf)
 
 
 # XXX: refactor
 # pylint: disable=too-many-locals,too-many-branches,too-many-statements,too-many-arguments
-@contextmanager
-def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_conf, registry_conf):
+def build_images(shared_tmpdir, build_container, tc, force_aws_upload, gpg_conf, registry_conf):
     """
     Build all available image types if necessary and return the results for
     the image types that were requested via :request:.
 
     Will return cached results of previous build requests.
-
-    :request.param: has the form "container_url,img_type1+img_type2,arch,local"
     """
-    # the testcases.TestCase comes from the request.parameter
-    tc = request.param
 
     # images might be multiple --type args
     # split and check each one
-    image_types = request.param.image.split("+")
+    image_types = tc.image.split("+")
 
     username = "test"
     password = "password"
@@ -288,7 +280,8 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
     with FileLock(fn):
         # params can be long and the qmp socket (that has a limit of 100ish
         # AF_UNIX) is derived from the path
-        # hash the container_ref+target_arch, but exclude the image_type so that the output path is shared between calls to
+        # hash the container_ref+target_arch, but exclude the image_type
+        # so that the output path is shared between calls to
         # different image type combinations
         output_path = shared_tmpdir / img_id
         output_path.mkdir(exist_ok=True)
@@ -353,14 +346,15 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
             ], check=True)
         ssh_pubkey = ssh_keyfile_public_path.read_text(encoding="utf8").strip()
 
-        # Because we always build all image types, regardless of what was requested, we should either have 0 results or all
-        # should be available, so if we found at least one result but not all of them, this is a problem with our setup
+        # Because we always build all image types, regardless of what
+        # was requested, we should either have 0 results or all should
+        # be available, so if we found at least one result but not all
+        # of them, this is a problem with our setup
         assert not results or len(results) == len(image_types), \
             f"unexpected number of results found: requested {image_types} but got {results}"
 
         if results:
-            yield results
-            return
+            return results
 
         print(f"Requested {len(image_types)} images but found {len(results)} cached images. Building...")
 
@@ -477,7 +471,9 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
 
             def del_ami():
                 testutil.deregister_ami(metadata["ami_id"])
-            request.addfinalizer(del_ami)
+            # XXX: ???
+            # request.addfinalizer(del_ami)
+            atexit.register(del_ami)
 
         journal_log_path.write_text(journal_output, encoding="utf8")
         bib_output_path.write_text(bib_output, encoding="utf8")
@@ -489,23 +485,9 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
                 container_ref, tc.rootfs, tc.disk_config,
                 username, password,
                 ssh_keyfile_private_path, kargs, bib_output, journal_output, metadata))
-        yield results
-
-        # Try to cache as much as possible
-        for image_type in image_types:
-            img = artifact[image_type]
-            print(f"Checking disk usage for {img}")
-            if os.path.exists(img):
-                # might already be removed if we're deleting 'raw' and 'ami'
-                disk_usage = shutil.disk_usage(img)
-                print(f"NOTE: disk usage after {img}: {disk_usage.free / 1_000_000} / {disk_usage.total / 1_000_000}")
-                if disk_usage.free < 1_000_000_000:
-                    print(f"WARNING: running low on disk space, removing {img}")
-                    img.unlink()
-            else:
-                print("does not exist")
+        # XXX: ?
         subprocess.run(["podman", "rmi", container_ref], check=False)
-        return
+        return results
 
 
 def test_container_builds(build_container):
@@ -514,8 +496,9 @@ def test_container_builds(build_container):
     assert build_container in output
 
 
-@pytest.mark.parametrize("image_type", gen_testcases("multidisk"), indirect=["image_type"])
-def test_image_is_generated(image_type):
+@pytest.mark.parametrize("tc", gen_testcases("multidisk"))
+def test_image_is_generated(shared_tmpdir, build_container, tc):
+    image_type = image_type_fixture(shared_tmpdir, build_container, tc)
     assert image_type.img_path.exists(), "output file missing, dir "\
         f"content: {os.listdir(os.fspath(image_type.img_path))}"
 
@@ -529,8 +512,9 @@ def assert_kernel_args(test_vm, image_type):
 
 
 @pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
-@pytest.mark.parametrize("image_type", gen_testcases("qemu-boot"), indirect=["image_type"])
-def test_image_boots(image_type):
+@pytest.mark.parametrize("tc", gen_testcases("qemu-boot"))
+def test_image_boots(shared_tmpdir, build_container, tc):
+    image_type = image_type_fixture(shared_tmpdir, build_container, tc)
     with QEMU(image_type.img_path, arch=image_type.img_arch) as test_vm:
         # user/password login works
         exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
@@ -552,8 +536,9 @@ def test_image_boots(image_type):
             assert_fs_customizations(image_type, test_vm)
 
 
-@pytest.mark.parametrize("image_type", gen_testcases("ami-boot"), indirect=["image_type"])
-def test_ami_boots_in_aws(image_type, force_aws_upload):
+@pytest.mark.parametrize("tc", gen_testcases("ami-boot"))
+def test_ami_boots_in_aws(shared_tmpdir, build_container, tc, force_aws_upload):
+    image_type = image_type_fixture(shared_tmpdir, build_container, tc, force_aws_upload=force_aws_upload)
     if not testutil.write_aws_creds("/dev/null"):  # we don't care about the file, just the variables being there
         if force_aws_upload:
             # upload forced but credentials aren't set
@@ -605,8 +590,9 @@ def has_selinux():
 
 
 @pytest.mark.skipif(not has_selinux(), reason="selinux not enabled")
-@pytest.mark.parametrize("image_type", gen_testcases("qemu-boot"), indirect=["image_type"])
-def test_image_build_without_se_linux_denials(image_type):
+@pytest.mark.parametrize("tc", gen_testcases("qemu-boot"))
+def test_image_build_without_se_linux_denials(shared_tmpdir, build_container, tc):
+    image_type = image_type_fixture(shared_tmpdir, build_container, tc)
     # the journal always contains logs from the image building
     assert image_type.journal_output != ""
     assert not log_has_osbuild_selinux_denials(image_type.journal_output), \
@@ -614,8 +600,9 @@ def test_image_build_without_se_linux_denials(image_type):
 
 
 @pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
-@pytest.mark.parametrize("image_type", gen_testcases("anaconda-iso"), indirect=["image_type"])
-def test_iso_installs(image_type):
+@pytest.mark.parametrize("tc", gen_testcases("anaconda-iso"))
+def test_iso_installs(shared_tmpdir, build_container, tc):
+    image_type = image_type_fixture(shared_tmpdir, build_container, tc)
     installer_iso_path = image_type.img_path
     test_disk_path = installer_iso_path.with_name("test-disk.img")
     with open(test_disk_path, "w", encoding="utf8") as fp:
@@ -649,8 +636,9 @@ def osinfo_for(it: ImageBuildResult, arch: str) -> str:
 
 
 @pytest.mark.skipif(platform.system() != "Linux", reason="osinfo detect test only runs on linux right now")
-@pytest.mark.parametrize("image_type", gen_testcases("anaconda-iso"), indirect=["image_type"])
-def test_iso_os_detection(image_type):
+@pytest.mark.parametrize("tc", gen_testcases("anaconda-iso"))
+def test_iso_os_detection(shared_tmpdir, build_container, tc):
+    image_type = image_type_fixture(shared_tmpdir, build_container, tc)
     installer_iso_path = image_type.img_path
     arch = image_type.img_arch
     if not arch:
@@ -666,8 +654,9 @@ def test_iso_os_detection(image_type):
 
 @pytest.mark.skipif(platform.system() != "Linux", reason="osinfo detect test only runs on linux right now")
 @pytest.mark.skipif(not testutil.has_executable("unsquashfs"), reason="need unsquashfs")
-@pytest.mark.parametrize("image_type", gen_testcases("anaconda-iso"), indirect=["image_type"])
-def test_iso_install_img_is_squashfs(tmp_path, image_type):
+@pytest.mark.parametrize("tc", gen_testcases("anaconda-iso"))
+def test_iso_install_img_is_squashfs(tmp_path, shared_tmpdir, build_container, tc):
+    image_type = image_type_fixture(shared_tmpdir, build_container, tc)
     installer_iso_path = image_type.img_path
     with ExitStack() as cm:
         mount_point = tmp_path / "cdrom"
@@ -680,8 +669,9 @@ def test_iso_install_img_is_squashfs(tmp_path, image_type):
         assert "usr/bin/bootc" in output
 
 
-@pytest.mark.parametrize("images", gen_testcases("multidisk"), indirect=["images"])
-def test_multi_build_request(images):
+@pytest.mark.parametrize("tc", gen_testcases("multidisk"))
+def test_multi_build_request(shared_tmpdir, build_container, tc):
+    images = images_fixture(shared_tmpdir, build_container, tc)
     artifacts = set()
     expected = {"disk.qcow2", "disk.raw", "disk.vhd", "disk.vmdk", "image.tar.gz"}
     for result in images:

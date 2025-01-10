@@ -57,6 +57,7 @@ def build_fake_container_fixture(shared_tmpdir, build_container):
     """Build a container with a fake osbuild and returns the name"""
     tmp_path = shared_tmpdir / "build-fake-container"
 
+    container_tag = "bootc-image-builder-test-faked-osbuild"
     with FileLock(tmp_path + ".lock"):
         if tmp_path.exists():
             return container_tag
@@ -99,7 +100,6 @@ def build_fake_container_fixture(shared_tmpdir, build_container):
         RUN chmod 755 /usr/bin/podman
         """), encoding="utf8")
 
-        container_tag = "bootc-image-builder-test-faked-osbuild"
         subprocess.check_call([
             "podman", "build",
             "-t", container_tag,
