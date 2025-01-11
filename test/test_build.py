@@ -392,6 +392,10 @@ def build_images(shared_tmpdir, build_container, tc, force_aws_upload, gpg_conf,
         target_arch_args = []
         if tc.target_arch:
             target_arch_args = ["--target-arch", tc.target_arch]
+        else:
+            # enforce target arch as we also pull the aarch64 version
+            # in here and podman will reuse aarch64 without the explicit arch
+            target_arch_args = ["--target-arch", platform.machine()]
 
         with tempfile.TemporaryDirectory() as tempdir:
             if "ami" in image_types:

@@ -35,6 +35,7 @@ def test_manifest_smoke(build_container, tc):
         *testutil.podman_run_common,
         build_container,
         "manifest",
+        "--target-arch=x86_64",
         *tc.bib_rootfs_args(),
         f"{tc.container_ref}",
     ])
@@ -54,6 +55,7 @@ def test_iso_manifest_smoke(build_container, tc):
         *testutil.podman_run_common,
         build_container,
         "manifest",
+        "--target-arch=x86_64",
         "--type=anaconda-iso", f"{tc.container_ref}",
     ])
     manifest = json.loads(output)
@@ -81,7 +83,9 @@ def test_manifest_disksize(tmp_path, build_container, tc):
         manifest_str = subprocess.check_output([
             *testutil.podman_run_common,
             build_container,
-            "manifest", "--local",
+            "manifest",
+            "--local",
+            "--target-arch=x86_64",
             *tc.bib_rootfs_args(),
             f"localhost/{container_tag}",
         ], encoding="utf8")
@@ -119,6 +123,7 @@ def test_manifest_local_checks_containers_storage_works(tmp_path, build_containe
             *testutil.podman_run_common,
             build_container,
             "manifest", "--local",
+            "--target-arch=x86_64",
             *tc.bib_rootfs_args(),
             f"localhost/{container_tag}",
         ], check=True, encoding="utf8")
@@ -137,7 +142,8 @@ def test_manifest_cross_arch_check(tmp_path, build_container):
             subprocess.run([
                 *testutil.podman_run_common,
                 build_container,
-                "manifest", "--target-arch=aarch64",
+                "manifest",
+                "--target-arch=aarch64",
                 "--local", f"localhost/{container_tag}"
             ], check=True, capture_output=True, encoding="utf8")
         assert 'image found is for unexpected architecture "x86_64"' in exc.value.stderr
@@ -160,6 +166,7 @@ def test_manifest_rootfs_respected(build_container, tc):
     output = subprocess.check_output([
         *testutil.podman_run_common,
         build_container,
+        "--target-arch=x86_64",
         "manifest", f"{tc.container_ref}",
     ])
     rootfs_type = find_rootfs_type_from(output)
@@ -177,7 +184,9 @@ def test_manifest_rootfs_override(build_container):
     output = subprocess.check_output([
         *testutil.podman_run_common,
         build_container,
-        "manifest", "--rootfs", "btrfs", f"{container_ref}",
+        "manifest",
+        "--target-arch=x86_64",
+        "--rootfs", "btrfs", f"{container_ref}",
     ])
     rootfs_type = find_rootfs_type_from(output)
     assert rootfs_type == "btrfs"
@@ -209,6 +218,7 @@ def test_manifest_user_customizations_toml(tmp_path, build_container):
         *testutil.podman_run_common,
         "-v", f"{config_toml_path}:/config.toml:ro",
         build_container,
+        "--target-arch=x86_64",
         "manifest", f"{container_ref}",
     ])
     user_stage = find_user_stage_from(output)
@@ -235,6 +245,7 @@ def test_manifest_installer_customizations(tmp_path, build_container):
         *testutil.podman_run_common,
         "-v", f"{config_toml_path}:/config.toml:ro",
         build_container,
+        "--target-arch=x86_64",
         "manifest", "--type=anaconda-iso", f"{container_ref}",
     ])
     manifest = json.loads(output)
@@ -308,6 +319,7 @@ def test_manifest_checks_build_container_is_bootc(build_container, container_ref
             *testutil.podman_run_common,
             build_container,
             "manifest",
+            "--target-arch=x86_64",
             container_ref,
         ], stderr=subprocess.PIPE, encoding="utf8")
     if should_error:
@@ -377,6 +389,7 @@ def test_manifest_anaconda_module_customizations(tmpdir_factory, build_container
         "-v", f"{output_path}:/output",
         build_container,
         "manifest",
+        "--target-arch=x86_64",
         "--config", "/output/config.json",
         *tc.bib_rootfs_args(),
         "--type=anaconda-iso", tc.container_ref,
@@ -426,6 +439,9 @@ def test_manifest_fs_customizations(tmp_path, build_container, fscustomizations,
         build_container,
         f"--rootfs={rootfs}",
         "manifest", f"{container_ref}",
+        # enforce target arch as we also pull the aarch64 version
+        # in here and podman will reuse aarch64 without the explicit arch
+        "--target-arch=x86_64",
     ])
     assert_fs_customizations(fscustomizations, rootfs, output)
 
@@ -454,6 +470,7 @@ def test_manifest_fs_customizations_smoke_toml(tmp_path, build_container):
         "-v", f"{config_toml_path}:/config.toml:ro",
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
+        "--target-arch=x86_64",
         f"--rootfs={rootfs}",
         "manifest", f"{container_ref}",
     ])
@@ -511,8 +528,8 @@ def test_manifest_fs_customizations_xarch(tmp_path, build_container, fscustomiza
         "-v", f"{config_path}:/config.json:ro",
         "--entrypoint=/usr/bin/bootc-image-builder",
         build_container,
-        f"--rootfs={rootfs}",
         "--target-arch=aarch64",
+        f"--rootfs={rootfs}",
         "manifest", f"{container_ref}",
     ])
 
@@ -546,7 +563,9 @@ def test_manifest_fips_customization(tmp_path, build_container):
         build_container,
         # XXX: test for qcow2 too
         "--type=anaconda-iso",
-        "manifest", f"{container_ref}",
+        "manifest",
+        "--target-arch=x86_64",
+        f"{container_ref}",
     ], text=True)
     st = find_grub2_iso_stage_from(output)
     assert "fips=1" in st["options"]["kernel"]["opts"]
@@ -593,7 +612,9 @@ def test_manifest_disk_customization_lvm(tmp_path, build_container):
         *testutil.podman_run_common,
         "-v", f"{config_path}:/config.json:ro",
         build_container,
-        "manifest", f"{container_ref}",
+        "manifest",
+        "--target-arch=x86_64",
+        f"{container_ref}",
     ])
     st = find_bootc_install_to_fs_stage_from(output)
     assert st["devices"]["rootlv"]["type"] == "org.osbuild.lvm2.lv"
@@ -628,7 +649,9 @@ def test_manifest_disk_customization_btrfs(tmp_path, build_container):
         *testutil.podman_run_common,
         "-v", f"{config_path}:/config.json:ro",
         build_container,
-        "manifest", f"{container_ref}",
+        "manifest",
+        "--target-arch=x86_64",
+        f"{container_ref}",
     ])
     st = find_bootc_install_to_fs_stage_from(output)
     assert st["mounts"][0]["type"] == "org.osbuild.btrfs"
@@ -668,7 +691,9 @@ def test_manifest_disk_customization_swap(tmp_path, build_container):
         *testutil.podman_run_common,
         "-v", f"{config_path}:/config.json:ro",
         build_container,
-        "manifest", f"{container_ref}",
+        "manifest",
+        "--target-arch=x86_64",
+        f"{container_ref}",
     ])
     mkswap_stage = find_mkswap_stage_from(output)
     assert mkswap_stage["options"].get("uuid")
@@ -712,7 +737,9 @@ def test_manifest_disk_customization_lvm_swap(tmp_path, build_container):
         *testutil.podman_run_common,
         "-v", f"{config_path}:/config.json:ro",
         build_container,
-        "manifest", f"{container_ref}",
+        "manifest",
+        "--target-arch=x86_64",
+        f"{container_ref}",
     ])
     mkswap_stage = find_mkswap_stage_from(output)
     assert mkswap_stage["options"].get("uuid")
