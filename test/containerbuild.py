@@ -58,7 +58,7 @@ def build_fake_container_fixture(shared_tmpdir, build_container):
     tmp_path = shared_tmpdir / "build-fake-container"
 
     container_tag = "bootc-image-builder-test-faked-osbuild"
-    with FileLock(tmp_path + ".lock"):
+    with FileLock(shared_tmpdir / pathlib.Path(container_tag + ".lock")):
         if tmp_path.exists():
             return container_tag
         tmp_path.mkdir()
