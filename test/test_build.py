@@ -484,16 +484,19 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
     # Try to cache as much as possible
     for image_type in image_types:
         img = artifact[image_type]
-        print(f"Checking disk usage for {img}")
-        if os.path.exists(img):
-            # might already be removed if we're deleting 'raw' and 'ami'
-            disk_usage = shutil.disk_usage(img)
-            print(f"NOTE: disk usage after {img}: {disk_usage.free / 1_000_000} / {disk_usage.total / 1_000_000}")
-            if disk_usage.free < 1_000_000_000:
-                print(f"WARNING: running low on disk space, removing {img}")
-                img.unlink()
-        else:
-            print("does not exist")
+        # XXX: make parallizable via flock
+        with open(shared_tmpdir / "du.log", "a") as fp:
+            fp.write(f"Checking disk usage for {img}\n")
+            if os.path.exists(img):
+                # might already be removed if we're deleting 'raw' and 'ami'
+                disk_usage = shutil.disk_usage(img)
+                fp.write(f"NOTE: disk usage after {img}: {disk_usage.free / 1_000_000} / {disk_usage.total / 1_000_000}\n")
+                if disk_usage.free < 1_000_000_000:
+                    fp.write(f"WARNING: running low on disk space, removing {img}\n")
+                    img.unlink()
+            else:
+                fp.write("does not exist\n")
+            fp.write("---\n")
     subprocess.run(["podman", "rmi", container_ref], check=False)
     return
 
