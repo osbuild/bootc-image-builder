@@ -108,6 +108,13 @@ jobs:
         sudo -E pip install --user -r test/requirements.txt
     - name: Workarounds for GH runner diskspace
       run: |
+        # move swap to the root disk
+        ls -lh /mnt/swapfile
+        sudo swapoff -a
+        sudo rm -f /mnt/swapfile
+        sudo dd if=/dev/zero of=/swapfile bs=1M count=4096
+        sudo mkswap /swapfile
+        sudo swapon /swapfile
         # use custom basetemp here because /var/tmp is on a smaller disk
         # than /mnt
         sudo mkdir -p /mnt/var/tmp/bib-tests
