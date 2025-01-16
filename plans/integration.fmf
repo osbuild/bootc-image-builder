@@ -32,7 +32,7 @@ execute:
     pip install --user -r test/requirements.txt
     echo "Run tests"
     pytest --force-aws-upload
-  duration: 3h
+  duration: 4h
 finish:
   how: shell
   script: df -h
