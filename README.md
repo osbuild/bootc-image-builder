@@ -570,8 +570,8 @@ workflow, code style and more.
 
 - **Website**: <https://www.osbuild.org>
 - **Bug Tracker**: <https://github.com/osbuild/bootc-image-builder/issues>
-- **Matrix**: #image-builder on [fedoraproject.org](https://matrix.to/#/#image-builder:fedoraproject.org)
-* **Discussions**: https://github.com/orgs/osbuild/discussions
+- **Discussions**: https://github.com/orgs/osbuild/discussions
+- **Matrix**: [#image-builder on fedoraproject.org](https://matrix.to/#/#image-builder:fedoraproject.org)
 
 ## 🧾 License
 
