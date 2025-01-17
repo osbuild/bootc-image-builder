@@ -57,6 +57,7 @@ sudo podman run \
     quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
     --local \
+	--use-librepo=True \
     quay.io/centos-bootc/centos-bootc:stream9
 ```
 
@@ -153,6 +154,7 @@ Global Flags:
 | --target-arch     | [Target arch](#-target-architecture) to build                                                             |       ❌      |
 | --log-level       | Change log level (debug, info, error)                                                                     |     `error`   |
 | -v,--verbose      | Switch output/progress to verbose mode (implies --log-level=info)                                         |     `false`   |
+| --use-librepo     | Download rpms using librepo (faster and more robust)                                                      |     `false`   |
 
 The `--type` parameter can be given multiple times and multiple
 outputs will be produced. Note that comma or space separating the
