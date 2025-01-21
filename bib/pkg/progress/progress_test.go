@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/osbuild/bootc-image-builder/bib/internal/progress"
+	"github.com/osbuild/bootc-image-builder/bib/pkg/progress"
 )
 
 func TestProgressNew(t *testing.T) {

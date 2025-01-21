@@ -27,10 +27,10 @@ import (
 	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
 	podman_container "github.com/osbuild/bootc-image-builder/bib/internal/container"
 	"github.com/osbuild/bootc-image-builder/bib/internal/imagetypes"
-	"github.com/osbuild/bootc-image-builder/bib/internal/progress"
 	"github.com/osbuild/bootc-image-builder/bib/internal/setup"
 	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 	"github.com/osbuild/bootc-image-builder/bib/internal/util"
+	"github.com/osbuild/bootc-image-builder/bib/pkg/progress"
 )
 
 const (
