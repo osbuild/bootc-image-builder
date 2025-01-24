@@ -1,5 +1,6 @@
 anaconda-iso:
   packages:
+    - "@hardware-support"
     - alsa-firmware
     - alsa-tools-firmware
     - anaconda
