@@ -1,5 +1,6 @@
 import subprocess
 
+import testutil
 # pylint: disable=unused-import,duplicate-code
 from test_opts import container_storage_fixture
 from containerbuild import build_container_fixture, build_fake_container_fixture
@@ -10,8 +11,7 @@ def test_progress_debug(tmp_path, build_fake_container):
     output_path.mkdir(exist_ok=True)
 
     cmdline = [
-        "podman", "run", "--rm",
-        "--privileged",
+        *testutil.podman_run_common,
         build_fake_container,
         "build",
         "--progress=debug",
@@ -27,19 +27,21 @@ def test_progress_debug(tmp_path, build_fake_container):
 
 
 def test_progress_term_works_without_tty(tmp_path, build_fake_container):
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
+
     output_path = tmp_path / "output"
     output_path.mkdir(exist_ok=True)
 
     cmdline = [
-        "podman", "run", "--rm",
+        *testutil.podman_run_common,
         # note that "-t" is missing here
-        "--privileged",
         build_fake_container,
         "build",
         # explicitly selecting term progress works even when there is no tty
         # (i.e. we just need ansi terminal support)
         "--progress=term",
-        "quay.io/centos-bootc/centos-bootc:stream9",
+        container_ref,
     ]
     res = subprocess.run(cmdline, capture_output=True, text=True, check=False)
     assert res.returncode == 0
@@ -51,10 +53,9 @@ def test_progress_term_autoselect(tmp_path, build_fake_container):
     output_path.mkdir(exist_ok=True)
 
     cmdline = [
-        "podman", "run", "--rm",
+        *testutil.podman_run_common,
         # we have a terminal
         "-t",
-        "--privileged",
         build_fake_container,
         "build",
         # note that we do not select a --progress here so auto-select is used

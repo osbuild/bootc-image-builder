@@ -47,9 +47,6 @@ type ManifestConfig struct {
 	// CPU architecture of the image
 	Architecture arch.Arch
 
-	// TLSVerify specifies whether HTTPS and a valid TLS certificate are required
-	TLSVerify bool
-
 	// The minimum size required for the root fs in order to fit the container
 	// contents
 	RootfsMinsize uint64
@@ -319,10 +316,9 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		return nil, fmt.Errorf("pipeline: no base image defined")
 	}
 	containerSource := container.SourceSpec{
-		Source:    c.Imgref,
-		Name:      c.Imgref,
-		TLSVerify: &c.TLSVerify,
-		Local:     true,
+		Source: c.Imgref,
+		Name:   c.Imgref,
+		Local:  true,
 	}
 
 	var customizations *blueprint.Customizations
@@ -427,10 +423,9 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	}
 
 	containerSource := container.SourceSpec{
-		Source:    c.Imgref,
-		Name:      c.Imgref,
-		TLSVerify: &c.TLSVerify,
-		Local:     true,
+		Source: c.Imgref,
+		Name:   c.Imgref,
+		Local:  true,
 	}
 
 	// The ref is not needed and will be removed from the ctor later
