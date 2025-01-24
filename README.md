@@ -205,7 +205,26 @@ Note that when no value is given the progress is auto-detected baed on the envir
 
 #### Prerequisites
 
-In order to successfully import an AMI into your AWS account, you need to have the [vmimport service role](https://docs.aws.amazon.com/vm-import/latest/userguide/required-permissions.html) configured on your account.
+In order to successfully import an AMI into your AWS account, you need to have the [vmimport service role](https://docs.aws.amazon.com/vm-import/latest/userguide/required-permissions.html) configured on your account with the following additional permissions:
+
+```
+{
+    "Effect": "Allow",
+    "Action": [
+        "s3:ListAllMyBuckets",
+        "s3:GetBucketAcl",
+        "s3:DeleteObject"
+    ],
+    "Resource": [
+        "arn:aws:s3:::amzn-s3-demo-import-bucket",
+        "arn:aws:s3:::amzn-s3-demo-import-bucket/*",
+        "arn:aws:s3:::amzn-s3-demo-export-bucket",
+        "arn:aws:s3:::amzn-s3-demo-export-bucket/*"
+    ]
+},
+```
+
+Replace `amzn-s3-demo-import-bucket` in the ARN with the bucket name.
 
 #### Flags
 
