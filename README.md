@@ -27,7 +27,7 @@ $ podman machine start
 
 ## ✍ Prerequisites
 
-The package `osbuild-selinux` or equivalent osbuild SELinux policies must be installed in the system running
+If you are on a system with SELinux enforced: The package `osbuild-selinux` or equivalent osbuild SELinux policies must be installed in the system running
 `bootc-image-builder`.
 
 ## 🚀 Examples
