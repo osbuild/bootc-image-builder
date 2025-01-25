@@ -333,6 +333,8 @@ func runOSBuildNoProgress(pb ProgressBar, manifest []byte, store, outputDirector
 	return err
 }
 
+var osbuildCmd = "osbuild"
+
 func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirectory string, exports, extraEnv []string) error {
 	rp, wp, err := os.Pipe()
 	if err != nil {
@@ -342,7 +344,7 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirect
 	defer wp.Close()
 
 	cmd := exec.Command(
-		"osbuild",
+		osbuildCmd,
 		"--store", store,
 		"--output-directory", outputDirectory,
 		"--monitor=JSONSeqMonitor",
@@ -353,12 +355,11 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirect
 		cmd.Args = append(cmd.Args, "--export", export)
 	}
 
+	var stdio bytes.Buffer
 	cmd.Env = append(os.Environ(), extraEnv...)
 	cmd.Stdin = bytes.NewBuffer(manifest)
-	cmd.Stderr = os.Stderr
-	// we could use "--json" here and would get the build-result
-	// exported here
-	cmd.Stdout = nil
+	cmd.Stdout = &stdio
+	cmd.Stderr = &stdio
 	cmd.ExtraFiles = []*os.File{wp}
 
 	osbuildStatus := osbuild.NewStatusScanner(rp)
@@ -367,7 +368,6 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirect
 	}
 	wp.Close()
 
-	var tracesMsgs []string
 	for {
 		st, err := osbuildStatus.Status()
 		if err != nil {
@@ -383,13 +383,6 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirect
 			}
 			i++
 		}
-		// keep the messages/traces for better error reporting
-		if st.Message != "" {
-			tracesMsgs = append(tracesMsgs, st.Message)
-		}
-		if st.Trace != "" {
-			tracesMsgs = append(tracesMsgs, st.Trace)
-		}
 		// forward to user
 		if st.Message != "" {
 			pb.SetMessagef(st.Message)
@@ -397,7 +390,7 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirect
 	}
 
 	if err := cmd.Wait(); err != nil {
-		return fmt.Errorf("error running osbuild: %w\nLog:\n%s", err, strings.Join(tracesMsgs, "\n"))
+		return fmt.Errorf("error running osbuild: %w\nOutput:\n%s", err, stdio.String())
 	}
 
 	return nil
