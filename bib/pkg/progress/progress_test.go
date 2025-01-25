@@ -3,6 +3,8 @@ package progress_test
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -129,4 +131,28 @@ func TestProgressNewAutoselect(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, reflect.TypeOf(pb), reflect.TypeOf(tc.expected), fmt.Sprintf("[%v] %T not the expected %T", tc.onTerm, pb, tc.expected))
 	}
+}
+
+func makeFakeOsbuild(t *testing.T, content string) string {
+	p := filepath.Join(t.TempDir(), "fake-osbuild")
+	err := os.WriteFile(p, []byte("#!/bin/sh\n"+content), 0755)
+	assert.NoError(t, err)
+	return p
+}
+
+func TestRunOSBuildWithProgress(t *testing.T) {
+	restore := progress.MockOsbuildCmd(makeFakeOsbuild(t, `echo osbuild-stdout-output
+>&2 echo osbuild-stderr-output
+exit 112
+`))
+	defer restore()
+
+	pbar, err := progress.New("debug")
+	assert.NoError(t, err)
+	err = progress.RunOSBuild(pbar, []byte(`{"fake":"manifest"}`), "", "", nil, nil)
+	assert.EqualError(t, err, `error running osbuild: exit status 112
+Output:
+osbuild-stdout-output
+osbuild-stderr-output
+`)
 }
