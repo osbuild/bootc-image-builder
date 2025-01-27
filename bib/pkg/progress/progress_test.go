@@ -157,6 +157,38 @@ osbuild-stderr-output
 `)
 }
 
+func TestRunOSBuildWithBuildlog(t *testing.T) {
+	restore := progress.MockOsbuildCmd(makeFakeOsbuild(t, `
+echo osbuild-stdout-output
+>&2 echo osbuild-stderr-output
+`))
+	defer restore()
+
+	var fakeStdout, fakeStderr bytes.Buffer
+	restore = progress.MockOsStdout(&fakeStdout)
+	defer restore()
+	restore = progress.MockOsStderr(&fakeStderr)
+	defer restore()
+
+	for _, pbarType := range []string{"debug", "verbose"} {
+		t.Run(pbarType, func(t *testing.T) {
+			pbar, err := progress.New(pbarType)
+			assert.NoError(t, err)
+
+			var buildLog bytes.Buffer
+			opts := &progress.OSBuildOptions{
+				BuildLog: &buildLog,
+			}
+			err = progress.RunOSBuild(pbar, []byte(`{"fake":"manifest"}`), nil, opts)
+			assert.NoError(t, err)
+			expectedOutput := `osbuild-stdout-output
+osbuild-stderr-output
+`
+			assert.Equal(t, expectedOutput, buildLog.String())
+		})
+	}
+}
+
 func TestRunOSBuildWithProgressIncorrectJSON(t *testing.T) {
 	restore := progress.MockOsbuildCmd(makeFakeOsbuild(t, `echo osbuild-stdout-output
 >&2 echo osbuild-stderr-output
@@ -166,7 +198,8 @@ func TestRunOSBuildWithProgressIncorrectJSON(t *testing.T) {
 
 	pbar, err := progress.New("debug")
 	assert.NoError(t, err)
-	err = progress.RunOSBuild(pbar, []byte(`{"fake":"manifest"}`), "", "", nil, nil)
+
+	err = progress.RunOSBuild(pbar, []byte(`{"fake":"manifest"}`), nil, nil)
 	assert.EqualError(t, err, `errors parsing osbuild status:
 cannot scan line "invalid-json": invalid character 'i' looking for beginning of value`)
 }
