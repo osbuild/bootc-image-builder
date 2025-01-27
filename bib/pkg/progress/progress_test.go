@@ -156,7 +156,7 @@ exit 112
 
 	pbar, err := progress.New("debug")
 	assert.NoError(t, err)
-	err = progress.RunOSBuild(pbar, []byte(`{"fake":"manifest"}`), "", "", nil, nil)
+	err = progress.RunOSBuild(pbar, []byte(`{"fake":"manifest"}`), nil, nil)
 	assert.EqualError(t, err, `error running osbuild: exit status 112
 BuildLog:
 osbuild-stage-message
