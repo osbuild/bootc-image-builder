@@ -3,6 +3,8 @@ package progress_test
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -129,4 +131,93 @@ func TestProgressNewAutoselect(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, reflect.TypeOf(pb), reflect.TypeOf(tc.expected), fmt.Sprintf("[%v] %T not the expected %T", tc.onTerm, pb, tc.expected))
 	}
+}
+
+func makeFakeOsbuild(t *testing.T, content string) string {
+	p := filepath.Join(t.TempDir(), "fake-osbuild")
+	err := os.WriteFile(p, []byte("#!/bin/sh\n"+content), 0755)
+	assert.NoError(t, err)
+	return p
+}
+
+func TestRunOSBuildWithProgressErrorReporting(t *testing.T) {
+	restore := progress.MockOsbuildCmd(makeFakeOsbuild(t, `echo osbuild-stdout-output
+>&2 echo osbuild-stderr-output
+exit 112
+`))
+	defer restore()
+
+	pbar, err := progress.New("debug")
+	assert.NoError(t, err)
+	err = progress.RunOSBuild(pbar, []byte(`{"fake":"manifest"}`), nil, nil)
+	assert.EqualError(t, err, `error running osbuild: exit status 112
+Output:
+osbuild-stdout-output
+osbuild-stderr-output
+`)
+}
+
+func TestRunOSBuildWithBuildlog(t *testing.T) {
+	restore := progress.MockOsbuildCmd(makeFakeOsbuild(t, `
+echo osbuild-stdout-output
+>&2 echo osbuild-stderr-output
+`))
+	defer restore()
+
+	var fakeStdout, fakeStderr bytes.Buffer
+	restore = progress.MockOsStdout(&fakeStdout)
+	defer restore()
+	restore = progress.MockOsStderr(&fakeStderr)
+	defer restore()
+
+	for _, pbarType := range []string{"debug", "verbose"} {
+		t.Run(pbarType, func(t *testing.T) {
+			pbar, err := progress.New(pbarType)
+			assert.NoError(t, err)
+
+			var buildLog bytes.Buffer
+			opts := &progress.OSBuildOptions{
+				BuildLog: &buildLog,
+			}
+			err = progress.RunOSBuild(pbar, []byte(`{"fake":"manifest"}`), nil, opts)
+			assert.NoError(t, err)
+			expectedOutput := `osbuild-stdout-output
+osbuild-stderr-output
+`
+			assert.Equal(t, expectedOutput, buildLog.String())
+		})
+	}
+}
+
+func TestRunOSBuildWithProgressIncorrectJSON(t *testing.T) {
+	restore := progress.MockOsbuildCmd(makeFakeOsbuild(t, `echo osbuild-stdout-output
+>&2 echo osbuild-stderr-output
+>&3 echo invalid-json
+`))
+	defer restore()
+
+	pbar, err := progress.New("debug")
+	assert.NoError(t, err)
+
+	err = progress.RunOSBuild(pbar, []byte(`{"fake":"manifest"}`), nil, nil)
+	assert.EqualError(t, err, `errors parsing osbuild status:
+cannot scan line "invalid-json": invalid character 'i' looking for beginning of value`)
+}
+
+func TestRunOSBuildCacheMaxSize(t *testing.T) {
+	fakeOsbuildBinary := makeFakeOsbuild(t, `echo "$@" > "$0".cmdline`)
+	restore := progress.MockOsbuildCmd(fakeOsbuildBinary)
+	defer restore()
+
+	pbar, err := progress.New("debug")
+	assert.NoError(t, err)
+
+	osbuildOpts := &progress.OSBuildOptions{
+		CacheMaxSize: 77,
+	}
+	err = progress.RunOSBuild(pbar, []byte(`{"fake":"manifest"}`), nil, osbuildOpts)
+	assert.NoError(t, err)
+	cmdline, err := os.ReadFile(fakeOsbuildBinary + ".cmdline")
+	assert.NoError(t, err)
+	assert.Contains(t, string(cmdline), "--cache-max-size=77")
 }

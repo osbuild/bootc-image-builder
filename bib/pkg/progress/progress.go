@@ -14,10 +14,12 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/sirupsen/logrus"
 
+	"github.com/osbuild/images/pkg/datasizes"
 	"github.com/osbuild/images/pkg/osbuild"
 )
 
 var (
+	osStdout io.Writer = os.Stdout
 	osStderr io.Writer = os.Stderr
 
 	// This is only needed because pb.Pool require a real terminal.
@@ -311,29 +313,66 @@ func (b *debugProgressBar) SetProgress(subLevel int, msg string, done int, total
 	return nil
 }
 
-// XXX: merge variant back into images/pkg/osbuild/osbuild-exec.go
-func RunOSBuild(pb ProgressBar, manifest []byte, store, outputDirectory string, exports, extraEnv []string) error {
+type OSBuildOptions struct {
+	StoreDir  string
+	OutputDir string
+	ExtraEnv  []string
+
+	// BuildLog writes the osbuild output to the given writer
+	BuildLog io.Writer
+
+	CacheMaxSize int64
+}
+
+func writersForOSBuild(pb ProgressBar, opts *OSBuildOptions, internalBuildLog io.Writer) (osbuildStdout io.Writer, osbuildStderr io.Writer) {
 	// To keep maximum compatibility keep the old behavior to run osbuild
 	// directly and show all messages unless we have a "real" progress bar.
 	//
 	// This should ensure that e.g. "podman bootc" keeps working as it
-	// is currently expecting the raw osbuild output. Once we double
-	// checked with them we can remove the runOSBuildNoProgress() and
-	// just run with the new runOSBuildWithProgress() helper.
+	// is currently expecting the raw osbuild output.
 	switch pb.(type) {
-	case *terminalProgressBar, *debugProgressBar:
-		return runOSBuildWithProgress(pb, manifest, store, outputDirectory, exports, extraEnv)
+	case *verboseProgressBar:
+		// No external build log requested and we won't need an
+		// internal one because all output goes directly to
+		// stdout/stderr. This is for maximum compatibility with
+		// the existing bootc-image-builder in "verbose" mode
+		// where stdout, stderr come directly from osbuild.
+		if opts.BuildLog == nil {
+			return osStdout, osStderr
+		}
+		// With a build log we need a single output stream
+		osbuildStdout = osStdout
 	default:
-		return runOSBuildNoProgress(pb, manifest, store, outputDirectory, exports, extraEnv)
+		// hide the direct osbuild output by default
+		osbuildStdout = io.Discard
 	}
+
+	// There is a slight wrinkle here: when requesting a buildlog
+	// we can no longer write to separate stdout/stderr streams
+	// without being racy and give potential out-of-order output
+	// (which is very bad and confusing in a log). The reason is
+	// that if cmd.Std{out,err} are different "go" will start two
+	// go-routine to monitor/copy those are racy when both stdout,stderr
+	// output happens close together (TestRunOSBuildWithBuildlog demos
+	// that). We cannot have our cake and eat it so here we need to
+	// combine osbuilds stderr into our stdout.
+	if opts.BuildLog == nil {
+		opts.BuildLog = io.Discard
+	}
+	mw := io.MultiWriter(osbuildStdout, internalBuildLog, opts.BuildLog)
+	return mw, mw
 }
 
-func runOSBuildNoProgress(pb ProgressBar, manifest []byte, store, outputDirectory string, exports, extraEnv []string) error {
-	_, err := osbuild.RunOSBuild(manifest, store, outputDirectory, exports, nil, extraEnv, false, os.Stderr)
-	return err
-}
+var osbuildCmd = "osbuild"
 
-func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirectory string, exports, extraEnv []string) error {
+// XXX: merge variant back into images/pkg/osbuild/osbuild-exec.go
+func RunOSBuild(pb ProgressBar, manifest []byte, exports []string, opts *OSBuildOptions) error {
+	if opts == nil {
+		opts = &OSBuildOptions{}
+	}
+	var internalBuildLog bytes.Buffer
+	osbuildStdout, osbuildStderr := writersForOSBuild(pb, opts, &internalBuildLog)
+
 	rp, wp, err := os.Pipe()
 	if err != nil {
 		return fmt.Errorf("cannot create pipe for osbuild: %w", err)
@@ -341,24 +380,27 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirect
 	defer rp.Close()
 	defer wp.Close()
 
+	cacheMaxSize := int64(20 * datasizes.GiB)
+	if opts.CacheMaxSize != 0 {
+		cacheMaxSize = opts.CacheMaxSize
+	}
 	cmd := exec.Command(
-		"osbuild",
-		"--store", store,
-		"--output-directory", outputDirectory,
+		osbuildCmd,
+		"--store", opts.StoreDir,
+		"--output-directory", opts.OutputDir,
 		"--monitor=JSONSeqMonitor",
 		"--monitor-fd=3",
+		fmt.Sprintf("--cache-max-size=%v", cacheMaxSize),
 		"-",
 	)
 	for _, export := range exports {
 		cmd.Args = append(cmd.Args, "--export", export)
 	}
 
-	cmd.Env = append(os.Environ(), extraEnv...)
+	cmd.Env = append(os.Environ(), opts.ExtraEnv...)
 	cmd.Stdin = bytes.NewBuffer(manifest)
-	cmd.Stderr = os.Stderr
-	// we could use "--json" here and would get the build-result
-	// exported here
-	cmd.Stdout = nil
+	cmd.Stdout = osbuildStdout
+	cmd.Stderr = osbuildStderr
 	cmd.ExtraFiles = []*os.File{wp}
 
 	osbuildStatus := osbuild.NewStatusScanner(rp)
@@ -367,11 +409,14 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirect
 	}
 	wp.Close()
 
-	var tracesMsgs []string
+	var statusErrs []error
 	for {
 		st, err := osbuildStatus.Status()
+		// XXX: we cannot exit here, this would mean we lose error
+		// information if osbuild reading fails
 		if err != nil {
-			return fmt.Errorf("error reading osbuild status: %w", err)
+			statusErrs = append(statusErrs, err)
+			continue
 		}
 		if st == nil {
 			break
@@ -383,13 +428,6 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirect
 			}
 			i++
 		}
-		// keep the messages/traces for better error reporting
-		if st.Message != "" {
-			tracesMsgs = append(tracesMsgs, st.Message)
-		}
-		if st.Trace != "" {
-			tracesMsgs = append(tracesMsgs, st.Trace)
-		}
 		// forward to user
 		if st.Message != "" {
 			pb.SetMessagef(st.Message)
@@ -397,7 +435,10 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirect
 	}
 
 	if err := cmd.Wait(); err != nil {
-		return fmt.Errorf("error running osbuild: %w\nLog:\n%s", err, strings.Join(tracesMsgs, "\n"))
+		return fmt.Errorf("error running osbuild: %w\nOutput:\n%s", err, internalBuildLog.String())
+	}
+	if len(statusErrs) > 0 {
+		return fmt.Errorf("errors parsing osbuild status:\n%w", errors.Join(statusErrs...))
 	}
 
 	return nil
