@@ -368,10 +368,12 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirect
 	}
 	wp.Close()
 
+	var statusErrs []error
 	for {
 		st, err := osbuildStatus.Status()
 		if err != nil {
-			return fmt.Errorf("error reading osbuild status: %w", err)
+			statusErrs = append(statusErrs, err)
+			continue
 		}
 		if st == nil {
 			break
@@ -391,6 +393,9 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirect
 
 	if err := cmd.Wait(); err != nil {
 		return fmt.Errorf("error running osbuild: %w\nOutput:\n%s", err, stdio.String())
+	}
+	if len(statusErrs) > 0 {
+		return fmt.Errorf("errors parsing osbuild status:\n%w", errors.Join(statusErrs...))
 	}
 
 	return nil
