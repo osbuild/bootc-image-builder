@@ -311,8 +311,18 @@ func (b *debugProgressBar) SetProgress(subLevel int, msg string, done int, total
 	return nil
 }
 
+type OSBuildOptions struct {
+	StoreDir  string
+	OutputDir string
+	ExtraEnv  []string
+}
+
 // XXX: merge variant back into images/pkg/osbuild/osbuild-exec.go
-func RunOSBuild(pb ProgressBar, manifest []byte, store, outputDirectory string, exports, extraEnv []string) error {
+func RunOSBuild(pb ProgressBar, manifest []byte, exports []string, opts *OSBuildOptions) error {
+	if opts == nil {
+		opts = &OSBuildOptions{}
+	}
+
 	// To keep maximum compatibility keep the old behavior to run osbuild
 	// directly and show all messages unless we have a "real" progress bar.
 	//
@@ -322,20 +332,20 @@ func RunOSBuild(pb ProgressBar, manifest []byte, store, outputDirectory string, 
 	// just run with the new runOSBuildWithProgress() helper.
 	switch pb.(type) {
 	case *terminalProgressBar, *debugProgressBar:
-		return runOSBuildWithProgress(pb, manifest, store, outputDirectory, exports, extraEnv)
+		return runOSBuildWithProgress(pb, manifest, exports, opts)
 	default:
-		return runOSBuildNoProgress(pb, manifest, store, outputDirectory, exports, extraEnv)
+		return runOSBuildNoProgress(pb, manifest, exports, opts)
 	}
 }
 
-func runOSBuildNoProgress(pb ProgressBar, manifest []byte, store, outputDirectory string, exports, extraEnv []string) error {
-	_, err := osbuild.RunOSBuild(manifest, store, outputDirectory, exports, nil, extraEnv, false, os.Stderr)
+func runOSBuildNoProgress(pb ProgressBar, manifest []byte, exports []string, opts *OSBuildOptions) error {
+	_, err := osbuild.RunOSBuild(manifest, opts.StoreDir, opts.OutputDir, exports, nil, opts.ExtraEnv, false, os.Stderr)
 	return err
 }
 
 var osbuildCmd = "osbuild"
 
-func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirectory string, exports, extraEnv []string) error {
+func runOSBuildWithProgress(pb ProgressBar, manifest []byte, exports []string, opts *OSBuildOptions) error {
 	rp, wp, err := os.Pipe()
 	if err != nil {
 		return fmt.Errorf("cannot create pipe for osbuild: %w", err)
@@ -345,8 +355,8 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirect
 
 	cmd := exec.Command(
 		osbuildCmd,
-		"--store", store,
-		"--output-directory", outputDirectory,
+		"--store", opts.StoreDir,
+		"--output-directory", opts.OutputDir,
 		"--monitor=JSONSeqMonitor",
 		"--monitor-fd=3",
 		"-",
@@ -356,7 +366,7 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirect
 	}
 
 	var stdio bytes.Buffer
-	cmd.Env = append(os.Environ(), extraEnv...)
+	cmd.Env = append(os.Environ(), opts.ExtraEnv...)
 	cmd.Stdin = bytes.NewBuffer(manifest)
 	cmd.Stdout = &stdio
 	cmd.Stderr = &stdio
