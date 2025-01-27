@@ -157,7 +157,7 @@ exit 112
 
 	pbar, err := progress.New("debug")
 	assert.NoError(t, err)
-	err = progress.RunOSBuild(pbar, []byte(`{"fake":"manifest"}`), "", "", nil, nil)
+	err = progress.RunOSBuild(pbar, []byte(`{"fake":"manifest"}`), nil, nil)
 	assert.EqualError(t, err, `error running osbuild: exit status 112
 BuildLog:
 osbuild-stage-message
@@ -184,7 +184,7 @@ done
 
 	pbar, err := progress.New("debug")
 	assert.NoError(t, err)
-	err = progress.RunOSBuild(pbar, []byte(`{"fake":"manifest"}`), "", "", nil, nil)
+	err = progress.RunOSBuild(pbar, []byte(`{"fake":"manifest"}`), nil, nil)
 	assert.EqualError(t, err, `error parsing osbuild status, please report a bug and try with "--progress=verbose": cannot scan line "invalid-json": invalid character 'i' looking for beginning of value`)
 
 	// ensure the SIGINT got delivered
