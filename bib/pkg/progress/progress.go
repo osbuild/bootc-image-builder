@@ -16,6 +16,7 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/sirupsen/logrus"
 
+	"github.com/osbuild/images/pkg/datasizes"
 	"github.com/osbuild/images/pkg/osbuild"
 )
 
@@ -328,6 +329,8 @@ type OSBuildOptions struct {
 
 	// BuildLog writes the osbuild output to the given writer
 	BuildLog io.Writer
+
+	CacheMaxSize int64
 }
 
 // XXX: merge variant back into images/pkg/osbuild/osbuild-exec.go
@@ -349,6 +352,26 @@ func RunOSBuild(pb ProgressBar, manifest []byte, exports []string, opts *OSBuild
 	default:
 		return runOSBuildNoProgress(pb, manifest, exports, opts)
 	}
+}
+
+func newOsbuildCmd(manifest []byte, exports []string, opts *OSBuildOptions) *exec.Cmd {
+	cacheMaxSize := int64(20 * datasizes.GiB)
+	if opts.CacheMaxSize != 0 {
+		cacheMaxSize = opts.CacheMaxSize
+	}
+	cmd := exec.Command(
+		osbuildCmd,
+		"--store", opts.StoreDir,
+		"--output-directory", opts.OutputDir,
+		fmt.Sprintf("--cache-max-size=%v", cacheMaxSize),
+		"-",
+	)
+	for _, export := range exports {
+		cmd.Args = append(cmd.Args, "--export", export)
+	}
+	cmd.Env = append(os.Environ(), opts.ExtraEnv...)
+	cmd.Stdin = bytes.NewBuffer(manifest)
+	return cmd
 }
 
 func runOSBuildNoProgress(pb ProgressBar, manifest []byte, exports []string, opts *OSBuildOptions) error {
@@ -380,18 +403,7 @@ func runOSBuildNoProgress(pb ProgressBar, manifest []byte, exports []string, opt
 		stderr = mw
 	}
 
-	cmd := exec.Command(
-		osbuildCmd,
-		"--store", opts.StoreDir,
-		"--output-directory", opts.OutputDir,
-		"-",
-	)
-	for _, export := range exports {
-		cmd.Args = append(cmd.Args, "--export", export)
-	}
-
-	cmd.Env = append(os.Environ(), opts.ExtraEnv...)
-	cmd.Stdin = bytes.NewBuffer(manifest)
+	cmd := newOsbuildCmd(manifest, exports, opts)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	if err := cmd.Run(); err != nil {
@@ -410,17 +422,9 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, exports []string, o
 	defer rp.Close()
 	defer wp.Close()
 
-	cmd := exec.Command(
-		osbuildCmd,
-		"--store", opts.StoreDir,
-		"--output-directory", opts.OutputDir,
-		"--monitor=JSONSeqMonitor",
-		"--monitor-fd=3",
-		"-",
-	)
-	for _, export := range exports {
-		cmd.Args = append(cmd.Args, "--export", export)
-	}
+	cmd := newOsbuildCmd(manifest, exports, opts)
+	cmd.Args = append(cmd.Args, "--monitor=JSONSeqMonitor")
+	cmd.Args = append(cmd.Args, "--monitor-fd=3")
 
 	var stdio bytes.Buffer
 	var mw, buildLog io.Writer
@@ -433,8 +437,6 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, exports []string, o
 		buildLog = io.Discard
 	}
 
-	cmd.Env = append(os.Environ(), opts.ExtraEnv...)
-	cmd.Stdin = bytes.NewBuffer(manifest)
 	cmd.Stdout = mw
 	cmd.Stderr = mw
 	cmd.ExtraFiles = []*os.File{wp}

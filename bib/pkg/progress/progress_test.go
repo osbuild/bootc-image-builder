@@ -263,3 +263,21 @@ osbuild-stderr-output
 `
 	assert.Equal(t, expectedOutput, buildLog.String())
 }
+
+func TestRunOSBuildCacheMaxSize(t *testing.T) {
+	fakeOsbuildBinary := makeFakeOsbuild(t, `echo "$@" > "$0".cmdline`)
+	restore := progress.MockOsbuildCmd(fakeOsbuildBinary)
+	defer restore()
+
+	pbar, err := progress.New("debug")
+	assert.NoError(t, err)
+
+	osbuildOpts := &progress.OSBuildOptions{
+		CacheMaxSize: 77,
+	}
+	err = progress.RunOSBuild(pbar, []byte(`{"fake":"manifest"}`), nil, osbuildOpts)
+	assert.NoError(t, err)
+	cmdline, err := os.ReadFile(fakeOsbuildBinary + ".cmdline")
+	assert.NoError(t, err)
+	assert.Contains(t, string(cmdline), "--cache-max-size=77")
+}
