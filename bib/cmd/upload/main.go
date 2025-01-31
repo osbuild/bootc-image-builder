@@ -7,7 +7,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/osbuild/bootc-image-builder/bib/internal/uploader"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 )
 
@@ -26,8 +25,6 @@ func uploadAMI(cmd *cobra.Command, args []string) {
 
 	region, err := flags.GetString("region")
 	check(err)
-	client, err := awscloud.NewDefault(region)
-	check(err)
 	bucketName, err := flags.GetString("bucket")
 	check(err)
 	imageName, err := flags.GetString("ami-name")
@@ -35,7 +32,17 @@ func uploadAMI(cmd *cobra.Command, args []string) {
 	targetArch, err := flags.GetString("target-arch")
 	check(err)
 
-	check(uploader.UploadAndRegister(client, filename, bucketName, imageName, targetArch, nil))
+	opts := &awscloud.UploaderOptions{
+		TargetArch: targetArch,
+	}
+	uploader, err := awscloud.NewUploader(region, bucketName, imageName, opts)
+	check(err)
+
+	f, err := os.Open(filename)
+	check(err)
+	defer f.Close()
+
+	check(uploader.UploadAndRegister(f, os.Stderr))
 }
 
 func setupCLI() *cobra.Command {

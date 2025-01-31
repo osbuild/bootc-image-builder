@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -17,6 +18,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/osbuild/images/pkg/arch"
+	"github.com/osbuild/images/pkg/cloud"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 	"github.com/osbuild/images/pkg/container"
 	"github.com/osbuild/images/pkg/dnfjson"
@@ -53,6 +55,9 @@ var distroDefPaths = []string{
 var (
 	osGetuid = os.Getuid
 	osGetgid = os.Getgid
+
+	osStdout = os.Stdout
+	osStderr = os.Stderr
 )
 
 // canChownInPath checks if the ownership of files can be set in a given path.
@@ -340,53 +345,36 @@ func cmdManifest(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func handleAWSFlags(cmd *cobra.Command) (upload bool, err error) {
+func handleAWSFlags(cmd *cobra.Command) (cloud.Uploader, error) {
 	imgTypes, _ := cmd.Flags().GetStringArray("type")
 	region, _ := cmd.Flags().GetString("aws-region")
 	if region == "" {
-		return false, nil
+		return nil, nil
 	}
 	bucketName, _ := cmd.Flags().GetString("aws-bucket")
+	imageName, _ := cmd.Flags().GetString("aws-ami-name")
+	targetArch, _ := cmd.Flags().GetString("target-arch")
 
 	if !slices.Contains(imgTypes, "ami") {
-		return false, fmt.Errorf("aws flags set for non-ami image type (type is set to %s)", strings.Join(imgTypes, ","))
+		return nil, fmt.Errorf("aws flags set for non-ami image type (type is set to %s)", strings.Join(imgTypes, ","))
 	}
 
 	// check as many permission prerequisites as possible before starting
-	client, err := awscloud.NewDefault(region)
+	uploaderOpts := &awscloud.UploaderOptions{
+		TargetArch: targetArch,
+	}
+	uploader, err := awscloud.NewUploader(region, bucketName, imageName, uploaderOpts)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-
-	logrus.Info("Checking AWS region access...")
-	regions, err := client.Regions()
-	if err != nil {
-		return false, fmt.Errorf("retrieving AWS regions for '%s' failed: %w", region, err)
+	status := io.Discard
+	if logrus.GetLevel() >= logrus.InfoLevel {
+		status = os.Stderr
 	}
-
-	if !slices.Contains(regions, region) {
-		return false, fmt.Errorf("given AWS region '%s' not found", region)
+	if err := uploader.Check(status); err != nil {
+		return nil, err
 	}
-
-	logrus.Info("Checking AWS bucket...")
-	buckets, err := client.Buckets()
-	if err != nil {
-		return false, fmt.Errorf("retrieving AWS list of buckets failed: %w", err)
-	}
-	if !slices.Contains(buckets, bucketName) {
-		return false, fmt.Errorf("bucket '%s' not found in the given AWS account", bucketName)
-	}
-
-	logrus.Info("Checking AWS bucket permissions...")
-	writePermission, err := client.CheckBucketPermission(bucketName, awscloud.S3PermissionWrite)
-	if err != nil {
-		return false, err
-	}
-	if !writePermission {
-		return false, fmt.Errorf("you don't have write permissions to bucket '%s' with the given AWS account", bucketName)
-	}
-	logrus.Info("Upload conditions met.")
-	return true, nil
+	return uploader, nil
 }
 
 func cmdBuild(cmd *cobra.Command, args []string) error {
@@ -415,7 +403,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot setup build dir: %w", err)
 	}
 
-	upload, err := handleAWSFlags(cmd)
+	uploader, err := handleAWSFlags(cmd)
 	if err != nil {
 		return fmt.Errorf("cannot handle AWS setup: %w", err)
 	}
@@ -478,7 +466,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	}
 
 	pbar.SetMessagef("Build complete!")
-	if upload {
+	if uploader != nil {
 		// XXX: pass our own progress.ProgressBar here
 		// *for now* just stop our own progress and let the uploadAMI
 		// progress take over - but we really need to fix this in a
@@ -488,7 +476,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 			switch imgType {
 			case "ami":
 				diskpath := filepath.Join(outputDir, exports[idx], "disk.raw")
-				if err := uploadAMI(diskpath, targetArch, cmd.Flags()); err != nil {
+				if err := upload(uploader, diskpath, cmd.Flags()); err != nil {
 					return fmt.Errorf("cannot upload AMI: %w", err)
 				}
 			default:
