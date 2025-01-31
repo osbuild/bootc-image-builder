@@ -10,6 +10,14 @@ type (
 	VerboseProgressBar  = verboseProgressBar
 )
 
+func MockOsStdout(w io.Writer) (restore func()) {
+	saved := osStdout
+	osStdout = w
+	return func() {
+		osStdout = saved
+	}
+}
+
 func MockOsStderr(w io.Writer) (restore func()) {
 	saved := osStderr
 	osStderr = w
