@@ -6,7 +6,7 @@ anaconda-iso:
     - alsa-tools-firmware
     - anaconda
     - anaconda-dracut
-    - anaconda-install-env-deps
+    - anaconda-install-img-deps
     - anaconda-widgets
     - atheros-firmware
     - audit
@@ -75,7 +75,6 @@ anaconda-iso:
     - perl-interpreter
     - pigz
     - plymouth
-    - python3-pam
     - python3-pyatspi
     - rdma-core
     - realtek-firmware
