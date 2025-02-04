@@ -18,8 +18,6 @@ import (
 )
 
 var (
-	osStderr io.Writer = os.Stderr
-
 	// This is only needed because pb.Pool require a real terminal.
 	// It sets it into "raw-mode" but there is really no need for
 	// this (see "func render()" below) so once this is fixed
@@ -29,6 +27,13 @@ var (
 	CURSOR_HIDE = ESC + "[?25l"
 	CURSOR_SHOW = ESC + "[?25h"
 )
+
+// Used for testing, this must be a function (instead of the usual
+// "var osStderr = os.Stderr" so that higher level libraries can test
+// this code by replacing "os.Stderr", e.g. testutil.CaptureStdio()
+var osStderr = func() io.Writer {
+	return os.Stderr
+}
 
 func cursorUp(i int) string {
 	return fmt.Sprintf("%s[%dA", ESC, i)
@@ -104,7 +109,7 @@ type terminalProgressBar struct {
 // most terminals.
 func NewTerminalProgressBar() (ProgressBar, error) {
 	b := &terminalProgressBar{
-		out: osStderr,
+		out: osStderr(),
 	}
 	b.spinnerPb = pb.New(0)
 	b.spinnerPb.SetTemplate(`[{{ (cycle . "|" "/" "-" "\\") }}] {{ string . "spinnerMsg" }}`)
@@ -248,7 +253,7 @@ type verboseProgressBar struct {
 // NewVerboseProgressBar starts a new "verbose" progressbar that will just
 // prints message but does not show any progress.
 func NewVerboseProgressBar() (ProgressBar, error) {
-	b := &verboseProgressBar{w: osStderr}
+	b := &verboseProgressBar{w: osStderr()}
 	return b, nil
 }
 
@@ -281,7 +286,7 @@ type debugProgressBar struct {
 // so "glitches/weird" messages from the lower-layers can be inspected
 // easier.
 func NewDebugProgressBar() (ProgressBar, error) {
-	b := &debugProgressBar{w: osStderr}
+	b := &debugProgressBar{w: osStderr()}
 	return b, nil
 }
 
