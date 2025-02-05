@@ -60,6 +60,7 @@ class TestCaseC9S(TestCase):
     container_ref: str = os.getenv(
         "BIB_TEST_BOOTC_CONTAINER_TAG",
         "quay.io/centos-bootc/centos-bootc:stream9")
+    use_librepo: bool = True
 
 
 @dataclasses.dataclass
