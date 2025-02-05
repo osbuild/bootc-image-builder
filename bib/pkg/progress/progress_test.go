@@ -3,6 +3,7 @@ package progress_test
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -141,7 +142,13 @@ func makeFakeOsbuild(t *testing.T, content string) string {
 }
 
 func TestRunOSBuildWithProgressErrorReporting(t *testing.T) {
-	restore := progress.MockOsbuildCmd(makeFakeOsbuild(t, `echo osbuild-stdout-output
+	restore := progress.MockOsStderr(io.Discard)
+	defer restore()
+
+	restore = progress.MockOsbuildCmd(makeFakeOsbuild(t, `
+>&3 echo '{"message": "osbuild-stage-message"}'
+
+echo osbuild-stdout-output
 >&2 echo osbuild-stderr-output
 exit 112
 `))
@@ -151,6 +158,8 @@ exit 112
 	assert.NoError(t, err)
 	err = progress.RunOSBuild(pbar, []byte(`{"fake":"manifest"}`), "", "", nil, nil)
 	assert.EqualError(t, err, `error running osbuild: exit status 112
+BuildLog:
+osbuild-stage-message
 Output:
 osbuild-stdout-output
 osbuild-stderr-output

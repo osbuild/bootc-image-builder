@@ -368,6 +368,7 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirect
 	}
 	wp.Close()
 
+	var tracesMsgs []string
 	var statusErrs []error
 	for {
 		st, err := osbuildStatus.Status()
@@ -389,10 +390,18 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirect
 		if st.Message != "" {
 			pb.SetMessagef(st.Message)
 		}
+
+		// keep all messages/traces for better error reporting
+		if st.Message != "" {
+			tracesMsgs = append(tracesMsgs, st.Message)
+		}
+		if st.Trace != "" {
+			tracesMsgs = append(tracesMsgs, st.Trace)
+		}
 	}
 
 	if err := cmd.Wait(); err != nil {
-		return fmt.Errorf("error running osbuild: %w\nOutput:\n%s", err, stdio.String())
+		return fmt.Errorf("error running osbuild: %w\nBuildLog:\n%s\nOutput:\n%s", err, strings.Join(tracesMsgs, "\n"), stdio.String())
 	}
 	if len(statusErrs) > 0 {
 		return fmt.Errorf("errors parsing osbuild status:\n%w", errors.Join(statusErrs...))
