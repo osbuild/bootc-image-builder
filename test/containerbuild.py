@@ -97,3 +97,50 @@ def build_fake_container_fixture(tmpdir_factory, build_container):
         tmp_path,
     ])
     return container_tag
+
+
+@pytest.fixture(name="build_erroring_container", scope="session")
+def build_erroring_container_fixture(tmpdir_factory, build_container):
+    """Build a container with a erroring osbuild and returns the name"""
+    tmp_path = tmpdir_factory.mktemp("build-fake-container")
+
+    # this ensures there are messages from osbuild itself that
+    # we can reliably test for
+    wrapping_osbuild_path = tmp_path / "wrapping-osbuild"
+    wrapping_osbuild_path.write_text(textwrap.dedent("""\
+    #!/bin/sh -e
+    echo "output-from-osbuild-stdout"
+    >&2 echo "output-from-osbuild-stderr"
+
+    exec /usr/bin/osbuild.real "$@"
+    """), encoding="utf8")
+
+    # this ensures we have a failing stage and failure messages
+    bad_stage_path = tmp_path / "bad-stage"
+    bad_stage_path.write_text(textwrap.dedent("""\
+    #!/bin/sh -e
+    echo osbuild-stage-stdout-output
+    >&2 echo osbuild-stage-stderr-output
+    exit 112
+    """), encoding="utf8")
+
+    cntf_path = tmp_path / "Containerfile"
+    cntf_path.write_text(textwrap.dedent(f"""\n
+    FROM {build_container}
+    # ensure there is osbuild output
+    COPY --from={build_container} /usr/bin/osbuild /usr/bin/osbuild.real
+    COPY wrapping-osbuild /usr/bin/osbuild
+    RUN chmod 755 /usr/bin/osbuild
+
+    # we break org.osbuild.selinux as runs early and is used everywhere
+    COPY bad-stage /usr/lib/osbuild/stages/org.osbuild.selinux
+    RUN chmod +x /usr/lib/osbuild/stages/org.osbuild.selinux
+    """), encoding="utf8")
+
+    container_tag = "bootc-image-builder-test--osbuild"
+    subprocess.check_call([
+        "podman", "build",
+        "-t", container_tag,
+        tmp_path,
+    ])
+    return container_tag
