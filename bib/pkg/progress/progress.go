@@ -31,6 +31,9 @@ var (
 // Used for testing, this must be a function (instead of the usual
 // "var osStderr = os.Stderr" so that higher level libraries can test
 // this code by replacing "os.Stderr", e.g. testutil.CaptureStdio()
+var osStdout = func() io.Writer {
+	return os.Stdout
+}
 var osStderr = func() io.Writer {
 	return os.Stderr
 }
@@ -320,6 +323,9 @@ type OSBuildOptions struct {
 	StoreDir  string
 	OutputDir string
 	ExtraEnv  []string
+
+	// BuildLog writes the osbuild output to the given writer
+	BuildLog io.Writer
 }
 
 // XXX: merge variant back into images/pkg/osbuild/osbuild-exec.go
@@ -344,8 +350,51 @@ func RunOSBuild(pb ProgressBar, manifest []byte, exports []string, opts *OSBuild
 }
 
 func runOSBuildNoProgress(pb ProgressBar, manifest []byte, exports []string, opts *OSBuildOptions) error {
-	_, err := osbuild.RunOSBuild(manifest, opts.StoreDir, opts.OutputDir, exports, nil, opts.ExtraEnv, false, os.Stderr)
-	return err
+	var stdout, stderr io.Writer
+
+	if opts.BuildLog == nil {
+		// No external build log requested and we won't need an
+		// internal one because all output goes directly to
+		// stdout/stderr. This is for maximum compatibility with
+		// the existing bootc-image-builder in "verbose" mode
+		// where stdout, stderr come directly from osbuild.
+		stdout = osStdout()
+		stderr = osStderr()
+	} else {
+		// There is a slight wrinkle here: when requesting a
+		// buildlog we can no longer write to separate
+		// stdout/stderr streams without being racy and give
+		// potential out-of-order output (which is very bad
+		// and confusing in a log). The reason is that if
+		// cmd.Std{out,err} are different "go" will start two
+		// go-routine to monitor/copy those are racy when both
+		// stdout,stderr output happens close together
+		// (TestRunOSBuildWithBuildlog demos that). We cannot
+		// have our cake and eat it so here we need to combine
+		// osbuilds stderr into our stdout.
+		mw := newSyncedMultiWriter(osStdout(), opts.BuildLog)
+		stdout = mw
+		stderr = mw
+	}
+
+	cmd := exec.Command(
+		osbuildCmd,
+		"--store", opts.StoreDir,
+		"--output-directory", opts.OutputDir,
+		"-",
+	)
+	for _, export := range exports {
+		cmd.Args = append(cmd.Args, "--export", export)
+	}
+
+	cmd.Env = append(os.Environ(), opts.ExtraEnv...)
+	cmd.Stdin = bytes.NewBuffer(manifest)
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error running osbuild: %w", err)
+	}
+	return nil
 }
 
 var osbuildCmd = "osbuild"
@@ -371,10 +420,19 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, exports []string, o
 	}
 
 	var stdio bytes.Buffer
+	var mw, buildLog io.Writer
+	if opts.BuildLog != nil {
+		mw = newSyncedMultiWriter(&stdio, opts.BuildLog)
+		buildLog = opts.BuildLog
+	} else {
+		mw = &stdio
+		buildLog = io.Discard
+	}
+
 	cmd.Env = append(os.Environ(), opts.ExtraEnv...)
 	cmd.Stdin = bytes.NewBuffer(manifest)
-	cmd.Stdout = &stdio
-	cmd.Stderr = &stdio
+	cmd.Stdout = mw
+	cmd.Stderr = mw
 	cmd.ExtraFiles = []*os.File{wp}
 
 	osbuildStatus := osbuild.NewStatusScanner(rp)
@@ -406,12 +464,15 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, exports []string, o
 			pb.SetMessagef(st.Message)
 		}
 
-		// keep all messages/traces for better error reporting
+		// keep internal log for error reporting, forward to
+		// external build log
 		if st.Message != "" {
 			tracesMsgs = append(tracesMsgs, st.Message)
+			fmt.Fprintln(buildLog, st.Message)
 		}
 		if st.Trace != "" {
 			tracesMsgs = append(tracesMsgs, st.Trace)
+			fmt.Fprintln(buildLog, st.Trace)
 		}
 	}
 
