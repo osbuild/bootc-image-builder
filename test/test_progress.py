@@ -1,9 +1,15 @@
 import subprocess
 
+import pytest
+
 import testutil
 # pylint: disable=unused-import,duplicate-code
 from test_opts import container_storage_fixture
-from containerbuild import build_container_fixture, build_fake_container_fixture
+from containerbuild import (
+    build_container_fixture,
+    build_erroring_container_fixture,
+    build_fake_container_fixture,
+)
 
 
 def test_progress_debug(tmp_path, build_fake_container):
@@ -65,3 +71,27 @@ def test_progress_term_autoselect(tmp_path, build_fake_container):
     assert res.returncode == 0
     # its curious that we get the output on stdout here, podman weirdness?
     assert "[|] Manifest generation step" in res.stdout
+
+
+@pytest.mark.skipif(not testutil.can_start_rootful_containers, reason="require a rootful containers (try: sudo)")
+@pytest.mark.parametrize("progress", ["term", "verbose"])
+def test_progress_error_reporting(tmp_path, build_erroring_container, progress):
+    output_path = tmp_path / "output"
+    output_path.mkdir(exist_ok=True)
+
+    cmdline = [
+        *testutil.podman_run_common,
+        "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
+        # we have a terminal
+        "-t",
+        build_erroring_container,
+        "build",
+        f"--progress={progress}",
+        "quay.io/centos-bootc/centos-bootc:stream9",
+    ]
+    res = subprocess.run(cmdline, capture_output=True, text=True, check=False)
+    assert "osbuild-stage-stdout-output" in res.stdout
+    assert "osbuild-stage-stderr-output" in res.stdout
+    assert "output-from-osbuild-stdout" in res.stdout
+    assert "output-from-osbuild-stderr" in res.stdout
+    assert res.returncode == 1
