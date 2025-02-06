@@ -51,7 +51,7 @@ func findDistroDef(defDirs []string, distro, wantedVerStr string) (string, error
 			if err != nil {
 				return "", fmt.Errorf("cannot parse distro version from %q: %w", m, err)
 			}
-			if wantedVer.Compare(haveVer) > 0 && haveVer.Compare(bestFuzzyVer) > 0 {
+			if wantedVer.Compare(haveVer) >= 0 && haveVer.Compare(bestFuzzyVer) > 0 {
 				bestFuzzyVer = haveVer
 				bestFuzzyMatch = m
 			}

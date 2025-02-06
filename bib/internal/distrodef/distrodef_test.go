@@ -108,6 +108,16 @@ func TestFindDistroDefMultiFuzzyMinorReleases(t *testing.T) {
 	assert.True(t, strings.HasSuffix(def, "b/b/centos-9.10.yaml"), def)
 }
 
+func TestFindDistroDefMultiFuzzyMinorReleasesIsZero(t *testing.T) {
+	defDirs := makeFakeDistrodefRoot(t, []string{
+		"a/centos-9.yaml",
+		"a/centos-10.yaml",
+	})
+	def, err := findDistroDef(defDirs, "centos", "10.0")
+	assert.NoError(t, err)
+	assert.True(t, strings.HasSuffix(def, "a/centos-10.yaml"), def)
+}
+
 func TestFindDistroDefMultiFuzzyError(t *testing.T) {
 	defDirs := makeFakeDistrodefRoot(t, []string{
 		"a/fedora-40.yaml",
