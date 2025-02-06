@@ -136,3 +136,4 @@ jobs:
       run: |
         df -h
         sudo du -sh * /var/tmp /tmp /var/lib/containers | sort -sh
+        sudo find /mnt/var/tmp/bib-tests -name du.log|sudo xargs cat
