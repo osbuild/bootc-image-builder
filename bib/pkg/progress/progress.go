@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/cheggaaa/pb/v3"
@@ -340,7 +341,7 @@ func runOSBuildNoProgress(pb ProgressBar, manifest []byte, store, outputDirector
 
 var osbuildCmd = "osbuild"
 
-func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirectory string, exports, extraEnv []string) error {
+func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirectory string, exports, extraEnv []string) (err error) {
 	rp, wp, err := os.Pipe()
 	if err != nil {
 		return fmt.Errorf("cannot create pipe for osbuild: %w", err)
@@ -372,14 +373,32 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirect
 		return fmt.Errorf("error starting osbuild: %v", err)
 	}
 	wp.Close()
+	defer func() {
+		// Try to stop osbuild if we exit early, we are gentle
+		// here to give osbuild the chance to release its
+		// resources (like mounts in the buildroot). This is
+		// best effort only (but also a pretty uncommon error
+		// condition). If ProcessState is set the process has
+		// already exited and we have nothing to do.
+		if err != nil && cmd.Process != nil && cmd.ProcessState == nil {
+			sigErr := cmd.Process.Signal(syscall.SIGINT)
+			err = errors.Join(err, sigErr)
+		}
+	}()
 
 	var tracesMsgs []string
-	var statusErrs []error
 	for {
 		st, err := osbuildStatus.Status()
 		if err != nil {
-			statusErrs = append(statusErrs, err)
-			continue
+			// This should never happen but if it does we try
+			// to be helpful. We need to exit here (and kill
+			// osbuild in the defer) or we would appear to be
+			// handing as cmd.Wait() would wait to finish but
+			// no progress or other message is reported. We
+			// can also not (in the general case) recover as
+			// the underlying osbuildStatus.scanner maybe in
+			// an unrecoverable state (like ErrTooBig).
+			return fmt.Errorf(`error parsing osbuild status, please report a bug and try with "--progress=verbose": %w`, err)
 		}
 		if st == nil {
 			break
@@ -407,9 +426,6 @@ func runOSBuildWithProgress(pb ProgressBar, manifest []byte, store, outputDirect
 
 	if err := cmd.Wait(); err != nil {
 		return fmt.Errorf("error running osbuild: %w\nBuildLog:\n%s\nOutput:\n%s", err, strings.Join(tracesMsgs, "\n"), stdio.String())
-	}
-	if len(statusErrs) > 0 {
-		return fmt.Errorf("errors parsing osbuild status:\n%w", errors.Join(statusErrs...))
 	}
 
 	return nil

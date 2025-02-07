@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -167,15 +168,35 @@ osbuild-stderr-output
 }
 
 func TestRunOSBuildWithProgressIncorrectJSON(t *testing.T) {
-	restore := progress.MockOsbuildCmd(makeFakeOsbuild(t, `echo osbuild-stdout-output
->&2 echo osbuild-stderr-output
+	signalDeliveredMarkerPath := filepath.Join(t.TempDir(), "sigint-delivered")
+
+	restore := progress.MockOsbuildCmd(makeFakeOsbuild(t, fmt.Sprintf(`
+trap 'touch "%s";exit 2' INT
+
 >&3 echo invalid-json
-`))
+
+# we cannot sleep infinity here or the shell script trap is never run
+while true; do
+    sleep 0.1
+done
+`, signalDeliveredMarkerPath)))
 	defer restore()
 
 	pbar, err := progress.New("debug")
 	assert.NoError(t, err)
 	err = progress.RunOSBuild(pbar, []byte(`{"fake":"manifest"}`), "", "", nil, nil)
-	assert.EqualError(t, err, `errors parsing osbuild status:
-cannot scan line "invalid-json": invalid character 'i' looking for beginning of value`)
+	assert.EqualError(t, err, `error parsing osbuild status, please report a bug and try with "--progress=verbose": cannot scan line "invalid-json": invalid character 'i' looking for beginning of value`)
+
+	// ensure the SIGINT got delivered
+	var pathExists = func(p string) bool {
+		_, err := os.Stat(p)
+		return err == nil
+	}
+	for i := 0; i < 20; i++ {
+		time.Sleep(100 * time.Millisecond)
+		if pathExists(signalDeliveredMarkerPath) {
+			break
+		}
+	}
+	assert.True(t, pathExists(signalDeliveredMarkerPath))
 }
