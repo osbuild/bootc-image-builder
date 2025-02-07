@@ -27,6 +27,8 @@ class TestCase:
     disk_config: str = ""
     # use librepo for the downloading
     use_librepo: bool = False
+    # podman_terminal enables the podman -t option to get progress
+    podman_terminal: bool = False
 
     def bib_rootfs_args(self):
         if self.rootfs:
@@ -61,6 +63,7 @@ class TestCaseC9S(TestCase):
         "BIB_TEST_BOOTC_CONTAINER_TAG",
         "quay.io/centos-bootc/centos-bootc:stream9")
     use_librepo: bool = True
+    use_terminal: bool = True
 
 
 @dataclasses.dataclass
