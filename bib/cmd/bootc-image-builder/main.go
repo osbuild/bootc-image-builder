@@ -656,7 +656,7 @@ func buildCobraCmdline() (*cobra.Command, error) {
 		return nil, fmt.Errorf("cannot hide 'local' :%w", err)
 	}
 	manifestCmd.Flags().String("rootfs", "", "Root filesystem type. If not given, the default configured in the source container image is used.")
-	manifestCmd.Flags().Bool("use-librepo", false, "(experimenal) switch to librepo for pkg download, needs new enough osbuild")
+	manifestCmd.Flags().Bool("use-librepo", true, "switch to librepo for pkg download, needs new enough osbuild")
 	// --config is only useful for developers who run bib outside
 	// of a container to generate a manifest. so hide it by
 	// default from users.
