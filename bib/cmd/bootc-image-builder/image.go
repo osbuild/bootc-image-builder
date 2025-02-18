@@ -22,6 +22,7 @@ import (
 	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/pathpolicy"
 	"github.com/osbuild/images/pkg/platform"
+	"github.com/osbuild/images/pkg/policies"
 	"github.com/osbuild/images/pkg/rpmmd"
 	"github.com/osbuild/images/pkg/runner"
 	"github.com/sirupsen/logrus"
@@ -378,6 +379,27 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		return nil, err
 	}
 	img.PartitionTable = pt
+
+	// Check Directory/File Customizations are valid
+	dc := customizations.GetDirectories()
+	fc := customizations.GetFiles()
+	if err := blueprint.ValidateDirFileCustomizations(dc, fc); err != nil {
+		return nil, err
+	}
+	if err := blueprint.CheckDirectoryCustomizationsPolicy(dc, policies.OstreeCustomDirectoriesPolicies); err != nil {
+		return nil, err
+	}
+	if err := blueprint.CheckFileCustomizationsPolicy(fc, policies.OstreeCustomFilesPolicies); err != nil {
+		return nil, err
+	}
+	img.Files, err = blueprint.FileCustomizationsToFsNodeFiles(fc)
+	if err != nil {
+		return nil, err
+	}
+	img.Directories, err = blueprint.DirectoryCustomizationsToFsNodeDirectories(dc)
+	if err != nil {
+		return nil, err
+	}
 
 	// For the bootc-disk image, the filename is the basename and the extension
 	// is added automatically for each disk format

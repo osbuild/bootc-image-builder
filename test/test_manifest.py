@@ -779,3 +779,43 @@ def test_iso_manifest_use_librepo(build_container, use_librepo):
         assert "org.osbuild.librepo" in manifest["sources"]
     else:
         assert "org.osbuild.curl" in manifest["sources"]
+
+
+def test_manifest_customization_custom_file_smoke(tmp_path, build_container):
+    # no need to parameterize this test, toml is the same for all containers
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
+
+    cfg = {
+        "blueprint": {
+            "customizations": {
+                "files": [
+                    {
+                        "path": "/etc/custom_file",
+                        "data": "hello world"
+                    },
+                ],
+                "directories": [
+                    {
+                        "path": "/etc/custom_dir",
+                    },
+                ],
+            },
+        },
+    }
+
+    output_path = tmp_path / "output"
+    output_path.mkdir(exist_ok=True)
+    config_json_path = output_path / "config.json"
+    config_json_path.write_text(json.dumps(cfg), encoding="utf-8")
+
+    output = subprocess.check_output([
+        *testutil.podman_run_common,
+        "-v", f"{output_path}:/output",
+        build_container,
+        "manifest", f"{container_ref}",
+        "--config", "/output/config.json",
+    ], stderr=subprocess.PIPE, encoding="utf8")
+    osbuild_manifest = json.loads(output)
+    assert '"to":"tree:///etc/custom_file"' in output
+    assert '{"type":"org.osbuild.mkdir","options":{"paths":[{"path":"/etc/custom_dir","exist_ok":true}]}}' in output
