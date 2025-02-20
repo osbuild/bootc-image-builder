@@ -51,7 +51,7 @@ var efiPartition = disk.Partition{
 var bootPartition = disk.Partition{
 	Size: 1 * GibiByte,
 	Type: disk.FilesystemDataGUID,
-	UUID: disk.FilesystemDataUUID,
+	UUID: disk.DataPartitionUUID,
 	Payload: &disk.Filesystem{
 		Type:         "ext4",
 		Mountpoint:   "/boot",
