@@ -281,6 +281,7 @@ func genPartitionTableDiskCust(c *ManifestConfig, diskCust *blueprint.DiskCustom
 		BootMode:         platform.BOOT_HYBRID,
 		DefaultFSType:    defaultFSType,
 		RequiredMinSizes: requiredMinSizes,
+		Architecture:     c.Architecture,
 	}
 	return disk.NewCustomPartitionTable(diskCust, partOptions, rng)
 }
@@ -300,7 +301,7 @@ func genPartitionTableFsCust(c *ManifestConfig, fsCust []blueprint.FilesystemCus
 	}
 	fsCustomizations := updateFilesystemSizes(fsCust, c.RootfsMinsize)
 
-	pt, err := disk.NewPartitionTable(&basept, fsCustomizations, DEFAULT_SIZE, partitioningMode, nil, rng)
+	pt, err := disk.NewPartitionTable(&basept, fsCustomizations, DEFAULT_SIZE, partitioningMode, c.Architecture, nil, rng)
 	if err != nil {
 		return nil, err
 	}
