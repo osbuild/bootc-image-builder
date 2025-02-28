@@ -45,6 +45,7 @@ The following command will create a QCOW2 disk image. First, create `./config.to
 ```bash
 # Ensure the image is fetched
 sudo podman pull quay.io/centos-bootc/centos-bootc:stream9
+mkdir output
 sudo podman run \
     --rm \
     -it \
