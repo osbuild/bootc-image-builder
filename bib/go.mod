@@ -4,7 +4,7 @@ go 1.22.8
 
 require (
 	github.com/BurntSushi/toml v1.4.0
-	github.com/cheggaaa/pb/v3 v3.1.6
+	github.com/cheggaaa/pb/v3 v3.1.7
 	github.com/hashicorp/go-version v1.7.0
 	github.com/mattn/go-isatty v0.0.20
 	github.com/osbuild/images v0.120.0
