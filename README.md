@@ -443,7 +443,8 @@ The `rootfs` option (or source container config, see [Detailed description of op
 
 ### Anaconda ISO (installer) options (`installer`, mapping)
 
-Users can include kickstart file content that will be added to an ISO build to configure the installation process.
+Users can include kickstart file content that will be added to an ISO build to configure the installation process. When using custom kickstart scripts the customization needs to be done via the custom kickstart script. For example using a `[customizations.user]` block alongside a `[customizations.installer.kickstart]` block is not supported. See this issue [https://github.com/osbuild/bootc-image-builder/issues/528] for additional detail.
+
 Since multi-line strings are difficult to write and read in json, it's easier to use the toml format when adding kickstart contents:
 
 ```toml
