@@ -1,31 +1,18 @@
 package main
 
 import (
+	"fmt"
+	"io"
+	"os"
+
 	"github.com/cheggaaa/pb/v3"
-	"github.com/osbuild/bootc-image-builder/bib/internal/uploader"
-	"github.com/osbuild/images/pkg/cloud/awscloud"
 	"github.com/spf13/pflag"
+
+	"github.com/osbuild/images/pkg/cloud"
 )
 
-func uploadAMI(path, targetArch string, flags *pflag.FlagSet) error {
-	region, err := flags.GetString("aws-region")
-	if err != nil {
-		return err
-	}
-	bucketName, err := flags.GetString("aws-bucket")
-	if err != nil {
-		return err
-	}
-	imageName, err := flags.GetString("aws-ami-name")
-	if err != nil {
-		return err
-	}
+func upload(uploader cloud.Uploader, path string, flags *pflag.FlagSet) error {
 	progress, err := flags.GetString("progress")
-	if err != nil {
-		return err
-	}
-
-	client, err := awscloud.NewDefault(region)
 	if err != nil {
 		return err
 	}
@@ -38,5 +25,25 @@ func uploadAMI(path, targetArch string, flags *pflag.FlagSet) error {
 		pbar = pb.New(0)
 	}
 
-	return uploader.UploadAndRegister(client, path, bucketName, imageName, targetArch, pbar)
+	file, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("cannot upload: %v", err)
+	}
+	defer file.Close()
+
+	var r io.Reader = file
+	if pbar != nil {
+		st, err := file.Stat()
+		if err != nil {
+			return err
+		}
+		pbar.SetTotal(st.Size())
+		pbar.Set(pb.Bytes, true)
+		pbar.SetWriter(osStdout)
+		r = pbar.NewProxyReader(file)
+		pbar.Start()
+		defer pbar.Finish()
+	}
+
+	return uploader.UploadAndRegister(r, osStderr)
 }

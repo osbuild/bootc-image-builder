@@ -15,6 +15,7 @@ import (
 	"github.com/osbuild/images/pkg/runner"
 
 	bib "github.com/osbuild/bootc-image-builder/bib/cmd/bootc-image-builder"
+	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
 	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 )
 
@@ -679,4 +680,39 @@ func TestGenPartitionTableDiskCustomizationSizes(t *testing.T) {
 			assert.True(t, rootSize >= tc.expectedMinRootSize && rootSize < tc.expectedMinRootSize+5*datasizes.MiB)
 		})
 	}
+}
+
+func TestManifestFilecustomizationsSad(t *testing.T) {
+	config := getBaseConfig()
+	config.ImageTypes = []string{"qcow2"}
+	config.Config = &buildconfig.BuildConfig{
+		Customizations: &blueprint.Customizations{
+			Files: []blueprint.FileCustomization{
+				{
+					Path: "/not/allowed",
+					Data: "some-data",
+				},
+			},
+		},
+	}
+
+	_, err := bib.Manifest(config)
+	assert.EqualError(t, err, `the following custom files are not allowed: ["/not/allowed"]`)
+}
+
+func TestManifestDirCustomizationsSad(t *testing.T) {
+	config := getBaseConfig()
+	config.ImageTypes = []string{"qcow2"}
+	config.Config = &buildconfig.BuildConfig{
+		Customizations: &blueprint.Customizations{
+			Directories: []blueprint.DirectoryCustomization{
+				{
+					Path: "/dir/not/allowed",
+				},
+			},
+		},
+	}
+
+	_, err := bib.Manifest(config)
+	assert.EqualError(t, err, `the following custom directories are not allowed: ["/dir/not/allowed"]`)
 }

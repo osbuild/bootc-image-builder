@@ -22,6 +22,7 @@ import (
 	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/pathpolicy"
 	"github.com/osbuild/images/pkg/platform"
+	"github.com/osbuild/images/pkg/policies"
 	"github.com/osbuild/images/pkg/rpmmd"
 	"github.com/osbuild/images/pkg/runner"
 	"github.com/sirupsen/logrus"
@@ -281,6 +282,7 @@ func genPartitionTableDiskCust(c *ManifestConfig, diskCust *blueprint.DiskCustom
 		BootMode:         platform.BOOT_HYBRID,
 		DefaultFSType:    defaultFSType,
 		RequiredMinSizes: requiredMinSizes,
+		Architecture:     c.Architecture,
 	}
 	return disk.NewCustomPartitionTable(diskCust, partOptions, rng)
 }
@@ -300,7 +302,7 @@ func genPartitionTableFsCust(c *ManifestConfig, fsCust []blueprint.FilesystemCus
 	}
 	fsCustomizations := updateFilesystemSizes(fsCust, c.RootfsMinsize)
 
-	pt, err := disk.NewPartitionTable(&basept, fsCustomizations, DEFAULT_SIZE, partitioningMode, nil, rng)
+	pt, err := disk.NewPartitionTable(&basept, fsCustomizations, DEFAULT_SIZE, partitioningMode, c.Architecture, nil, rng)
 	if err != nil {
 		return nil, err
 	}
@@ -378,6 +380,27 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		return nil, err
 	}
 	img.PartitionTable = pt
+
+	// Check Directory/File Customizations are valid
+	dc := customizations.GetDirectories()
+	fc := customizations.GetFiles()
+	if err := blueprint.ValidateDirFileCustomizations(dc, fc); err != nil {
+		return nil, err
+	}
+	if err := blueprint.CheckDirectoryCustomizationsPolicy(dc, policies.OstreeCustomDirectoriesPolicies); err != nil {
+		return nil, err
+	}
+	if err := blueprint.CheckFileCustomizationsPolicy(fc, policies.OstreeCustomFilesPolicies); err != nil {
+		return nil, err
+	}
+	img.Files, err = blueprint.FileCustomizationsToFsNodeFiles(fc)
+	if err != nil {
+		return nil, err
+	}
+	img.Directories, err = blueprint.DirectoryCustomizationsToFsNodeDirectories(dc)
+	if err != nil {
+		return nil, err
+	}
 
 	// For the bootc-disk image, the filename is the basename and the extension
 	// is added automatically for each disk format

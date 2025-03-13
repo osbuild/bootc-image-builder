@@ -196,6 +196,23 @@ func TestManifestGenerationUserConfig(t *testing.T) {
 	}
 }
 
+// Disk images require a container for the build/image pipelines
+var containerSpec = container.Spec{
+	Source:  "test-container",
+	Digest:  "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+	ImageID: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+}
+
+// diskContainers can be passed to Serialize() to get a minimal disk image
+var diskContainers = map[string][]container.Spec{
+	"build": {
+		containerSpec,
+	},
+	"image": {
+		containerSpec,
+	},
+}
+
 // TODO: this tests at this layer is not ideal, it has too much knowledge
 // over the implementation details of the "images" library and how an
 // image.NewBootcDiskImage() works (i.e. what the pipeline names are and
@@ -208,23 +225,8 @@ func TestManifestSerialization(t *testing.T) {
 	// Tests that the manifest is generated without error and is serialized
 	// with expected key stages.
 
-	// Disk images require a container for the build/image pipelines
-	containerSpec := container.Spec{
-		Source:  "test-container",
-		Digest:  "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-		ImageID: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
-	}
-	diskContainers := map[string][]container.Spec{
-		"build": {
-			containerSpec,
-		},
-		"image": {
-			containerSpec,
-		},
-	}
-
 	// ISOs require a container for the bootiso-tree, build packages, and packages for the anaconda-tree (with a kernel).
-	isoContainers := map[string][]container.Spec{
+	var isoContainers = map[string][]container.Spec{
 		"bootiso-tree": {
 			containerSpec,
 		},

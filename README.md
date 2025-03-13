@@ -180,7 +180,8 @@ The following image types are currently available via the `--type` argument:
 Specify the target architecture of the system on which the disk image will be installed on. By default,
 `bootc-image-builder` will build for the native host architecture. The target architecture
 must match an available architecture of the `bootc-image-builder` image you are using to build the disk image.
-Currently, `amd64` and `arm64` are included in `quay.io/centos-bootc/bootc-image-builder` manifest list.
+Navigate to the [centos-image-builder repository tags page](https://quay.io/repository/centos-bootc/bootc-image-builder?tab=tags)
+and hover over the Tux icons to see the supported target architectures.
 The architecture of the bootc OCI image and the bootc-image-builder image must match. For example, when building
 a non-native architecture bootc OCI image, say, building for x86_64 from an arm-based Mac, it is possible to run
 `podman build` with the `--platform linux/amd64` flag. In this case, to then build a disk image from the same arm-based Mac,

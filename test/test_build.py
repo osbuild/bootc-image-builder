@@ -358,6 +358,17 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
             "kernel": {
                 "append": kargs,
             },
+            "files": [
+                {
+                    "path": "/etc/some-file",
+                    "data": "some-data",
+                },
+            ],
+            "directories": [
+                {
+                    "path": "/etc/some-dir",
+                },
+            ],
         },
     }
     testutil.maybe_create_filesystem_customizations(cfg, tc)
@@ -405,6 +416,8 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
             "-v", "/var/tmp/osbuild-test-store:/store",  # share the cache between builds
             "-v", "/var/lib/containers/storage:/var/lib/containers/storage",  # mount the host's containers storage
         ]
+        if tc.podman_terminal:
+            cmd.append("-t")
 
         if tc.sign:
             sign_container_image(gpg_conf, registry_conf, tc.container_ref)
@@ -526,6 +539,14 @@ def test_image_boots(image_type):
             assert_disk_customizations(image_type, test_vm)
         else:
             assert_fs_customizations(image_type, test_vm)
+
+        # check file/dir customizations
+        exit_status, output = test_vm.run("stat /etc/some-file", user=image_type.username, password=image_type.password)
+        assert exit_status == 0
+        assert "File: /etc/some-file" in output
+        _, output = test_vm.run("stat /etc/some-dir", user=image_type.username, password=image_type.password)
+        assert exit_status == 0
+        assert "File: /etc/some-dir" in output
 
 
 @pytest.mark.parametrize("image_type", gen_testcases("ami-boot"), indirect=["image_type"])
