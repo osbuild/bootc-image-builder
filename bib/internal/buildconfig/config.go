@@ -59,9 +59,13 @@ func decodeTomlBuildConfig(r io.Reader, what string) (*BuildConfig, error) {
 	dec := toml.NewDecoder(r)
 
 	var conf BuildConfig
-	_, err := dec.Decode(&conf)
+	metadata, err := dec.Decode(&conf)
 	if err != nil {
 		return nil, fmt.Errorf("cannot decode %q: %w", what, err)
+	}
+
+	if len(metadata.Undecoded()) > 0 {
+		return nil, fmt.Errorf("cannot decode %q: unknown keys found: %v", what, metadata.Undecoded())
 	}
 
 	return &conf, nil
