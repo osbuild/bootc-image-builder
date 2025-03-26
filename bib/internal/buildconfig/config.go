@@ -11,7 +11,10 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/sirupsen/logrus"
 
-	"github.com/osbuild/images/pkg/blueprint"
+	// XXX: eventually there will be only be one importable blueprint, i.e.
+	// see https://github.com/osbuild/blueprint/issues/3
+	externalBlueprint "github.com/osbuild/blueprint/pkg/blueprint"
+	imagesBlueprint "github.com/osbuild/images/pkg/blueprint"
 )
 
 // legacyBuildConfig is the json based configuration that was used in
@@ -22,12 +25,12 @@ type legacyBuildConfig struct {
 	Blueprint *json.RawMessage `json:"blueprint"`
 }
 
-type BuildConfig blueprint.Blueprint
+type BuildConfig imagesBlueprint.Blueprint
 
 // configRootDir is only overriden in tests
 var configRootDir = "/"
 
-func decodeJsonBuildConfig(r io.Reader, what string) (*BuildConfig, error) {
+func decodeJsonBuildConfig(r io.Reader, what string) (*externalBlueprint.Blueprint, error) {
 	content, err := io.ReadAll(r)
 	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("cannot read %q: %w", what, err)
@@ -45,7 +48,7 @@ func decodeJsonBuildConfig(r io.Reader, what string) (*BuildConfig, error) {
 	dec := json.NewDecoder(bytes.NewBuffer(content))
 	dec.DisallowUnknownFields()
 
-	var conf BuildConfig
+	var conf externalBlueprint.Blueprint
 	if err := dec.Decode(&conf); err != nil {
 		return nil, fmt.Errorf("cannot decode %q: %w", what, err)
 	}
@@ -55,10 +58,10 @@ func decodeJsonBuildConfig(r io.Reader, what string) (*BuildConfig, error) {
 	return &conf, nil
 }
 
-func decodeTomlBuildConfig(r io.Reader, what string) (*BuildConfig, error) {
+func decodeTomlBuildConfig(r io.Reader, what string) (*externalBlueprint.Blueprint, error) {
 	dec := toml.NewDecoder(r)
 
-	var conf BuildConfig
+	var conf externalBlueprint.Blueprint
 	_, err := dec.Decode(&conf)
 	if err != nil {
 		return nil, fmt.Errorf("cannot decode %q: %w", what, err)
@@ -69,7 +72,7 @@ func decodeTomlBuildConfig(r io.Reader, what string) (*BuildConfig, error) {
 
 var osStdin = os.Stdin
 
-func loadConfig(path string) (*BuildConfig, error) {
+func loadConfig(path string) (*externalBlueprint.Blueprint, error) {
 	var fp *os.File
 	var err error
 
@@ -93,7 +96,7 @@ func loadConfig(path string) (*BuildConfig, error) {
 	}
 }
 
-func ReadWithFallback(userConfig string) (*BuildConfig, error) {
+func readWithFallback(userConfig string) (*externalBlueprint.Blueprint, error) {
 	// user asked for an explicit config
 	if userConfig != "" {
 		return loadConfig(userConfig)
@@ -111,8 +114,17 @@ func ReadWithFallback(userConfig string) (*BuildConfig, error) {
 		}
 	}
 	if foundConfig == "" {
-		return &BuildConfig{}, nil
+		return &externalBlueprint.Blueprint{}, nil
 	}
 
 	return loadConfig(foundConfig)
+}
+
+func ReadWithFallback(userConfig string) (*BuildConfig, error) {
+	externalBp, err := readWithFallback(userConfig)
+	if err != nil {
+		return nil, err
+	}
+	internalBp := BuildConfig(externalBlueprint.Convert(*externalBp))
+	return &internalBp, nil
 }
