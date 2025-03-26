@@ -405,15 +405,36 @@ def test_manifest_anaconda_module_customizations(tmpdir_factory, build_container
     assert "org.fedoraproject.Anaconda.Modules.Timezone" not in st["options"]["activatable-modules"]
 
 
-def find_fstab_stage_from(manifest_str):
+def find_fs_mount_info_from(manifest_str):
     manifest = json.loads(manifest_str)
+    mount_stages = []
+    # normally there should be only one swap partition, but there's no technical reason you can't have multiple
+    swap_stages = []
     for pipeline in manifest["pipelines"]:
-        # the fstab stage in cross-arch manifests is in the "ostree-deployment" pipeline
+        # the mount unit stages in cross-arch manifests are in the "ostree-deployment" pipeline
         if pipeline["name"] in ("image", "ostree-deployment"):
             for st in pipeline["stages"]:
-                if st["type"] == "org.osbuild.fstab":
-                    return st
-    raise ValueError(f"cannot find fstab stage in manifest:\n{manifest_str}")
+                if st["type"] == "org.osbuild.systemd.unit.create":
+                    options = st["options"]
+                    if options["filename"].endswith(".mount"):
+                        mount_stages.append(st)
+                    elif options["filename"].endswith(".swap"):
+                        swap_stages.append(st)
+
+    if not mount_stages:
+        raise ValueError(f"cannot find mount unit creation stages in manifest:\n{manifest_str}")
+
+    mounts = []
+    for stage in mount_stages:
+        options = stage["options"]["config"]
+        mounts.append(options["Mount"])
+
+    swaps = []
+    for stage in swap_stages:
+        options = stage["options"]["config"]
+        swaps.append(options["Swap"])
+
+    return mounts, swaps
 
 
 @pytest.mark.parametrize("fscustomizations,rootfs", [
@@ -480,25 +501,23 @@ def test_manifest_fs_customizations_smoke_toml(tmp_path, build_container):
 
 
 def assert_fs_customizations(customizations, fstype, manifest):
-    # use the fstab stage to get filesystem types for each mountpoint
-    fstab_stage = find_fstab_stage_from(manifest)
-    filesystems = fstab_stage["options"]["filesystems"]
+    mounts, _ = find_fs_mount_info_from(manifest)
 
     manifest_mountpoints = set()
-    for fs in filesystems:
-        manifest_mountpoints.add(fs["path"])
-        if fs["path"] == "/boot/efi":
-            assert fs["vfs_type"] == "vfat"
+    for mount in mounts:
+        manifest_mountpoints.add(mount["Where"])
+        if mount["Where"] == "/boot/efi":
+            assert mount["Type"] == "vfat"
             continue
 
-        if fstype == "btrfs" and fs["path"] == "/boot":
+        if fstype == "btrfs" and mount["Where"] == "/boot":
             # /boot keeps its default fstype when using btrfs
-            assert fs["vfs_type"] == "ext4"
+            assert mount["Type"] == "ext4"
             continue
 
-        assert fs["vfs_type"] == fstype, f"incorrect filesystem type for {fs['path']}"
+        assert mount["Type"] == fstype, f"incorrect filesystem type for {mount['Where']}"
 
-    # check that all fs customizations appear in fstab
+    # check that all fs customizations appear in the manifest
     for custom_mountpoint in customizations:
         assert custom_mountpoint in manifest_mountpoints
 
@@ -699,14 +718,12 @@ def test_manifest_disk_customization_swap(tmp_path, build_container):
     mkswap_stage = find_mkswap_stage_from(output)
     assert mkswap_stage["options"].get("uuid")
     swap_uuid = mkswap_stage["options"]["uuid"]
-    fstab_stage = find_fstab_stage_from(output)
-    filesystems = fstab_stage["options"]["filesystems"]
+    _, swaps = find_fs_mount_info_from(output)
+    what_node = f"/dev/disk/by-uuid/{swap_uuid}"
     assert {
-        'uuid': swap_uuid,
-        "vfs_type": "swap",
-        "path": "none",
-        "options": "defaults",
-    } in filesystems
+        "What": what_node,
+        "Options": "defaults",
+    } in swaps
 
 
 def test_manifest_disk_customization_lvm_swap(tmp_path, build_container):
@@ -744,14 +761,12 @@ def test_manifest_disk_customization_lvm_swap(tmp_path, build_container):
     mkswap_stage = find_mkswap_stage_from(output)
     assert mkswap_stage["options"].get("uuid")
     swap_uuid = mkswap_stage["options"]["uuid"]
-    fstab_stage = find_fstab_stage_from(output)
-    filesystems = fstab_stage["options"]["filesystems"]
+    _, swaps = find_fs_mount_info_from(output)
+    what_node = f"/dev/disk/by-uuid/{swap_uuid}"
     assert {
-        'uuid': swap_uuid,
-        "vfs_type": "swap",
-        "path": "none",
-        "options": "defaults",
-    } in filesystems
+        "What": what_node,
+        "Options": "defaults",
+    } in swaps
     # run osbuild schema validation, see gh#748
     if not testutil.has_executable("osbuild"):
         pytest.skip("no osbuild executable")
