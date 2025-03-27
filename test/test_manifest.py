@@ -9,7 +9,7 @@ import textwrap
 import pytest
 
 import testutil
-from containerbuild import build_container_fixture  # pylint: disable=unused-import
+from containerbuild import build_container_fixture as _
 from containerbuild import make_container
 from testcases import gen_testcases
 
