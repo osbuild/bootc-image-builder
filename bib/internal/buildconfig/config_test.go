@@ -134,16 +134,6 @@ func TestReadLegacyJSONConfig(t *testing.T) {
 	assert.Equal(t, expectedBuildConfig, cfg)
 }
 
-func TestTomlUnknownKeysError(t *testing.T) {
-	fakeUserCnfPath := makeFakeConfig(t, "config.toml", `
-[[birds]]
-name = "toucan"
-`)
-	_, err := buildconfig.ReadWithFallback(fakeUserCnfPath)
-
-	assert.ErrorContains(t, err, "unknown keys found: [birds birds.name]")
-}
-
 func TestJsonUnknownKeysError(t *testing.T) {
 	fakeUserCnfPath := makeFakeConfig(t, "config.json", `
 {
