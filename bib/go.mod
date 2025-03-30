@@ -1,6 +1,8 @@
 module github.com/osbuild/bootc-image-builder/bib
 
-go 1.22.8
+go 1.23.3
+
+toolchain go1.23.7
 
 require (
 	github.com/BurntSushi/toml v1.5.0
@@ -100,7 +102,7 @@ require (
 	github.com/proglottis/gpgme v0.1.4 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.9.0 // indirect
-	github.com/sigstore/fulcio v1.6.4 // indirect
+	github.com/sigstore/fulcio v1.6.6 // indirect
 	github.com/sigstore/rekor v1.3.8 // indirect
 	github.com/sigstore/sigstore v1.8.12 // indirect
 	github.com/smallstep/pkcs7 v0.1.1 // indirect
