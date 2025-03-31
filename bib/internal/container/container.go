@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/exp/slices"
 
-	"github.com/osbuild/bootc-image-builder/bib/internal/util"
+	"github.com/osbuild/image-builder-cli/pkg/util"
 )
 
 // Container is a simpler wrapper around a running podman container.
