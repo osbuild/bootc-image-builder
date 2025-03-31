@@ -22,6 +22,7 @@ import (
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 	"github.com/osbuild/images/pkg/container"
 	"github.com/osbuild/images/pkg/dnfjson"
+	"github.com/osbuild/images/pkg/experimentalflags"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/rpmmd"
@@ -462,6 +463,9 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		osbuildEnv = append(osbuildEnv, envVars...)
 	}
 
+	if experimentalflags.Bool("debug-qemu-user") {
+		osbuildEnv = append(osbuildEnv, "OBSBUILD_EXPERIMENAL=debug-qemu-user")
+	}
 	osbuildOpts := progress.OSBuildOptions{
 		StoreDir:  osbuildStore,
 		OutputDir: outputDir,
