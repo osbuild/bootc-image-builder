@@ -1,6 +1,8 @@
 module github.com/osbuild/bootc-image-builder/bib
 
-go 1.22.8
+go 1.23.0
+
+toolchain go1.23.8
 
 require (
 	github.com/BurntSushi/toml v1.5.0
@@ -45,7 +47,7 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/go-jose/go-jose/v4 v4.0.4 // indirect
+	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/analysis v0.23.0 // indirect
@@ -62,7 +64,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/google/go-containerregistry v0.20.2 // indirect
+	github.com/google/go-containerregistry v0.20.3 // indirect
 	github.com/google/go-intervals v0.0.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
@@ -101,11 +103,12 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.9.0 // indirect
 	github.com/sigstore/fulcio v1.6.4 // indirect
+	github.com/sigstore/protobuf-specs v0.4.0 // indirect
 	github.com/sigstore/rekor v1.3.8 // indirect
-	github.com/sigstore/sigstore v1.8.12 // indirect
+	github.com/sigstore/sigstore v1.8.15 // indirect
 	github.com/smallstep/pkcs7 v0.1.1 // indirect
 	github.com/stefanberger/go-pkcs11uri v0.0.0-20230803200340-78284954bff6 // indirect
-	github.com/sylabs/sif/v2 v2.20.2 // indirect
+	github.com/sylabs/sif/v2 v2.21.1 // indirect
 	github.com/tchap/go-patricia/v2 v2.3.2 // indirect
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
 	github.com/ulikunitz/xz v0.5.12 // indirect
@@ -124,6 +127,7 @@ require (
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250124145028-65684f501c47 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250207221924-e9438ea467c6 // indirect
 	google.golang.org/grpc v1.70.0 // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
