@@ -45,7 +45,7 @@ jobs:
         run: sudo apt install -y libgpgme-dev libbtrfs-dev libdevmapper-dev
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
           args: --timeout 5m0s
