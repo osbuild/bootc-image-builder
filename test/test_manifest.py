@@ -608,33 +608,23 @@ def test_manifest_disk_customization_lvm(tmp_path, build_container):
     container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
     testutil.pull_container(container_ref)
 
-    config = {
-        "customizations": {
-            "disk": {
-                "partitions": [
-                    {
-                        "type": "lvm",
-                        "minsize": "10 GiB",
-                        "logical_volumes": [
-                            {
-                                "minsize": "10 GiB",
-                                "fs_type": "ext4",
-                                "mountpoint": "/",
-                            }
-                        ]
-                    }
-                ]
-            }
-        }
-    }
-    config_path = tmp_path / "config.json"
-    with config_path.open("w") as config_file:
-        json.dump(config, config_file)
+    config = textwrap.dedent("""\
+    [[customizations.disk.partitions]]
+    type = "lvm"
+    minsize = "10 GiB"
+
+    [[customizations.disk.partitions.logical_volumes]]
+    minsize = "10 GiB"
+    fs_type = "ext4"
+    mountpoint = "/"
+    """)
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(config)
 
     testutil.pull_container(container_ref)
     output = subprocess.check_output([
         *testutil.podman_run_common,
-        "-v", f"{config_path}:/config.json:ro",
+        "-v", f"{config_path}:/config.toml:ro",
         build_container,
         "manifest", f"{container_ref}",
     ])
