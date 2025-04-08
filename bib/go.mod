@@ -7,7 +7,7 @@ require (
 	github.com/cheggaaa/pb/v3 v3.1.7
 	github.com/hashicorp/go-version v1.7.0
 	github.com/osbuild/image-builder-cli v0.0.0-20250331194259-63bb56e12db3
-	github.com/osbuild/images v0.129.0
+	github.com/osbuild/images v0.132.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
