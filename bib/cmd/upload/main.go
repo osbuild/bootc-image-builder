@@ -40,6 +40,7 @@ func uploadAMI(cmd *cobra.Command, args []string) {
 
 	f, err := os.Open(filename)
 	check(err)
+	// nolint:errcheck
 	defer f.Close()
 
 	check(uploader.UploadAndRegister(f, os.Stderr))

@@ -176,6 +176,7 @@ func saveManifest(ms manifest.OSBuildManifest, fpath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create output file %q: %s", fpath, err.Error())
 	}
+	// nolint:errcheck
 	defer fp.Close()
 	if _, err := fp.Write(b); err != nil {
 		return fmt.Errorf("failed to write output file %q: %s", fpath, err.Error())
