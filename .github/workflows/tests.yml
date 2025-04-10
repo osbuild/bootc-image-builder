@@ -13,9 +13,6 @@ on:
 
 env:
   GO_VERSION: 1.22
-  # see https://golangci-lint.run/product/changelog
-  # to select a version that supports the GO_VERSION given above
-  GOLANGCI_LINT_VERSION: v2.0.2
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -44,10 +41,14 @@ jobs:
       - name: Install libgpgme devel package
         run: sudo apt install -y libgpgme-dev libbtrfs-dev libdevmapper-dev
 
+      - name: Extract golangci-lint version from Makefile
+        id: golangci_lint_version
+        run: echo "GOLANGCI_LINT_VERSION=$(awk -F '=' '/^GOLANGCI_LINT_VERSION *=/{print $2}' Makefile)" >> "$GITHUB_OUTPUT"
+
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v7
         with:
-          version: ${{ env.GOLANGCI_LINT_VERSION }}
+          version: ${{ steps.golangci_lint_version.outputs.GOLANGCI_LINT_VERSION }}
           args: --timeout 5m0s
           working-directory: bib
 
