@@ -27,6 +27,7 @@ clean:  ## clean all build and test artifacts
 
 .PHONY: test
 test:  ## run all tests - Be aware that the tests take a really long time
+	cd bib && go test -race ./...
 	@echo "Be aware that the tests take a really long time"
 	@echo "Running tests as root"
 	sudo -E pip install --user -r test/requirements.txt
