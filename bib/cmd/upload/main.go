@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/osbuild/bootc-image-builder/bib/internal/utils"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 )
 
@@ -40,7 +41,7 @@ func uploadAMI(cmd *cobra.Command, args []string) {
 
 	f, err := os.Open(filename)
 	check(err)
-	defer f.Close()
+	defer utils.LogClose(f)
 
 	check(uploader.UploadAndRegister(f, os.Stderr))
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/cheggaaa/pb/v3"
 	"github.com/spf13/pflag"
 
+	"github.com/osbuild/bootc-image-builder/bib/internal/utils"
 	"github.com/osbuild/images/pkg/cloud"
 )
 
@@ -29,7 +30,7 @@ func upload(uploader cloud.Uploader, path string, flags *pflag.FlagSet) error {
 	if err != nil {
 		return fmt.Errorf("cannot upload: %v", err)
 	}
-	defer file.Close()
+	defer utils.LogClose(file)
 
 	var r io.Reader = file
 	if pbar != nil {

@@ -31,6 +31,7 @@ import (
 	podman_container "github.com/osbuild/bootc-image-builder/bib/internal/container"
 	"github.com/osbuild/bootc-image-builder/bib/internal/imagetypes"
 	"github.com/osbuild/bootc-image-builder/bib/internal/source"
+	"github.com/osbuild/bootc-image-builder/bib/internal/utils"
 
 	"github.com/osbuild/image-builder-cli/pkg/progress"
 	"github.com/osbuild/image-builder-cli/pkg/setup"
@@ -176,7 +177,7 @@ func saveManifest(ms manifest.OSBuildManifest, fpath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create output file %q: %s", fpath, err.Error())
 	}
-	defer fp.Close()
+	defer utils.LogClose(fp)
 	if _, err := fp.Write(b); err != nil {
 		return fmt.Errorf("failed to write output file %q: %s", fpath, err.Error())
 	}

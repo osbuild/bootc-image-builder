@@ -11,6 +11,7 @@ import (
 	"github.com/osbuild/images/pkg/blueprint"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
+	"github.com/osbuild/bootc-image-builder/bib/internal/utils"
 )
 
 var expectedBuildConfig = &buildconfig.BuildConfig{
@@ -184,7 +185,7 @@ func TestReadWithFallbackFromStdin(t *testing.T) {
 	fakeUserCnfPath := makeFakeConfig(t, "fake-stdin", fakeConfigJSON)
 	fakeStdinFp, err := os.Open(fakeUserCnfPath)
 	require.NoError(t, err)
-	defer fakeStdinFp.Close()
+	defer utils.LogClose(fakeStdinFp)
 
 	restore := buildconfig.MockOsStdin(fakeStdinFp)
 	defer restore()

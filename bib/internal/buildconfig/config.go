@@ -14,6 +14,7 @@ import (
 	// XXX: eventually there will be only be one importable blueprint, i.e.
 	// see https://github.com/osbuild/blueprint/issues/3
 	externalBlueprint "github.com/osbuild/blueprint/pkg/blueprint"
+	"github.com/osbuild/bootc-image-builder/bib/internal/utils"
 	imagesBlueprint "github.com/osbuild/images/pkg/blueprint"
 )
 
@@ -87,7 +88,7 @@ func loadConfig(path string) (*externalBlueprint.Blueprint, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer fp.Close()
+		defer utils.LogClose(fp)
 	}
 
 	switch {
