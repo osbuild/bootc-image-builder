@@ -126,7 +126,7 @@ func checkMountpoints(filesystems []blueprint.FilesystemCustomization, policy *p
 		}
 	}
 	if len(errs) > 0 {
-		return fmt.Errorf("The following errors occurred while validating custom mountpoints:\n%w", errors.Join(errs...))
+		return fmt.Errorf("the following errors occurred while validating custom mountpoints:\n%w", errors.Join(errs...))
 	}
 	return nil
 }
