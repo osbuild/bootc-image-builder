@@ -29,6 +29,7 @@ func upload(uploader cloud.Uploader, path string, flags *pflag.FlagSet) error {
 	if err != nil {
 		return fmt.Errorf("cannot upload: %v", err)
 	}
+	// nolint:errcheck
 	defer file.Close()
 
 	var r io.Reader = file

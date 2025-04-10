@@ -87,6 +87,7 @@ func loadConfig(path string) (*externalBlueprint.Blueprint, error) {
 		if err != nil {
 			return nil, err
 		}
+		// nolint:errcheck
 		defer fp.Close()
 	}
 
