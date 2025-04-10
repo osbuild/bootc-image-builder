@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -166,7 +167,7 @@ func makeManifest(c *ManifestConfig, solver *dnfjson.Solver, cacheRoot string) (
 	return mf, depsolvedRepos, nil
 }
 
-func saveManifest(ms manifest.OSBuildManifest, fpath string) error {
+func saveManifest(ms manifest.OSBuildManifest, fpath string) (err error) {
 	b, err := json.MarshalIndent(ms, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal data for %q: %s", fpath, err.Error())
@@ -176,8 +177,7 @@ func saveManifest(ms manifest.OSBuildManifest, fpath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create output file %q: %s", fpath, err.Error())
 	}
-	// nolint:errcheck
-	defer fp.Close()
+	defer func() { err = errors.Join(err, fp.Close()) }()
 	if _, err := fp.Write(b); err != nil {
 		return fmt.Errorf("failed to write output file %q: %s", fpath, err.Error())
 	}
