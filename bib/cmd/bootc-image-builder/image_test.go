@@ -108,7 +108,7 @@ func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 				{Mountpoint: "/ostree"},
 			},
 			ptmode:      disk.RawPartitioningMode,
-			expectedErr: "The following errors occurred while validating custom mountpoints:\npath \"/ostree\" is not allowed",
+			expectedErr: "the following errors occurred while validating custom mountpoints:\npath \"/ostree\" is not allowed",
 		},
 		{
 			fsCust: []blueprint.FilesystemCustomization{
@@ -116,7 +116,7 @@ func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 				{Mountpoint: "/var"},
 			},
 			ptmode:      disk.RawPartitioningMode,
-			expectedErr: "The following errors occurred while validating custom mountpoints:\npath \"/var\" is not allowed",
+			expectedErr: "the following errors occurred while validating custom mountpoints:\npath \"/var\" is not allowed",
 		},
 		{
 			fsCust: []blueprint.FilesystemCustomization{
@@ -124,7 +124,7 @@ func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 				{Mountpoint: "/var/data"},
 			},
 			ptmode:      disk.BtrfsPartitioningMode,
-			expectedErr: "The following errors occurred while validating custom mountpoints:\npath \"/var/data\" is not allowed",
+			expectedErr: "the following errors occurred while validating custom mountpoints:\npath \"/var/data\" is not allowed",
 		},
 		{
 			fsCust: []blueprint.FilesystemCustomization{
@@ -132,7 +132,7 @@ func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 				{Mountpoint: "/boot/"},
 			},
 			ptmode:      disk.BtrfsPartitioningMode,
-			expectedErr: "The following errors occurred while validating custom mountpoints:\npath \"/boot/\" must be canonical",
+			expectedErr: "the following errors occurred while validating custom mountpoints:\npath \"/boot/\" must be canonical",
 		},
 		{
 			fsCust: []blueprint.FilesystemCustomization{
@@ -141,7 +141,7 @@ func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 				{Mountpoint: "/opt"},
 			},
 			ptmode:      disk.BtrfsPartitioningMode,
-			expectedErr: "The following errors occurred while validating custom mountpoints:\npath \"/boot/\" must be canonical\npath \"/opt\" is not allowed",
+			expectedErr: "the following errors occurred while validating custom mountpoints:\npath \"/boot/\" must be canonical\npath \"/opt\" is not allowed",
 		},
 	} {
 		if tc.expectedErr == "" {
