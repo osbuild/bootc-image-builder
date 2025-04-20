@@ -3,7 +3,7 @@ module github.com/osbuild/bootc-image-builder/bib
 go 1.22.8
 
 require (
-	github.com/BurntSushi/toml v1.5.1-0.20250403130103-3d3abc24416a
+	github.com/BurntSushi/toml 4b439bf5c6ef
 	github.com/cheggaaa/pb/v3 v3.1.7
 	github.com/hashicorp/go-version v1.7.0
 	github.com/osbuild/blueprint v1.6.0
