@@ -45,7 +45,7 @@ jobs:
         run: sudo apt install -y libgpgme-dev libbtrfs-dev libdevmapper-dev
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
           args: --timeout 5m0s
@@ -56,7 +56,7 @@ jobs:
 
   shellcheck:
     name: "🐚 Shellcheck"
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
       with:
