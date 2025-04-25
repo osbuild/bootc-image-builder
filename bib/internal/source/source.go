@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 
@@ -16,6 +17,7 @@ type OSRelease struct {
 	VersionID  string
 	Name       string
 	VariantID  string
+	IDLike     []string
 }
 
 type Info struct {
@@ -69,6 +71,10 @@ func LoadInfo(root string) (*Info, error) {
 	if err != nil {
 		logrus.Debugf("cannot read UEFI vendor: %v, setting it to none", err)
 	}
+	var idLike []string
+	if osrelease["ID_LIKE"] != "" {
+		idLike = strings.Split(osrelease["ID_LIKE"], " ")
+	}
 
 	return &Info{
 		OSRelease: OSRelease{
@@ -77,6 +83,7 @@ func LoadInfo(root string) (*Info, error) {
 			Name:       osrelease["NAME"],
 			PlatformID: osrelease["PLATFORM_ID"],
 			VariantID:  osrelease["VARIANT_ID"],
+			IDLike:     idLike,
 		},
 
 		UEFIVendor: vendor,
