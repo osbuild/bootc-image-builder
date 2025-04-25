@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/big"
 	"math/rand"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -435,6 +436,10 @@ func labelForISO(os *source.OSRelease, arch *arch.Arch) string {
 	}
 }
 
+func needsRHELLoraxTemplates(si source.OSRelease) bool {
+	return si.ID == "rhel" || slices.Contains(si.IDLike, "rhel") || si.VersionID == "eln"
+}
+
 func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, error) {
 	if c.Imgref == "" {
 		return nil, fmt.Errorf("pipeline: no base image defined")
@@ -498,9 +503,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.Kickstart.OSTree = &kickstart.OSTree{
 		OSName: "default",
 	}
-	// use lorax-templates-rhel if the source distro is not Fedora with the exception of Fedora ELN
-	img.UseRHELLoraxTemplates =
-		c.SourceInfo.OSRelease.ID != "fedora" || c.SourceInfo.OSRelease.VersionID == "eln"
+	img.UseRHELLoraxTemplates = needsRHELLoraxTemplates(c.SourceInfo.OSRelease)
 
 	switch c.Architecture {
 	case arch.ARCH_X86_64:
