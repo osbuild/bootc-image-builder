@@ -70,10 +70,30 @@ jobs:
         # allow seemingly unreachable commands
         SHELLCHECK_OPTS: -e SC1091 -e SC2002 -e SC2317
 
+  collect_tests:
+    runs-on: ubuntu-latest
+    outputs:
+      test_files: ${{ steps.collect.outputs.test_files }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Collect test files
+        id: collect
+        run: |
+          TEST_FILES=$(ls test/test_*.py | sort)
+          JSON_FILES=$(echo "${TEST_FILES}" | jq -R | jq -cs )
+          echo "test_files=${JSON_FILES}" >> $GITHUB_OUTPUT
+
   integration:
     # TODO: run this also via tmt/testing-farm
     name: "Integration"
     runs-on: ubuntu-24.04
+    needs: collect_tests
+    strategy:
+      matrix:
+        test_file: ${{ fromJson(needs.collect_tests.outputs.test_files) }}
     steps:
     - uses: actions/checkout@v4
       with:
@@ -136,7 +156,7 @@ jobs:
         # podman needs (parts of) the environment but will break when
         # XDG_RUNTIME_DIR is set.
         # TODO: figure out what exactly podman needs
-        sudo -E XDG_RUNTIME_DIR= pytest-3 --basetemp=/mnt/var/tmp/bib-tests
+        sudo -E XDG_RUNTIME_DIR= pytest-3 --basetemp=/mnt/var/tmp/bib-tests ${{ matrix.test_file }}
     - name: Diskspace (after)
       if: ${{ always() }}
       run: |
