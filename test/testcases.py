@@ -100,16 +100,8 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
             TestCaseC9S(image="anaconda-iso"),
             TestCaseC10S(image="anaconda-iso"),
         ]
-    if what == "qemu-boot":
-        test_cases = [
-            # test default partitioning
-            TestCaseFedora(image="qcow2"),
-            # test with custom disk configs
-            TestCaseC9S(image="qcow2", disk_config="swap"),
-            TestCaseFedora(image="raw", disk_config="btrfs"),
-            TestCaseC9S(image="raw", disk_config="lvm"),
-        ]
-        # do a cross arch test too
+    if what == "qemu-cross":
+        test_cases = []
         if platform.machine() == "x86_64":
             test_cases.append(
                 TestCaseC9S(image="raw", target_arch="arm64"))
@@ -117,6 +109,15 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
             # TODO: add arm64->x86_64 cross build test too
             pass
         return test_cases
+    if what == "qemu-boot":
+        return [
+            # test default partitioning
+            TestCaseFedora(image="qcow2"),
+            # test with custom disk configs
+            TestCaseC9S(image="qcow2", disk_config="swap"),
+            TestCaseFedora(image="raw", disk_config="btrfs"),
+            TestCaseC9S(image="raw", disk_config="lvm"),
+        ]
     if what == "all":
         return [
             klass(image=img)

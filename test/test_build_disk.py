@@ -520,6 +520,10 @@ def assert_kernel_args(test_vm, image_type):
 @pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
 @pytest.mark.parametrize("image_type", gen_testcases("qemu-boot"), indirect=["image_type"])
 def test_image_boots(image_type):
+    assert_disk_image_boots(image_type)
+
+
+def assert_disk_image_boots(image_type):
     with QEMU(image_type.img_path, arch=image_type.img_arch) as test_vm:
         # user/password login works
         exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
