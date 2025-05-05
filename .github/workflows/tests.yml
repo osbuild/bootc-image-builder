@@ -46,7 +46,7 @@ jobs:
         run: echo "GOLANGCI_LINT_VERSION=$(awk -F '=' '/^GOLANGCI_LINT_VERSION *=/{print $2}' Makefile)" >> "$GITHUB_OUTPUT"
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v7
+        uses: golangci/golangci-lint-action@v8
         with:
           version: ${{ steps.golangci_lint_version.outputs.GOLANGCI_LINT_VERSION }}
           args: --timeout 5m0s
