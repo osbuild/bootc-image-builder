@@ -1,7 +1,7 @@
 .PHONY: all
 all: build-binary build-container
 
-GOLANGCI_LINT_VERSION=v2.0.2
+GOLANGCI_LINT_VERSION=v2.1.6
 GO_BINARY?=go
 
 # the fallback '|| echo "golangci-lint' really expects this file
