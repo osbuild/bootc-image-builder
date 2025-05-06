@@ -45,14 +45,14 @@ class TestCase:
 
 @dataclasses.dataclass
 class TestCaseFedora(TestCase):
-    container_ref: str = "quay.io/fedora/fedora-bootc:40"
+    container_ref: str = "quay.io/fedora/fedora-bootc:42"
     rootfs: str = "btrfs"
     use_librepo: bool = True
 
 
 @dataclasses.dataclass
-class TestCaseFedora42(TestCase):
-    container_ref: str = "quay.io/fedora/fedora-bootc:42"
+class TestCaseFedora43(TestCase):
+    container_ref: str = "quay.io/fedora/fedora-bootc:43"
     rootfs: str = "btrfs"
     use_librepo: bool = True
 
@@ -115,7 +115,7 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
             TestCaseFedora(image="qcow2"),
             # test with custom disk configs
             TestCaseC9S(image="qcow2", disk_config="swap"),
-            TestCaseFedora(image="raw", disk_config="btrfs"),
+            TestCaseFedora43(image="raw", disk_config="btrfs"),
             TestCaseC9S(image="raw", disk_config="lvm"),
         ]
     if what == "all":
@@ -136,8 +136,7 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
     if what == "target-arch-smoke":
         return [
             TestCaseC9S(target_arch="arm64"),
-            # TODO: merge with TestCaseFedora once the arches are build there
-            TestCaseFedora42(target_arch="ppc64le"),
-            TestCaseFedora42(target_arch="s390x"),
+            TestCaseFedora(target_arch="ppc64le"),
+            TestCaseFedora(target_arch="s390x"),
         ]
     raise ValueError(f"unknown test-case type {what}")
