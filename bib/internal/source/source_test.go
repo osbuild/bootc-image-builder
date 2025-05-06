@@ -62,11 +62,11 @@ func TestLoadInfo(t *testing.T) {
 		{"happy", "fedora", "40", "Fedora Linux", "fedora", "platform:f40", "coreos", "", ""},
 		{"happy-no-uefi", "fedora", "40", "Fedora Linux", "", "platform:f40", "coreos", "", ""},
 		{"happy-no-variant_id", "fedora", "40", "Fedora Linux", "", "platform:f40", "", "", ""},
+		{"happy-no-id", "fedora", "43", "Fedora Linux", "fedora", "", "", "", ""},
 		{"happy-with-id-like", "centos", "9", "CentOS Stream", "", "platform:el9", "", "rhel fedora", ""},
 		{"sad-no-id", "", "40", "Fedora Linux", "fedora", "platform:f40", "", "", "missing ID in os-release"},
 		{"sad-no-id", "fedora", "", "Fedora Linux", "fedora", "platform:f40", "", "", "missing VERSION_ID in os-release"},
 		{"sad-no-id", "fedora", "40", "", "fedora", "platform:f40", "", "", "missing NAME in os-release"},
-		{"sad-no-id", "fedora", "40", "Fedora Linux", "fedora", "", "", "", "missing PLATFORM_ID in os-release"},
 	}
 
 	for _, c := range cases {
@@ -81,7 +81,7 @@ func TestLoadInfo(t *testing.T) {
 			info, err := LoadInfo(root)
 
 			if c.errorStr != "" {
-				require.Equal(t, c.errorStr, err.Error())
+				require.EqualError(t, err, c.errorStr)
 				return
 			}
 			require.NoError(t, err)

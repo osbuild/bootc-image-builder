@@ -26,8 +26,8 @@ type Info struct {
 }
 
 func validateOSRelease(osrelease map[string]string) error {
-	// VARIANT_ID is optional
-	for _, key := range []string{"ID", "VERSION_ID", "NAME", "PLATFORM_ID"} {
+	// VARIANT_ID, PLATFORM_ID are optional
+	for _, key := range []string{"ID", "VERSION_ID", "NAME"} {
 		if _, ok := osrelease[key]; !ok {
 			return fmt.Errorf("missing %s in os-release", key)
 		}
