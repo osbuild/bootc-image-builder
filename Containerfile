@@ -1,4 +1,4 @@
-FROM registry.fedoraproject.org/fedora:41 AS builder
+FROM registry.fedoraproject.org/fedora:42 AS builder
 RUN dnf install -y git-core golang gpgme-devel libassuan-devel && mkdir -p /build/bib
 COPY bib/go.mod bib/go.sum /build/bib/
 ARG GOPROXY=https://proxy.golang.org,direct
@@ -10,7 +10,7 @@ COPY . /build
 WORKDIR /build
 RUN ./build.sh
 
-FROM registry.fedoraproject.org/fedora:41
+FROM registry.fedoraproject.org/fedora:42
 # Fast-track osbuild so we don't depend on the "slow" Fedora release process to implement new features in bib
 COPY ./group_osbuild-osbuild-fedora.repo /etc/yum.repos.d/
 COPY ./package-requires.txt .
