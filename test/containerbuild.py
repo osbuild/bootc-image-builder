@@ -25,6 +25,7 @@ def make_container(container_path, arch=None):
 
     subprocess.check_call([
         "podman", "build",
+        "--cache-ttl=1h",
         "-t", container_tag,
         "--arch", arch,
         container_path], encoding="utf8")
@@ -41,6 +42,7 @@ def build_container_fixture():
     container_tag = "bootc-image-builder-test"
     subprocess.check_call([
         "podman", "build",
+        "--cache-ttl=1h",
         "-f", "Containerfile",
         "-t", container_tag,
     ])
