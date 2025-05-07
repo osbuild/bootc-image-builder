@@ -556,8 +556,7 @@ def test_manifest_fs_customizations_xarch(tmp_path, build_container, fscustomiza
         "manifest", f"{container_ref}",
     ])
 
-    # cross-arch builds only support ext4 (for now)
-    assert_fs_customizations(fscustomizations, "ext4", output)
+    assert_fs_customizations(fscustomizations, rootfs, output)
 
 
 def find_grub2_iso_stage_from(manifest_str):
