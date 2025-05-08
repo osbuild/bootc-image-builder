@@ -1,4 +1,4 @@
-FROM registry.fedoraproject.org/fedora:40 AS osbuild-builder
+FROM registry.fedoraproject.org/fedora:42 AS osbuild-builder
 # build osbuild RPMs
 RUN dnf install -y rpm-build dnf-plugins-core git-core
 COPY --from=osbuild . /build
@@ -8,7 +8,7 @@ RUN git config --global --add safe.directory /build
 RUN make rpm
 
 
-FROM registry.fedoraproject.org/fedora:40 AS bib-builder
+FROM registry.fedoraproject.org/fedora:42 AS bib-builder
 # replace osbuild/images dependency and build bib
 RUN dnf install -y git-core golang gpgme-devel libassuan-devel
 COPY --from=images . /build/images
@@ -22,7 +22,7 @@ WORKDIR /build
 RUN ./build.sh
 
 
-FROM registry.fedoraproject.org/fedora:40
+FROM registry.fedoraproject.org/fedora:42
 COPY --from=osbuild-builder /build/rpmbuild/RPMS/noarch/*.rpm /rpms/
 COPY ./package-requires.txt .
 RUN grep -vE '^#' package-requires.txt | xargs dnf install -y && rm -f package-requires.txt && dnf install -y /rpms/*.rpm && dnf clean all
