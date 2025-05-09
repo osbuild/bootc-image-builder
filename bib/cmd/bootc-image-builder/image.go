@@ -514,6 +514,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 			BIOS:       true,
 			UEFIVendor: c.SourceInfo.UEFIVendor,
 		}
+		img.ISOBoot = manifest.Grub2ISOBoot
 	case arch.ARCH_AARCH64:
 		// aarch64 always uses UEFI, so let's enforce the vendor
 		if c.SourceInfo.UEFIVendor == "" {
