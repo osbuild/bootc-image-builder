@@ -39,7 +39,8 @@ const DEFAULT_SIZE = uint64(10 * GibiByte)
 
 type ManifestConfig struct {
 	// OCI image path (without the transport, that is always docker://)
-	Imgref string
+	Imgref      string
+	BuildImgref string
 
 	ImageTypes imagetypes.ImageTypes
 
@@ -57,7 +58,8 @@ type ManifestConfig struct {
 	DistroDefPaths []string
 
 	// Extracted information about the source container image
-	SourceInfo *source.Info
+	SourceInfo      *source.Info
+	BuildSourceInfo *source.Info
 
 	// RootFSType specifies the filesystem type for the root partition
 	RootFSType string
@@ -335,16 +337,25 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		Name:   c.Imgref,
 		Local:  true,
 	}
+	buildContainerSource := container.SourceSpec{
+		Source: c.BuildImgref,
+		Name:   c.BuildImgref,
+		Local:  true,
+	}
 
 	var customizations *blueprint.Customizations
 	if c.Config != nil {
 		customizations = c.Config.Customizations
 	}
 
-	img := image.NewBootcDiskImage(containerSource)
+	img := image.NewBootcDiskImage(containerSource, buildContainerSource)
 	img.Users = users.UsersFromBP(customizations.GetUsers())
 	img.Groups = users.GroupsFromBP(customizations.GetGroups())
 	img.SELinux = c.SourceInfo.SELinuxPolicy
+	img.BuildSELinux = img.SELinux
+	if c.BuildSourceInfo != nil {
+		img.BuildSELinux = c.BuildSourceInfo.SELinuxPolicy
+	}
 
 	img.KernelOptionsAppend = []string{
 		"rw",
@@ -422,7 +433,9 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 	mf.Distro = manifest.DISTRO_FEDORA
 	runner := &runner.Linux{}
 
-	if err := img.InstantiateManifestFromContainers(&mf, []container.SourceSpec{containerSource}, runner, rng); err != nil {
+	if err := img.InstantiateManifestFromContainers(&mf,
+		[]container.SourceSpec{containerSource},
+		[]container.SourceSpec{buildContainerSource}, runner, rng); err != nil {
 		return nil, err
 	}
 
