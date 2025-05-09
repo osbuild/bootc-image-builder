@@ -203,6 +203,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	rpmCacheRoot, _ := cmd.Flags().GetString("rpmmd")
 	targetArch, _ := cmd.Flags().GetString("target-arch")
 	rootFs, _ := cmd.Flags().GetString("rootfs")
+	buildImgref, _ := cmd.Flags().GetString("build-container")
 	useLibrepo, _ := cmd.Flags().GetBool("use-librepo")
 
 	// If --local was given, warn in the case of --local or --local=true (true is the default), error in the case of --local=false
@@ -291,26 +292,55 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 		return nil, nil, err
 	}
 
+	buildContainer := container
+	buildSourceinfo := sourceinfo
+	startedBuildContainer := false
+	defer func() {
+		if startedBuildContainer {
+			if err := buildContainer.Stop(); err != nil {
+				logrus.Warnf("error stopping container: %v", err)
+			}
+		}
+	}()
+
+	if buildImgref != "" {
+		buildContainer, err = podman_container.New(buildImgref)
+		if err != nil {
+			return nil, nil, err
+		}
+		startedBuildContainer = true
+
+		// Gather some data from the containers distro
+		buildSourceinfo, err = source.LoadInfo(buildContainer.Root())
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		buildImgref = imgref
+	}
+
 	// This is needed just for RHEL and RHSM in most cases, but let's run it every time in case
 	// the image has some non-standard dnf plugins.
-	if err := container.InitDNF(); err != nil {
+	if err := buildContainer.InitDNF(); err != nil {
 		return nil, nil, err
 	}
-	solver, err := container.NewContainerSolver(rpmCacheRoot, cntArch, sourceinfo)
+	solver, err := buildContainer.NewContainerSolver(rpmCacheRoot, cntArch, sourceinfo)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	manifestConfig := &ManifestConfig{
-		Architecture:   cntArch,
-		Config:         config,
-		ImageTypes:     imageTypes,
-		Imgref:         imgref,
-		RootfsMinsize:  cntSize * containerSizeToDiskSizeMultiplier,
-		DistroDefPaths: distroDefPaths,
-		SourceInfo:     sourceinfo,
-		RootFSType:     rootfsType,
-		UseLibrepo:     useLibrepo,
+		Architecture:    cntArch,
+		Config:          config,
+		ImageTypes:      imageTypes,
+		Imgref:          imgref,
+		BuildImgref:     buildImgref,
+		RootfsMinsize:   cntSize * containerSizeToDiskSizeMultiplier,
+		DistroDefPaths:  distroDefPaths,
+		SourceInfo:      sourceinfo,
+		BuildSourceInfo: buildSourceinfo,
+		RootFSType:      rootfsType,
+		UseLibrepo:      useLibrepo,
 	}
 
 	manifest, repos, err := makeManifest(manifestConfig, solver, rpmCacheRoot)
@@ -650,6 +680,7 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	}
 	manifestCmd.Flags().String("rpmmd", "/rpmmd", "rpm metadata cache directory")
 	manifestCmd.Flags().String("target-arch", "", "build for the given target architecture (experimental)")
+	manifestCmd.Flags().String("build-container", "", "Use a custom container for the image build")
 	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, fmt.Sprintf("image types to build [%s]", imagetypes.Available()))
 	manifestCmd.Flags().Bool("local", true, "DEPRECATED: --local is now the default behavior, make sure to pull the container image before running bootc-image-builder")
 	if err := manifestCmd.Flags().MarkHidden("local"); err != nil {
