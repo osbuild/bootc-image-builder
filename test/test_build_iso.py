@@ -24,18 +24,19 @@ from test_build_disk import (  # pylint: disable=unused-import
 
 @pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
 @pytest.mark.parametrize("image_type", gen_testcases("anaconda-iso"), indirect=["image_type"])
-def test_iso_installs(image_type):
+@pytest.mark.parametrize("use_ovmf", [True, False])
+def test_iso_installs(image_type, use_ovmf):
     installer_iso_path = image_type.img_path
     test_disk_path = installer_iso_path.with_name("test-disk.img")
     with open(test_disk_path, "w", encoding="utf8") as fp:
         fp.truncate(10_1000_1000_1000)
     # install to test disk
     with QEMU(test_disk_path, cdrom=installer_iso_path) as vm:
-        vm.start(wait_event="qmp:RESET", snapshot=False, use_ovmf=True)
+        vm.start(wait_event="qmp:RESET", snapshot=False, use_ovmf=use_ovmf)
         vm.force_stop()
     # boot test disk and do extremly simple check
     with QEMU(test_disk_path) as vm:
-        vm.start(use_ovmf=True)
+        vm.start(use_ovmf=use_ovmf)
         exit_status, _ = vm.run("true", user=image_type.username, password=image_type.password)
         assert exit_status == 0
         assert_kernel_args(vm, image_type)
