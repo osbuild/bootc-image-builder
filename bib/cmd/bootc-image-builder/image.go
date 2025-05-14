@@ -223,15 +223,35 @@ func genPartitionTable(c *ManifestConfig, customizations *blueprint.Customizatio
 		}
 	}
 
+	var partitionTable *disk.PartitionTable
 	switch {
 	// XXX: move into images library
 	case fsCust != nil && diskCust != nil:
 		return nil, fmt.Errorf("cannot combine disk and filesystem customizations")
 	case diskCust != nil:
-		return genPartitionTableDiskCust(c, diskCust, rng)
+		partitionTable, err = genPartitionTableDiskCust(c, diskCust, rng)
+		if err != nil {
+			return nil, err
+		}
 	default:
-		return genPartitionTableFsCust(c, fsCust, rng)
+		partitionTable, err = genPartitionTableFsCust(c, fsCust, rng)
+		if err != nil {
+			return nil, err
+		}
 	}
+
+	// Ensure ext4 rootfs has fs-verity enabled
+	rootfs := partitionTable.FindMountable("/")
+	if rootfs != nil {
+		switch elem := rootfs.(type) {
+		case *disk.Filesystem:
+			if elem.Type == "ext4" {
+				elem.MkfsOptions = append(elem.MkfsOptions, []disk.MkfsOption{disk.MkfsVerity}...)
+			}
+		}
+	}
+
+	return partitionTable, nil
 }
 
 // calcRequiredDirectorySizes will calculate the minimum sizes for /
@@ -433,9 +453,7 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 	mf.Distro = manifest.DISTRO_FEDORA
 	runner := &runner.Linux{}
 
-	if err := img.InstantiateManifestFromContainers(&mf,
-		[]container.SourceSpec{containerSource},
-		[]container.SourceSpec{buildContainerSource}, runner, rng); err != nil {
+	if err := img.InstantiateManifestFromContainers(&mf, []container.SourceSpec{containerSource}, runner, rng); err != nil {
 		return nil, err
 	}
 
