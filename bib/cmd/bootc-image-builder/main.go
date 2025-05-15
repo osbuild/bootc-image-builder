@@ -216,17 +216,23 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 		}
 	}
 
-	if targetArch != "" && arch.FromString(targetArch) != arch.Current() {
-		// TODO: detect if binfmt_misc for target arch is
-		// available, e.g. by mounting the binfmt_misc fs into
-		// the container and inspects the files or by
-		// including tiny statically linked target-arch
-		// binaries inside our bib container
-		fmt.Fprintf(os.Stderr, "WARNING: target-arch is experimental and needs an installed 'qemu-user' package\n")
-		if slices.Contains(imgTypes, "iso") {
-			return nil, nil, fmt.Errorf("cannot build iso for different target arches yet")
+	if targetArch != "" {
+		target, err := arch.FromString(targetArch)
+		if err != nil {
+			return nil, nil, err
 		}
-		cntArch = arch.FromString(targetArch)
+		if target != arch.Current() {
+			// TODO: detect if binfmt_misc for target arch is
+			// available, e.g. by mounting the binfmt_misc fs into
+			// the container and inspects the files or by
+			// including tiny statically linked target-arch
+			// binaries inside our bib container
+			fmt.Fprintf(os.Stderr, "WARNING: target-arch is experimental and needs an installed 'qemu-user' package\n")
+			if slices.Contains(imgTypes, "iso") {
+				return nil, nil, fmt.Errorf("cannot build iso for different target arches yet")
+			}
+			cntArch = target
+		}
 	}
 	// TODO: add "target-variant", see https://github.com/osbuild/bootc-image-builder/pull/139/files#r1467591868
 
