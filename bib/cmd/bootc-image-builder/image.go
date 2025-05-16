@@ -39,7 +39,8 @@ const DEFAULT_SIZE = uint64(10 * GibiByte)
 
 type ManifestConfig struct {
 	// OCI image path (without the transport, that is always docker://)
-	Imgref string
+	Imgref      string
+	BuildImgref string
 
 	ImageTypes imagetypes.ImageTypes
 
@@ -57,7 +58,8 @@ type ManifestConfig struct {
 	DistroDefPaths []string
 
 	// Extracted information about the source container image
-	SourceInfo *source.Info
+	SourceInfo      *source.Info
+	BuildSourceInfo *source.Info
 
 	// RootFSType specifies the filesystem type for the root partition
 	RootFSType string
@@ -209,15 +211,35 @@ func genPartitionTable(c *ManifestConfig, customizations *blueprint.Customizatio
 	if err != nil {
 		return nil, fmt.Errorf("error reading disk customizations: %w", err)
 	}
+	var partitionTable *disk.PartitionTable
 	switch {
 	// XXX: move into images library
 	case fsCust != nil && diskCust != nil:
 		return nil, fmt.Errorf("cannot combine disk and filesystem customizations")
 	case diskCust != nil:
-		return genPartitionTableDiskCust(c, diskCust, rng)
+		partitionTable, err = genPartitionTableDiskCust(c, diskCust, rng)
+		if err != nil {
+			return nil, err
+		}
 	default:
-		return genPartitionTableFsCust(c, fsCust, rng)
+		partitionTable, err = genPartitionTableFsCust(c, fsCust, rng)
+		if err != nil {
+			return nil, err
+		}
 	}
+
+	// Ensure ext4 rootfs has fs-verity enabled
+	rootfs := partitionTable.FindMountable("/")
+	if rootfs != nil {
+		switch elem := rootfs.(type) {
+		case *disk.Filesystem:
+			if elem.Type == "ext4" {
+				elem.MkfsOptions = append(elem.MkfsOptions, []disk.MkfsOption{disk.MkfsVerity}...)
+			}
+		}
+	}
+
+	return partitionTable, nil
 }
 
 // calcRequiredDirectorySizes will calculate the minimum sizes for /
@@ -323,17 +345,25 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		Name:   c.Imgref,
 		Local:  true,
 	}
+	buildContainerSource := container.SourceSpec{
+		Source: c.BuildImgref,
+		Name:   c.BuildImgref,
+		Local:  true,
+	}
 
 	var customizations *blueprint.Customizations
 	if c.Config != nil {
 		customizations = c.Config.Customizations
 	}
 
-	img := image.NewBootcDiskImage(containerSource)
+	img := image.NewBootcDiskImage(containerSource, buildContainerSource)
 	img.Users = users.UsersFromBP(customizations.GetUsers())
 	img.Groups = users.GroupsFromBP(customizations.GetGroups())
-	// TODO: get from the bootc container instead of hardcoding it
-	img.SELinux = "targeted"
+	img.SELinux = c.SourceInfo.SELinuxPolicy
+	img.BuildSELinux = img.SELinux
+	if c.BuildSourceInfo != nil {
+		img.BuildSELinux = c.BuildSourceInfo.SELinuxPolicy
+	}
 
 	img.KernelOptionsAppend = []string{
 		"rw",

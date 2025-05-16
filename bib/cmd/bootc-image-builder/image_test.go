@@ -375,8 +375,9 @@ func findMountableSizeableFor(pt *disk.PartitionTable, needle string) (disk.Moun
 func TestGenPartitionTableSetsRootfsForAllFilesystemsXFS(t *testing.T) {
 	rng := bib.CreateRand()
 
+	a, _ := arch.FromString("amd64")
 	cnf := &bib.ManifestConfig{
-		Architecture: arch.FromString("amd64"),
+		Architecture: a,
 		RootFSType:   "xfs",
 	}
 	cus := &blueprint.Customizations{
@@ -406,8 +407,9 @@ func TestGenPartitionTableSetsRootfsForAllFilesystemsXFS(t *testing.T) {
 func TestGenPartitionTableSetsRootfsForAllFilesystemsBtrfs(t *testing.T) {
 	rng := bib.CreateRand()
 
+	a, _ := arch.FromString("amd64")
 	cnf := &bib.ManifestConfig{
-		Architecture: arch.FromString("amd64"),
+		Architecture: a,
 		RootFSType:   "btrfs",
 	}
 	cus := &blueprint.Customizations{}
@@ -429,8 +431,9 @@ func TestGenPartitionTableSetsRootfsForAllFilesystemsBtrfs(t *testing.T) {
 func TestGenPartitionTableDiskCustomizationRunsValidateLayoutConstraints(t *testing.T) {
 	rng := bib.CreateRand()
 
+	a, _ := arch.FromString("amd64")
 	cnf := &bib.ManifestConfig{
-		Architecture: arch.FromString("amd64"),
+		Architecture: a,
 		RootFSType:   "xfs",
 	}
 	cus := &blueprint.Customizations{
@@ -650,8 +653,9 @@ func TestGenPartitionTableDiskCustomizationSizes(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			a, _ := arch.FromString("amd64")
 			cnf := &bib.ManifestConfig{
-				Architecture:  arch.FromString("amd64"),
+				Architecture:  a,
 				RootFSType:    "xfs",
 				RootfsMinsize: tc.rootfsMinSize,
 			}
