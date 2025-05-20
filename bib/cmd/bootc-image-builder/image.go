@@ -209,6 +209,18 @@ func genPartitionTable(c *ManifestConfig, customizations *blueprint.Customizatio
 	if err != nil {
 		return nil, fmt.Errorf("error reading disk customizations: %w", err)
 	}
+
+	// Embedded disk customization applies if there was no local customization
+	if fsCust == nil && diskCust == nil && c.SourceInfo != nil && c.SourceInfo.ImageCustomization != nil {
+		imageCustomizations := c.SourceInfo.ImageCustomization
+
+		fsCust = imageCustomizations.GetFilesystems()
+		diskCust, err = imageCustomizations.GetPartitioning()
+		if err != nil {
+			return nil, fmt.Errorf("error reading disk customizations: %w", err)
+		}
+	}
+
 	switch {
 	// XXX: move into images library
 	case fsCust != nil && diskCust != nil:
