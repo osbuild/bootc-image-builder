@@ -101,6 +101,16 @@ func loadConfig(path string) (*externalBlueprint.Blueprint, error) {
 	}
 }
 
+func LoadConfig(path string) (*imagesBlueprint.Blueprint, error) {
+	externalBp, err := loadConfig(path)
+	if err != nil {
+		return nil, err
+	}
+
+	bp := externalBlueprint.Convert(*externalBp)
+	return &bp, nil
+}
+
 func readWithFallback(userConfig string) (*externalBlueprint.Blueprint, error) {
 	// user asked for an explicit config
 	if userConfig != "" {
