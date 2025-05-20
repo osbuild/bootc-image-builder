@@ -8,8 +8,12 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
+	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/distro"
 )
+
+const bibPathPrefix = "usr/lib/bootc-image-builder"
 
 type OSRelease struct {
 	PlatformID string
@@ -21,8 +25,9 @@ type OSRelease struct {
 }
 
 type Info struct {
-	OSRelease  OSRelease
-	UEFIVendor string
+	OSRelease          OSRelease
+	UEFIVendor         string
+	ImageCustomization *blueprint.Customizations
 }
 
 func validateOSRelease(osrelease map[string]string) error {
@@ -58,6 +63,26 @@ func uefiVendor(root string) (string, error) {
 	return "", fmt.Errorf("cannot find UEFI vendor in %s", bootupdEfiDir)
 }
 
+func readImageCustomization(root string) (*blueprint.Customizations, error) {
+	prefix := path.Join(root, bibPathPrefix)
+	config, err := buildconfig.LoadConfig(path.Join(prefix, "config.json"))
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+	if config == nil {
+		config, err = buildconfig.LoadConfig(path.Join(prefix, "config.toml"))
+		if err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
+	}
+	// no config found in either toml/json
+	if config == nil {
+		return nil, nil
+	}
+
+	return config.Customizations, nil
+}
+
 func LoadInfo(root string) (*Info, error) {
 	osrelease, err := distro.ReadOSReleaseFromTree(root)
 	if err != nil {
@@ -71,6 +96,12 @@ func LoadInfo(root string) (*Info, error) {
 	if err != nil {
 		logrus.Debugf("cannot read UEFI vendor: %v, setting it to none", err)
 	}
+
+	customization, err := readImageCustomization(root)
+	if err != nil {
+		return nil, err
+	}
+
 	var idLike []string
 	if osrelease["ID_LIKE"] != "" {
 		idLike = strings.Split(osrelease["ID_LIKE"], " ")
@@ -86,6 +117,7 @@ func LoadInfo(root string) (*Info, error) {
 			IDLike:     idLike,
 		},
 
-		UEFIVendor: vendor,
+		UEFIVendor:         vendor,
+		ImageCustomization: customization,
 	}, nil
 }
