@@ -534,7 +534,6 @@ By default, the following modules are enabled for all Anaconda ISOs:
 The `disable` list is processed after the `enable` list and therefore takes priority. In other words, adding the same module in both `enable` and `disable` will result in the module being **disabled**.
 Furthermore, adding a module that is enabled by default to `disable` will result in the module being **disabled**.
 
-
 ## Building
 
 To build the container locally you can run

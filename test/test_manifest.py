@@ -826,3 +826,101 @@ def test_manifest_customization_custom_file_smoke(tmp_path, build_container):
             '[{"path":"/etc/custom_dir","exist_ok":true}]},'
             '"devices":{"disk":{"type":"org.osbuild.loopback"'
             ',"options":{"filename":"disk.raw"') in output
+
+
+def find_sfdisk_stage_from(manifest_str):
+    manifest = json.loads(manifest_str)
+    for pipl in manifest["pipelines"]:
+        if pipl["name"] == "image":
+            for st in pipl["stages"]:
+                if st["type"] == "org.osbuild.sfdisk":
+                    return st["options"]
+    raise ValueError(f"cannot find sfdisk stage manifest:\n{manifest_str}")
+
+
+def test_manifest_image_customize_filesystem(tmp_path, build_container):
+    # no need to parameterize this test, overrides behaves same for all containers
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
+
+    cfg = {
+        "blueprint": {
+            "customizations": {
+                "filesystem": [
+                    {
+                        "mountpoint": "/boot",
+                        "minsize": "3GiB"
+                    }
+                ]
+            },
+        },
+    }
+
+    config_json_path = tmp_path / "config.json"
+    config_json_path.write_text(json.dumps(cfg), encoding="utf-8")
+
+    # create derrived container with filesystem customization
+    cntf_path = tmp_path / "Containerfile"
+    cntf_path.write_text(textwrap.dedent(f"""\n
+    FROM {container_ref}
+    RUN mkdir -p -m 0755 /usr/lib/bootc-image-builder
+    COPY config.json /usr/lib/bootc-image-builder/
+    """), encoding="utf8")
+
+    print(f"building filesystem customize container from {container_ref}")
+    with make_container(tmp_path) as container_tag:
+        print(f"using {container_tag}")
+        manifest_str = subprocess.check_output([
+            *testutil.podman_run_common,
+            build_container,
+            "manifest",
+            f"localhost/{container_tag}",
+        ], encoding="utf8")
+        sfdisk_options = find_sfdisk_stage_from(manifest_str)
+        assert sfdisk_options["partitions"][2]["size"] == 3 * 1024 * 1024 * 1024 / 512
+
+
+def test_manifest_image_customize_disk(tmp_path, build_container):
+    # no need to parameterize this test, overrides behaves same for all containers
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
+
+    cfg = {
+        "blueprint": {
+            "customizations": {
+                "disk": {
+                    "partitions": [
+                        {
+                            "label": "var",
+                            "mountpoint": "/var",
+                            "fs_type": "ext4",
+                            "minsize": "3 GiB",
+                        },
+                    ],
+                },
+            },
+        },
+    }
+
+    config_json_path = tmp_path / "config.json"
+    config_json_path.write_text(json.dumps(cfg), encoding="utf-8")
+
+    # create derrived container with disk customization
+    cntf_path = tmp_path / "Containerfile"
+    cntf_path.write_text(textwrap.dedent(f"""\n
+    FROM {container_ref}
+    RUN mkdir -p -m 0755 /usr/lib/bootc-image-builder
+    COPY config.json /usr/lib/bootc-image-builder/
+    """), encoding="utf8")
+
+    print(f"building filesystem customize container from {container_ref}")
+    with make_container(tmp_path) as container_tag:
+        print(f"using {container_tag}")
+        manifest_str = subprocess.check_output([
+            *testutil.podman_run_common,
+            build_container,
+            "manifest",
+            f"localhost/{container_tag}",
+        ], encoding="utf8")
+        sfdisk_options = find_sfdisk_stage_from(manifest_str)
+        assert sfdisk_options["partitions"][2]["size"] == 3 * 1024 * 1024 * 1024 / 512
