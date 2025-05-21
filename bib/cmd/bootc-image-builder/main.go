@@ -273,19 +273,18 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	}()
 
 	var rootfsType string
-	if !imageTypes.BuildsISO() {
-		if rootFs != "" {
-			rootfsType = rootFs
-		} else {
-			rootfsType, err = container.DefaultRootfsType()
-			if err != nil {
-				return nil, nil, fmt.Errorf("cannot get rootfs type for container: %w", err)
-			}
-			if rootfsType == "" {
-				return nil, nil, fmt.Errorf(`no default root filesystem type specified in container, please use "--rootfs" to set manually`)
-			}
+	if rootFs != "" {
+		rootfsType = rootFs
+	} else {
+		rootfsType, err = container.DefaultRootfsType()
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot get rootfs type for container: %w", err)
+		}
+		if rootfsType == "" {
+			return nil, nil, fmt.Errorf(`no default root filesystem type specified in container, please use "--rootfs" to set manually`)
 		}
 	}
+
 	// Gather some data from the containers distro
 	sourceinfo, err := source.LoadInfo(container.Root())
 	if err != nil {
