@@ -329,7 +329,7 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		customizations = c.Config.Customizations
 	}
 
-	img := image.NewBootcDiskImage(containerSource)
+	img := image.NewBootcDiskImage(containerSource, containerSource)
 	img.Users = users.UsersFromBP(customizations.GetUsers())
 	img.Groups = users.GroupsFromBP(customizations.GetGroups())
 	// TODO: get from the bootc container instead of hardcoding it
