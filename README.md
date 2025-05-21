@@ -349,6 +349,12 @@ sudo podman run \
 The configuration can also be passed in via stdin when `--config -`
 is used. Only JSON configuration is supported in this mode.
 
+Additionally, images can embed a build config file, either as
+`config.json` or `config.toml` in the `/usr/lib/bootc-image-builder`
+directory. If this exist, and contains filesystem or disk
+customizations, then these are used by default if no such
+customization are specified in the regular build config.
+
 ### Users (`user`, array)
 
 Possible fields:
