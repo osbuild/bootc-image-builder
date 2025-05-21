@@ -115,7 +115,9 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
             TestCaseFedora(image="qcow2"),
             # test with custom disk configs
             TestCaseC9S(image="qcow2", disk_config="swap"),
-            TestCaseFedora43(image="raw", disk_config="btrfs"),
+            # mvo: disabled 2025-05-21 because:
+            # "ERROR Installing to filesystem: Creating ostree deployment: invalid reference format"
+            # TestCaseFedora43(image="raw", disk_config="btrfs"),
             TestCaseC9S(image="raw", disk_config="lvm"),
         ]
     if what == "all":
