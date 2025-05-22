@@ -216,7 +216,12 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 		}
 	}
 
-	if targetArch != "" && arch.FromString(targetArch) != arch.Current() {
+	resolvedArch, err := arch.FromString(targetArch)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if targetArch != "" && resolvedArch != arch.Current() {
 		// TODO: detect if binfmt_misc for target arch is
 		// available, e.g. by mounting the binfmt_misc fs into
 		// the container and inspects the files or by
@@ -226,7 +231,10 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 		if slices.Contains(imgTypes, "iso") {
 			return nil, nil, fmt.Errorf("cannot build iso for different target arches yet")
 		}
-		cntArch = arch.FromString(targetArch)
+		cntArch, err = arch.FromString(targetArch)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 	// TODO: add "target-variant", see https://github.com/osbuild/bootc-image-builder/pull/139/files#r1467591868
 
@@ -266,19 +274,18 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	}()
 
 	var rootfsType string
-	if !imageTypes.BuildsISO() {
-		if rootFs != "" {
-			rootfsType = rootFs
-		} else {
-			rootfsType, err = container.DefaultRootfsType()
-			if err != nil {
-				return nil, nil, fmt.Errorf("cannot get rootfs type for container: %w", err)
-			}
-			if rootfsType == "" {
-				return nil, nil, fmt.Errorf(`no default root filesystem type specified in container, please use "--rootfs" to set manually`)
-			}
+	if rootFs != "" {
+		rootfsType = rootFs
+	} else {
+		rootfsType, err = container.DefaultRootfsType()
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot get rootfs type for container: %w", err)
+		}
+		if rootfsType == "" {
+			return nil, nil, fmt.Errorf(`no default root filesystem type specified in container, please use "--rootfs" to set manually`)
 		}
 	}
+
 	// Gather some data from the containers distro
 	sourceinfo, err := source.LoadInfo(container.Root())
 	if err != nil {

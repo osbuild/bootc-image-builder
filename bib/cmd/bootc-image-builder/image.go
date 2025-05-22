@@ -341,7 +341,7 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		customizations = c.Config.Customizations
 	}
 
-	img := image.NewBootcDiskImage(containerSource)
+	img := image.NewBootcDiskImage(containerSource, containerSource)
 	img.Users = users.UsersFromBP(customizations.GetUsers())
 	img.Groups = users.GroupsFromBP(customizations.GetGroups())
 	// TODO: get from the bootc container instead of hardcoding it
@@ -558,6 +558,8 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	// see https://github.com/osbuild/bootc-image-builder/issues/733
 	img.RootfsType = manifest.SquashfsRootfs
 	img.Filename = "install.iso"
+
+	img.InstallRootfsType = c.RootFSType
 
 	mf := manifest.New()
 
