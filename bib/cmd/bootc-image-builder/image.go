@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/big"
 	"math/rand"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -38,7 +39,8 @@ const DEFAULT_SIZE = uint64(10 * GibiByte)
 
 type ManifestConfig struct {
 	// OCI image path (without the transport, that is always docker://)
-	Imgref string
+	Imgref      string
+	BuildImgref string
 
 	ImageTypes imagetypes.ImageTypes
 
@@ -56,7 +58,8 @@ type ManifestConfig struct {
 	DistroDefPaths []string
 
 	// Extracted information about the source container image
-	SourceInfo *source.Info
+	SourceInfo      *source.Info
+	BuildSourceInfo *source.Info
 
 	// RootFSType specifies the filesystem type for the root partition
 	RootFSType string
@@ -128,7 +131,7 @@ func checkMountpoints(filesystems []blueprint.FilesystemCustomization, policy *p
 		}
 	}
 	if len(errs) > 0 {
-		return fmt.Errorf("The following errors occurred while validating custom mountpoints:\n%w", errors.Join(errs...))
+		return fmt.Errorf("the following errors occurred while validating custom mountpoints:\n%w", errors.Join(errs...))
 	}
 	return nil
 }
@@ -211,15 +214,47 @@ func genPartitionTable(c *ManifestConfig, customizations *blueprint.Customizatio
 	if err != nil {
 		return nil, fmt.Errorf("error reading disk customizations: %w", err)
 	}
+
+	// Embedded disk customization applies if there was no local customization
+	if fsCust == nil && diskCust == nil && c.SourceInfo != nil && c.SourceInfo.ImageCustomization != nil {
+		imageCustomizations := c.SourceInfo.ImageCustomization
+
+		fsCust = imageCustomizations.GetFilesystems()
+		diskCust, err = imageCustomizations.GetPartitioning()
+		if err != nil {
+			return nil, fmt.Errorf("error reading disk customizations: %w", err)
+		}
+	}
+
+	var partitionTable *disk.PartitionTable
 	switch {
 	// XXX: move into images library
 	case fsCust != nil && diskCust != nil:
 		return nil, fmt.Errorf("cannot combine disk and filesystem customizations")
 	case diskCust != nil:
-		return genPartitionTableDiskCust(c, diskCust, rng)
+		partitionTable, err = genPartitionTableDiskCust(c, diskCust, rng)
+		if err != nil {
+			return nil, err
+		}
 	default:
-		return genPartitionTableFsCust(c, fsCust, rng)
+		partitionTable, err = genPartitionTableFsCust(c, fsCust, rng)
+		if err != nil {
+			return nil, err
+		}
 	}
+
+	// Ensure ext4 rootfs has fs-verity enabled
+	rootfs := partitionTable.FindMountable("/")
+	if rootfs != nil {
+		switch elem := rootfs.(type) {
+		case *disk.Filesystem:
+			if elem.Type == "ext4" {
+				elem.MkfsOptions = append(elem.MkfsOptions, []disk.MkfsOption{disk.MkfsVerity}...)
+			}
+		}
+	}
+
+	return partitionTable, nil
 }
 
 // calcRequiredDirectorySizes will calculate the minimum sizes for /
@@ -325,17 +360,25 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		Name:   c.Imgref,
 		Local:  true,
 	}
+	buildContainerSource := container.SourceSpec{
+		Source: c.BuildImgref,
+		Name:   c.BuildImgref,
+		Local:  true,
+	}
 
 	var customizations *blueprint.Customizations
 	if c.Config != nil {
 		customizations = c.Config.Customizations
 	}
 
-	img := image.NewBootcDiskImage(containerSource)
+	img := image.NewBootcDiskImage(containerSource, buildContainerSource)
 	img.Users = users.UsersFromBP(customizations.GetUsers())
 	img.Groups = users.GroupsFromBP(customizations.GetGroups())
-	// TODO: get from the bootc container instead of hardcoding it
-	img.SELinux = "targeted"
+	img.SELinux = c.SourceInfo.SELinuxPolicy
+	img.BuildSELinux = img.SELinux
+	if c.BuildSourceInfo != nil {
+		img.BuildSELinux = c.BuildSourceInfo.SELinuxPolicy
+	}
 
 	img.KernelOptionsAppend = []string{
 		"rw",
@@ -438,6 +481,9 @@ func labelForISO(os *source.OSRelease, arch *arch.Arch) string {
 	}
 }
 
+func needsRHELLoraxTemplates(si source.OSRelease) bool {
+	return si.ID == "rhel" || slices.Contains(si.IDLike, "rhel") || si.VersionID == "eln"
+}
 func manifestForISO(c *ManifestConfig, rng *rand.Rand, overrideDefFilename string) (*manifest.Manifest, error) {
 	if c.Imgref == "" {
 		return nil, fmt.Errorf("pipeline: no base image defined")
@@ -502,9 +548,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand, overrideDefFilename strin
 	img.Kickstart.OSTree = &kickstart.OSTree{
 		OSName: "default",
 	}
-	// use lorax-templates-rhel if the source distro is not Fedora with the exception of Fedora ELN
-	img.UseRHELLoraxTemplates =
-		c.SourceInfo.OSRelease.ID != "fedora" || c.SourceInfo.OSRelease.VersionID == "eln"
+	img.UseRHELLoraxTemplates = needsRHELLoraxTemplates(c.SourceInfo.OSRelease)
 
 	switch c.Architecture {
 	case arch.ARCH_X86_64:
@@ -515,6 +559,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand, overrideDefFilename strin
 			BIOS:       true,
 			UEFIVendor: c.SourceInfo.UEFIVendor,
 		}
+		img.ISOBoot = manifest.Grub2ISOBoot
 	case arch.ARCH_AARCH64:
 		// aarch64 always uses UEFI, so let's enforce the vendor
 		if c.SourceInfo.UEFIVendor == "" {

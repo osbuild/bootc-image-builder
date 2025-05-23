@@ -45,14 +45,14 @@ class TestCase:
 
 @dataclasses.dataclass
 class TestCaseFedora(TestCase):
-    container_ref: str = "quay.io/fedora/fedora-bootc:40"
+    container_ref: str = "quay.io/fedora/fedora-bootc:42"
     rootfs: str = "btrfs"
     use_librepo: bool = True
 
 
 @dataclasses.dataclass
-class TestCaseFedora42(TestCase):
-    container_ref: str = "quay.io/fedora/fedora-bootc:42"
+class TestCaseFedora43(TestCase):
+    container_ref: str = "quay.io/fedora/fedora-bootc:43"
     rootfs: str = "btrfs"
     use_librepo: bool = True
 
@@ -100,16 +100,8 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
             TestCaseC9S(image="anaconda-iso"),
             TestCaseC10S(image="anaconda-iso"),
         ]
-    if what == "qemu-boot":
-        test_cases = [
-            # test default partitioning
-            TestCaseFedora(image="qcow2"),
-            # test with custom disk configs
-            TestCaseC9S(image="qcow2", disk_config="swap"),
-            TestCaseFedora(image="raw", disk_config="btrfs"),
-            TestCaseC9S(image="raw", disk_config="lvm"),
-        ]
-        # do a cross arch test too
+    if what == "qemu-cross":
+        test_cases = []
         if platform.machine() == "x86_64":
             test_cases.append(
                 TestCaseC9S(image="raw", target_arch="arm64"))
@@ -117,6 +109,17 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
             # TODO: add arm64->x86_64 cross build test too
             pass
         return test_cases
+    if what == "qemu-boot":
+        return [
+            # test default partitioning
+            TestCaseFedora(image="qcow2"),
+            # test with custom disk configs
+            TestCaseC9S(image="qcow2", disk_config="swap"),
+            # mvo: disabled 2025-05-21 because:
+            # "ERROR Installing to filesystem: Creating ostree deployment: invalid reference format"
+            # TestCaseFedora43(image="raw", disk_config="btrfs"),
+            TestCaseC9S(image="raw", disk_config="lvm"),
+        ]
     if what == "all":
         return [
             klass(image=img)
@@ -135,8 +138,7 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
     if what == "target-arch-smoke":
         return [
             TestCaseC9S(target_arch="arm64"),
-            # TODO: merge with TestCaseFedora once the arches are build there
-            TestCaseFedora42(target_arch="ppc64le"),
-            TestCaseFedora42(target_arch="s390x"),
+            TestCaseFedora(target_arch="ppc64le"),
+            TestCaseFedora(target_arch="s390x"),
         ]
     raise ValueError(f"unknown test-case type {what}")

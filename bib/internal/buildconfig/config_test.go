@@ -184,6 +184,7 @@ func TestReadWithFallbackFromStdin(t *testing.T) {
 	fakeUserCnfPath := makeFakeConfig(t, "fake-stdin", fakeConfigJSON)
 	fakeStdinFp, err := os.Open(fakeUserCnfPath)
 	require.NoError(t, err)
+	// nolint:errcheck
 	defer fakeStdinFp.Close()
 
 	restore := buildconfig.MockOsStdin(fakeStdinFp)

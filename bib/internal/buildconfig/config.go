@@ -87,6 +87,7 @@ func loadConfig(path string) (*externalBlueprint.Blueprint, error) {
 		if err != nil {
 			return nil, err
 		}
+		// nolint:errcheck
 		defer fp.Close()
 	}
 
@@ -98,6 +99,16 @@ func loadConfig(path string) (*externalBlueprint.Blueprint, error) {
 	default:
 		return nil, fmt.Errorf("unsupported file extension for %q", path)
 	}
+}
+
+func LoadConfig(path string) (*imagesBlueprint.Blueprint, error) {
+	externalBp, err := loadConfig(path)
+	if err != nil {
+		return nil, err
+	}
+
+	bp := externalBlueprint.Convert(*externalBp)
+	return &bp, nil
 }
 
 func readWithFallback(userConfig string) (*externalBlueprint.Blueprint, error) {

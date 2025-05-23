@@ -13,6 +13,9 @@ from containerbuild import (
 
 
 def test_progress_debug(tmp_path, build_fake_container):
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
+
     output_path = tmp_path / "output"
     output_path.mkdir(exist_ok=True)
 
@@ -21,7 +24,7 @@ def test_progress_debug(tmp_path, build_fake_container):
         build_fake_container,
         "build",
         "--progress=debug",
-        "quay.io/centos-bootc/centos-bootc:stream9",
+        container_ref,
     ]
     res = subprocess.run(cmdline, capture_output=True, check=True, text=True)
     assert res.stderr.count("Start progressbar") == 1

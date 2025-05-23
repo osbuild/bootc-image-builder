@@ -108,7 +108,7 @@ func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 				{Mountpoint: "/ostree"},
 			},
 			ptmode:      disk.RawPartitioningMode,
-			expectedErr: "The following errors occurred while validating custom mountpoints:\npath \"/ostree\" is not allowed",
+			expectedErr: "the following errors occurred while validating custom mountpoints:\npath \"/ostree\" is not allowed",
 		},
 		{
 			fsCust: []blueprint.FilesystemCustomization{
@@ -116,7 +116,7 @@ func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 				{Mountpoint: "/var"},
 			},
 			ptmode:      disk.RawPartitioningMode,
-			expectedErr: "The following errors occurred while validating custom mountpoints:\npath \"/var\" is not allowed",
+			expectedErr: "the following errors occurred while validating custom mountpoints:\npath \"/var\" is not allowed",
 		},
 		{
 			fsCust: []blueprint.FilesystemCustomization{
@@ -124,7 +124,7 @@ func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 				{Mountpoint: "/var/data"},
 			},
 			ptmode:      disk.BtrfsPartitioningMode,
-			expectedErr: "The following errors occurred while validating custom mountpoints:\npath \"/var/data\" is not allowed",
+			expectedErr: "the following errors occurred while validating custom mountpoints:\npath \"/var/data\" is not allowed",
 		},
 		{
 			fsCust: []blueprint.FilesystemCustomization{
@@ -132,7 +132,7 @@ func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 				{Mountpoint: "/boot/"},
 			},
 			ptmode:      disk.BtrfsPartitioningMode,
-			expectedErr: "The following errors occurred while validating custom mountpoints:\npath \"/boot/\" must be canonical",
+			expectedErr: "the following errors occurred while validating custom mountpoints:\npath \"/boot/\" must be canonical",
 		},
 		{
 			fsCust: []blueprint.FilesystemCustomization{
@@ -141,7 +141,7 @@ func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 				{Mountpoint: "/opt"},
 			},
 			ptmode:      disk.BtrfsPartitioningMode,
-			expectedErr: "The following errors occurred while validating custom mountpoints:\npath \"/boot/\" must be canonical\npath \"/opt\" is not allowed",
+			expectedErr: "the following errors occurred while validating custom mountpoints:\npath \"/boot/\" must be canonical\npath \"/opt\" is not allowed",
 		},
 	} {
 		if tc.expectedErr == "" {
@@ -375,8 +375,9 @@ func findMountableSizeableFor(pt *disk.PartitionTable, needle string) (disk.Moun
 func TestGenPartitionTableSetsRootfsForAllFilesystemsXFS(t *testing.T) {
 	rng := bib.CreateRand()
 
+	a, _ := arch.FromString("amd64")
 	cnf := &bib.ManifestConfig{
-		Architecture: arch.FromString("amd64"),
+		Architecture: a,
 		RootFSType:   "xfs",
 	}
 	cus := &blueprint.Customizations{
@@ -406,8 +407,9 @@ func TestGenPartitionTableSetsRootfsForAllFilesystemsXFS(t *testing.T) {
 func TestGenPartitionTableSetsRootfsForAllFilesystemsBtrfs(t *testing.T) {
 	rng := bib.CreateRand()
 
+	a, _ := arch.FromString("amd64")
 	cnf := &bib.ManifestConfig{
-		Architecture: arch.FromString("amd64"),
+		Architecture: a,
 		RootFSType:   "btrfs",
 	}
 	cus := &blueprint.Customizations{}
@@ -429,8 +431,9 @@ func TestGenPartitionTableSetsRootfsForAllFilesystemsBtrfs(t *testing.T) {
 func TestGenPartitionTableDiskCustomizationRunsValidateLayoutConstraints(t *testing.T) {
 	rng := bib.CreateRand()
 
+	a, _ := arch.FromString("amd64")
 	cnf := &bib.ManifestConfig{
-		Architecture: arch.FromString("amd64"),
+		Architecture: a,
 		RootFSType:   "xfs",
 	}
 	cus := &blueprint.Customizations{
@@ -650,8 +653,9 @@ func TestGenPartitionTableDiskCustomizationSizes(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			a, _ := arch.FromString("amd64")
 			cnf := &bib.ManifestConfig{
-				Architecture:  arch.FromString("amd64"),
+				Architecture:  a,
 				RootFSType:    "xfs",
 				RootfsMinsize: tc.rootfsMinSize,
 			}
