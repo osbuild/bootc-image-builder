@@ -66,13 +66,16 @@ type ManifestConfig struct {
 
 	// use librepo ad the rpm downlaod backend
 	UseLibrepo bool
+
+	// OverrideDefFilename allows specifying a specific distro definition file.
+	OverrideDefFilename string
 }
 
 func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
 	rng := createRand()
 
 	if c.ImageTypes.BuildsISO() {
-		return manifestForISO(c, rng)
+		return manifestForISO(c, rng, c.OverrideDefFilename)
 	}
 	return manifestForDiskImage(c, rng)
 }
@@ -481,13 +484,13 @@ func labelForISO(os *source.OSRelease, arch *arch.Arch) string {
 func needsRHELLoraxTemplates(si source.OSRelease) bool {
 	return si.ID == "rhel" || slices.Contains(si.IDLike, "rhel") || si.VersionID == "eln"
 }
-
-func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, error) {
+func manifestForISO(c *ManifestConfig, rng *rand.Rand, overrideDefFilename string) (*manifest.Manifest, error) {
 	if c.Imgref == "" {
 		return nil, fmt.Errorf("pipeline: no base image defined")
 	}
 
-	imageDef, err := distrodef.LoadImageDef(c.DistroDefPaths, c.SourceInfo.OSRelease.ID, c.SourceInfo.OSRelease.VersionID, "anaconda-iso")
+	// Pass overrideDefFilename to LoadImageDef
+	imageDef, err := distrodef.LoadImageDef(c.DistroDefPaths, c.SourceInfo.OSRelease.ID, c.SourceInfo.OSRelease.VersionID, "anaconda-iso", overrideDefFilename)
 	if err != nil {
 		return nil, err
 	}

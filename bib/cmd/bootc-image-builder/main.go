@@ -205,6 +205,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	rootFs, _ := cmd.Flags().GetString("rootfs")
 	buildImgref, _ := cmd.Flags().GetString("build-container")
 	useLibrepo, _ := cmd.Flags().GetBool("use-librepo")
+	overrideDefFilename, _ := cmd.Flags().GetString("override-distro-def")
 
 	// If --local was given, warn in the case of --local or --local=true (true is the default), error in the case of --local=false
 	if cmd.Flags().Changed("local") {
@@ -330,17 +331,17 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	}
 
 	manifestConfig := &ManifestConfig{
-		Architecture:    cntArch,
-		Config:          config,
-		ImageTypes:      imageTypes,
-		Imgref:          imgref,
-		BuildImgref:     buildImgref,
-		RootfsMinsize:   cntSize * containerSizeToDiskSizeMultiplier,
-		DistroDefPaths:  distroDefPaths,
-		SourceInfo:      sourceinfo,
-		BuildSourceInfo: buildSourceinfo,
-		RootFSType:      rootfsType,
-		UseLibrepo:      useLibrepo,
+		Architecture:        cntArch,
+		Config:              config,
+		ImageTypes:          imageTypes,
+		Imgref:              imgref,
+		RootfsMinsize:       cntSize * containerSizeToDiskSizeMultiplier,
+		DistroDefPaths:      distroDefPaths,
+		SourceInfo:          sourceinfo,
+		RootFSType:          rootfsType,
+		UseLibrepo:          useLibrepo,
+		OverrideDefFilename: overrideDefFilename,
+
 	}
 
 	manifest, repos, err := makeManifest(manifestConfig, solver, rpmCacheRoot)
@@ -695,6 +696,7 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	if err := manifestCmd.Flags().MarkHidden("config"); err != nil {
 		return nil, fmt.Errorf("cannot hide 'config' :%w", err)
 	}
+	manifestCmd.Flags().String("override-distro-def", "", "Override automatic distro definition detection with a specific filename (e.g., 'fedora-40.yaml') found in definition search paths")
 
 	buildCmd.Flags().AddFlagSet(manifestCmd.Flags())
 	buildCmd.Flags().String("aws-ami-name", "", "name for the AMI in AWS (only for type=ami)")
@@ -712,6 +714,9 @@ func buildCobraCmdline() (*cobra.Command, error) {
 		}
 	}
 	if err := buildCmd.MarkFlagFilename("config"); err != nil {
+		return nil, err
+	}
+	if err := buildCmd.MarkFlagFilename("override-distro-def"); err != nil {
 		return nil, err
 	}
 	buildCmd.MarkFlagsRequiredTogether("aws-region", "aws-bucket", "aws-ami-name")
