@@ -35,6 +35,7 @@ class ImageBuildResult(NamedTuple):
     img_path: str
     img_arch: str
     container_ref: str
+    build_container_ref: str
     rootfs: str
     disk_config: str
     username: str
@@ -314,7 +315,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
             bib_output = bib_output_path.read_text(encoding="utf8")
             results.append(ImageBuildResult(
                 image_type, generated_img, tc.target_arch,
-                container_ref, tc.rootfs, tc.disk_config,
+                container_ref, tc.build_container_ref, tc.rootfs, tc.disk_config,
                 username, password,
                 ssh_keyfile_private_path, kargs, bib_output, journal_output))
 
@@ -384,6 +385,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
     upload_args = []
     creds_args = []
     target_arch_args = []
+    build_container_args = []
     if tc.target_arch:
         target_arch_args = ["--target-arch", tc.target_arch]
 
@@ -433,10 +435,16 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
             # Pull the signed image
             testutil.pull_container(container_ref, tls_verify=False)
 
+        if tc.build_container_ref:
+            build_container_args = [
+                "--build-container", tc.build_container_ref,
+            ]
+
         cmd.extend([
             *creds_args,
             build_container,
             container_ref,
+            *build_container_args,
             *types_arg,
             *upload_args,
             *target_arch_args,
@@ -476,7 +484,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
     for image_type in image_types:
         results.append(ImageBuildResult(
             image_type, artifact[image_type], tc.target_arch,
-            container_ref, tc.rootfs, tc.disk_config,
+            container_ref, tc.build_container_ref, tc.rootfs, tc.disk_config,
             username, password,
             ssh_keyfile_private_path, kargs, bib_output, journal_output, metadata))
     yield results
@@ -506,6 +514,12 @@ def test_container_builds(build_container):
 
 @pytest.mark.parametrize("image_type", gen_testcases("multidisk"), indirect=["image_type"])
 def test_image_is_generated(image_type):
+    assert image_type.img_path.exists(), "output file missing, dir "\
+        f"content: {os.listdir(os.fspath(image_type.img_path))}"
+
+
+@pytest.mark.parametrize("image_type", gen_testcases("build-container"), indirect=["image_type"])
+def test_build_container_works(image_type):
     assert image_type.img_path.exists(), "output file missing, dir "\
         f"content: {os.listdir(os.fspath(image_type.img_path))}"
 
