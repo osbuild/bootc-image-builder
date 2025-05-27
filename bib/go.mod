@@ -6,9 +6,9 @@ require (
 	github.com/BurntSushi/toml v1.5.1-0.20250403130103-3d3abc24416a
 	github.com/cheggaaa/pb/v3 v3.1.7
 	github.com/hashicorp/go-version v1.7.0
-	github.com/osbuild/blueprint v1.7.0
+	github.com/osbuild/blueprint v1.8.0
 	github.com/osbuild/image-builder-cli v0.0.0-20250331194259-63bb56e12db3
-	github.com/osbuild/images v0.147.0
+	github.com/osbuild/images v0.148.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
