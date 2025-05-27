@@ -29,7 +29,7 @@ def test_progress_debug(tmp_path, build_fake_container):
     res = subprocess.run(cmdline, capture_output=True, check=True, text=True)
     assert res.stderr.count("Start progressbar") == 1
     assert res.stderr.count("Manifest generation step") == 1
-    assert res.stderr.count("Image building step") == 1
+    assert res.stderr.count("Disk image building step") == 1
     assert res.stderr.count("Build complete") == 1
     assert res.stderr.count("Stop progressbar") == 1
     assert res.stdout.strip() == ""
