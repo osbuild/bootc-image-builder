@@ -468,7 +468,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot save manifest: %w", err)
 	}
 
-	pbar.SetPulseMsgf("Image building step")
+	pbar.SetPulseMsgf("Disk image building step")
 	pbar.SetMessagef("Building %s", manifest_fname)
 
 	var osbuildEnv []string
