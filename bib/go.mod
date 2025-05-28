@@ -8,7 +8,7 @@ require (
 	github.com/hashicorp/go-version v1.7.0
 	github.com/osbuild/blueprint v1.8.0
 	github.com/osbuild/image-builder-cli v0.0.0-20250331194259-63bb56e12db3
-	github.com/osbuild/images v0.148.0
+	github.com/osbuild/images v0.149.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
@@ -30,11 +30,11 @@ require (
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.16.3 // indirect
 	github.com/containerd/typeurl/v2 v2.2.3 // indirect
-	github.com/containers/common v0.62.0 // indirect
-	github.com/containers/image/v5 v5.34.0 // indirect
+	github.com/containers/common v0.62.3 // indirect
+	github.com/containers/image/v5 v5.34.3 // indirect
 	github.com/containers/libtrust v0.0.0-20230121012942-c1716e8a8d01 // indirect
 	github.com/containers/ocicrypt v1.2.1 // indirect
-	github.com/containers/storage v1.57.1 // indirect
+	github.com/containers/storage v1.57.2 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/cyberphone/json-canonicalization v0.0.0-20231217050601-ba74d44ecf5f // indirect
 	github.com/cyphar/filepath-securejoin v0.3.6 // indirect
