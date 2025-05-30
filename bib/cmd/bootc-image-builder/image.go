@@ -205,11 +205,11 @@ func setFSTypes(pt *disk.PartitionTable, rootfs string) error {
 	})
 }
 
-func genPartitionTable(c *ManifestConfig, customizations *blueprint.Customizations, rng *rand.Rand) (*disk.PartitionTable, error) {
+func genPartitionTable(c *ManifestConfig, customizations *blueprint.Customizations, rng *rand.Rand) (*disk.PartitionTable, blueprint.GenerateMounts, error) {
 	fsCust := customizations.GetFilesystems()
 	diskCust, err := customizations.GetPartitioning()
 	if err != nil {
-		return nil, fmt.Errorf("error reading disk customizations: %w", err)
+		return nil, 0, fmt.Errorf("error reading disk customizations: %w", err)
 	}
 
 	// Embedded disk customization applies if there was no local customization
@@ -219,24 +219,28 @@ func genPartitionTable(c *ManifestConfig, customizations *blueprint.Customizatio
 		fsCust = imageCustomizations.GetFilesystems()
 		diskCust, err = imageCustomizations.GetPartitioning()
 		if err != nil {
-			return nil, fmt.Errorf("error reading disk customizations: %w", err)
+			return nil, 0, fmt.Errorf("error reading disk customizations: %w", err)
 		}
 	}
 
 	var partitionTable *disk.PartitionTable
+	var generateMounts blueprint.GenerateMounts = blueprint.GenerateUnits
 	switch {
 	// XXX: move into images library
 	case fsCust != nil && diskCust != nil:
-		return nil, fmt.Errorf("cannot combine disk and filesystem customizations")
+		return nil, 0, fmt.Errorf("cannot combine disk and filesystem customizations")
 	case diskCust != nil:
+		if diskCust.GenerateMounts != nil {
+			generateMounts = *diskCust.GenerateMounts
+		}
 		partitionTable, err = genPartitionTableDiskCust(c, diskCust, rng)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 	default:
 		partitionTable, err = genPartitionTableFsCust(c, fsCust, rng)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 	}
 
@@ -251,7 +255,7 @@ func genPartitionTable(c *ManifestConfig, customizations *blueprint.Customizatio
 		}
 	}
 
-	return partitionTable, nil
+	return partitionTable, generateMounts, nil
 }
 
 // calcRequiredDirectorySizes will calculate the minimum sizes for /
@@ -418,11 +422,12 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		img.KernelOptionsAppend = append(img.KernelOptionsAppend, kopts.Append)
 	}
 
-	pt, err := genPartitionTable(c, customizations, rng)
+	pt, genMounts, err := genPartitionTable(c, customizations, rng)
 	if err != nil {
 		return nil, err
 	}
 	img.PartitionTable = pt
+	img.GenerateMounts = genMounts
 
 	// Check Directory/File Customizations are valid
 	dc := customizations.GetDirectories()
