@@ -250,7 +250,7 @@ directory to the container
 For example:
 
 ```bash
- $ sudo podman run \
+$ sudo podman run \
   --rm \
   -it \
   --privileged \
