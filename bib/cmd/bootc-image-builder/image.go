@@ -589,6 +589,12 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.RootfsType = manifest.SquashfsRootfs
 	img.Filename = "install.iso"
 
+	installRootfsType, err := disk.NewFSType(c.RootFSType)
+	if err != nil {
+		return nil, err
+	}
+	img.InstallRootfsType = installRootfsType
+
 	mf := manifest.New()
 
 	foundDistro, foundRunner, err := getDistroAndRunner(c.SourceInfo.OSRelease)
