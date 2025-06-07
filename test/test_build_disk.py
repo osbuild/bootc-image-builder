@@ -2,8 +2,10 @@ import json
 import os
 import pathlib
 import platform
+import random
 import re
 import shutil
+import string
 import subprocess
 import tempfile
 import uuid
@@ -256,7 +258,9 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
     image_types = request.param.image.split("+")
 
     username = "test"
-    password = "password"
+    # use 18 char random password
+    password = "".join(
+        random.choices(string.ascii_uppercase + string.digits, k=18))
     kargs = "systemd.journald.forward_to_console=1"
 
     container_ref = tc.container_ref
@@ -375,10 +379,13 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
     }
     testutil.maybe_create_filesystem_customizations(cfg, tc)
     testutil.maybe_create_disk_customizations(cfg, tc)
-    print(f"config for {output_path} {tc=}: {cfg=}")
 
     config_json_path = output_path / "config.json"
     config_json_path.write_text(json.dumps(cfg), encoding="utf-8")
+    # mask pw
+    for user in cfg["customizations"]["user"]:
+        user["password"] = "***"
+    print(f"config for {output_path} {tc=}: {cfg=}")
 
     cursor = testutil.journal_cursor()
 
