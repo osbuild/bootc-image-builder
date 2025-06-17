@@ -127,4 +127,13 @@ var partitionTables = distro.BasePartitionTableMap{
 			rootPartition,
 		},
 	},
+	arch.ARCH_RISCV64.String(): disk.PartitionTable{
+		UUID: diskUuidOfUnknownOrigin,
+		Type: disk.PT_GPT,
+		Partitions: []disk.Partition{
+			efiPartition,
+			bootPartition,
+			rootPartition,
+		},
+	},
 }
