@@ -211,6 +211,9 @@ var diskContainers = map[string][]container.Spec{
 	"image": {
 		containerSpec,
 	},
+	"target": {
+		containerSpec,
+	},
 }
 
 // TODO: this tests at this layer is not ideal, it has too much knowledge
