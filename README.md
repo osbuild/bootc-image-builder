@@ -123,6 +123,7 @@ Usage:
     --pull=newer \
     --security-opt label=type:unconfined_t \
     -v ./output:/output \
+    -v /var/lib/containers/storage:/var/lib/containers/storage \
     quay.io/centos-bootc/bootc-image-builder:latest \
     <imgref>
 
@@ -249,13 +250,14 @@ directory to the container
 For example:
 
 ```bash
- $ sudo podman run \
+$ sudo podman run \
   --rm \
   -it \
   --privileged \
   --pull=newer \
   --security-opt label=type:unconfined_t \
   -v $HOME/.aws:/root/.aws:ro \
+  -v /var/lib/containers/storage:/var/lib/containers/storage \
   --env AWS_PROFILE=default \
   quay.io/centos-bootc/bootc-image-builder:latest \
   --type ami \
@@ -295,6 +297,7 @@ $ sudo podman run \
   --privileged \
   --pull=newer \
   --security-opt label=type:unconfined_t \
+  -v /var/lib/containers/storage:/var/lib/containers/storage \
   --env-file=aws.secrets \
   quay.io/centos-bootc/bootc-image-builder:latest \
   --type ami \
@@ -341,6 +344,7 @@ sudo podman run \
     --security-opt label=type:unconfined_t \
     -v ./config.toml:/config.toml:ro \
     -v ./output:/output \
+    -v /var/lib/containers/storage:/var/lib/containers/storage \
     quay.io/centos-bootc/bootc-image-builder:latest \
     --type qcow2 \
     quay.io/centos-bootc/centos-bootc:stream9
