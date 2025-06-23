@@ -98,7 +98,9 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
             # a bit more stable
             # TestCaseFedora(image="anaconda-iso", sign=True),
             TestCaseC9S(image="anaconda-iso"),
-            TestCaseC10S(image="anaconda-iso"),
+            # 2025-06-23: disable because of:
+            # https://github.com/osbuild/bootc-image-builder/issues/965
+            # TestCaseC10S(image="anaconda-iso"),
         ]
     if what == "qemu-cross":
         test_cases = []
