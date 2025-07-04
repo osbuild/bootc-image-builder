@@ -426,6 +426,11 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
             "-v", "/var/tmp/osbuild-test-store:/store",  # share the cache between builds
             "-v", "/var/lib/containers/storage:/var/lib/containers/storage",  # mount the host's containers storage
         ]
+        if tc.target_arch:
+            # help debug cross-arch issues by making qemu-user print
+            cmd.extend(
+                ["--env", "OSBUILD_EXPERIMENTAL=debug-qemu-user"])
+
         if tc.podman_terminal:
             cmd.append("-t")
 
