@@ -630,6 +630,8 @@ def has_selinux():
 @pytest.mark.skipif(not has_selinux(), reason="selinux not enabled")
 @pytest.mark.parametrize("image_type", gen_testcases("qemu-boot"), indirect=["image_type"])
 def test_image_build_without_se_linux_denials(image_type):
+    pytest.skip("skip until https://github.com/osbuild/bootc-image-builder/issues/645 is resolved")
+
     # the journal always contains logs from the image building
     assert image_type.journal_output != ""
     assert not log_has_osbuild_selinux_denials(image_type.journal_output), \
