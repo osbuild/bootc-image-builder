@@ -12,6 +12,8 @@ prepare:
   package:
     - edk2-aarch64
     - osbuild-depsolve-dnf
+    - osbuild-lvm2
+    - osbuild-ostree
     - podman
     - pytest
     - python3-boto3
