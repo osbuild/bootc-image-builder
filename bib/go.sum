@@ -239,8 +239,8 @@ github.com/osbuild/blueprint v1.9.0 h1:YFFtaxYWrcjgNZ9yeb4AxiPv6zk+ywQwbA671A0gl
 github.com/osbuild/blueprint v1.9.0/go.mod h1:LfxBgOupiH6h6dfFHAkHK9Kpj9Yd7cSHnQd6zIiuKlc=
 github.com/osbuild/image-builder-cli v0.0.0-20250331194259-63bb56e12db3 h1:M3yYunKH4quwJLQrnFo7dEwCTKorafNC+AUqAo7m5Yo=
 github.com/osbuild/image-builder-cli v0.0.0-20250331194259-63bb56e12db3/go.mod h1:0sEmiQiMo1ChSuOoeONN0RmsoZbQEvj2mlO2448gC5w=
-github.com/osbuild/images v0.154.0 h1:iwQ1rW+xwVYciyWQ/v0XBFx/liG8hTUtie3ZHeGr5gs=
-github.com/osbuild/images v0.154.0/go.mod h1:74L03u6qLwsYA10qGj6n55lBXCCj5wZLXlFl8Pj3ilI=
+github.com/osbuild/images v0.155.0 h1:raBM5r6bdO/l2L2RzZ/4EWKEY0WmOsYTfEbbn2k14Yg=
+github.com/osbuild/images v0.155.0/go.mod h1:74L03u6qLwsYA10qGj6n55lBXCCj5wZLXlFl8Pj3ilI=
 github.com/ostreedev/ostree-go v0.0.0-20210805093236-719684c64e4f h1:/UDgs8FGMqwnHagNDPGOlts35QkhAZ8by3DR7nMih7M=
 github.com/ostreedev/ostree-go v0.0.0-20210805093236-719684c64e4f/go.mod h1:J6OG6YJVEWopen4avK3VNQSnALmmjvniMmni/YFYAwc=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
