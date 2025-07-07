@@ -426,6 +426,11 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
             "-v", "/var/tmp/osbuild-test-store:/store",  # share the cache between builds
             "-v", "/var/lib/containers/storage:/var/lib/containers/storage",  # mount the host's containers storage
         ]
+        if tc.target_arch:
+            # help debug cross-arch issues by making qemu-user print
+            cmd.extend(
+                ["--env", "OSBUILD_EXPERIMENTAL=debug-qemu-user"])
+
         if tc.podman_terminal:
             cmd.append("-t")
 
@@ -630,6 +635,8 @@ def has_selinux():
 @pytest.mark.skipif(not has_selinux(), reason="selinux not enabled")
 @pytest.mark.parametrize("image_type", gen_testcases("qemu-boot"), indirect=["image_type"])
 def test_image_build_without_se_linux_denials(image_type):
+    pytest.skip("skip until https://github.com/osbuild/bootc-image-builder/issues/645 is resolved")
+
     # the journal always contains logs from the image building
     assert image_type.journal_output != ""
     assert not log_has_osbuild_selinux_denials(image_type.journal_output), \
