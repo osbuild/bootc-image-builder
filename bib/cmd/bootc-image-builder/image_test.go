@@ -15,8 +15,7 @@ import (
 	"github.com/osbuild/images/pkg/runner"
 
 	bib "github.com/osbuild/bootc-image-builder/bib/cmd/bootc-image-builder"
-	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
-	"github.com/osbuild/bootc-image-builder/bib/internal/source"
+	"github.com/osbuild/images/pkg/bib/osinfo"
 )
 
 func TestGetDistroAndRunner(t *testing.T) {
@@ -46,7 +45,7 @@ func TestGetDistroAndRunner(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("%s-%s", c.id, c.versionID), func(t *testing.T) {
-			osRelease := source.OSRelease{
+			osRelease := osinfo.OSRelease{
 				ID:        c.id,
 				VersionID: c.versionID,
 			}
@@ -685,7 +684,7 @@ func TestGenPartitionTableDiskCustomizationSizes(t *testing.T) {
 func TestManifestFilecustomizationsSad(t *testing.T) {
 	config := getBaseConfig()
 	config.ImageTypes = []string{"qcow2"}
-	config.Config = &buildconfig.BuildConfig{
+	config.Config = &blueprint.Blueprint{
 		Customizations: &blueprint.Customizations{
 			Files: []blueprint.FileCustomization{
 				{
@@ -703,7 +702,7 @@ func TestManifestFilecustomizationsSad(t *testing.T) {
 func TestManifestDirCustomizationsSad(t *testing.T) {
 	config := getBaseConfig()
 	config.ImageTypes = []string{"qcow2"}
-	config.Config = &buildconfig.BuildConfig{
+	config.Config = &blueprint.Blueprint{
 		Customizations: &blueprint.Customizations{
 			Directories: []blueprint.DirectoryCustomization{
 				{

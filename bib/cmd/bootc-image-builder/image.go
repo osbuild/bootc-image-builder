@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/osbuild/images/pkg/arch"
+	"github.com/osbuild/images/pkg/bib/osinfo"
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/container"
 	"github.com/osbuild/images/pkg/customizations/anaconda"
@@ -28,10 +29,8 @@ import (
 	"github.com/osbuild/images/pkg/runner"
 	"github.com/sirupsen/logrus"
 
-	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
 	"github.com/osbuild/bootc-image-builder/bib/internal/distrodef"
 	"github.com/osbuild/bootc-image-builder/bib/internal/imagetypes"
-	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 )
 
 // TODO: Auto-detect this from container image metadata
@@ -45,7 +44,7 @@ type ManifestConfig struct {
 	ImageTypes imagetypes.ImageTypes
 
 	// Build config
-	Config *buildconfig.BuildConfig
+	Config *blueprint.Blueprint
 
 	// CPU architecture of the image
 	Architecture arch.Arch
@@ -58,8 +57,8 @@ type ManifestConfig struct {
 	DistroDefPaths []string
 
 	// Extracted information about the source container image
-	SourceInfo      *source.Info
-	BuildSourceInfo *source.Info
+	SourceInfo      *osinfo.Info
+	BuildSourceInfo *osinfo.Info
 
 	// RootFSType specifies the filesystem type for the root partition
 	RootFSType string
@@ -460,7 +459,7 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 	return &mf, nil
 }
 
-func labelForISO(os *source.OSRelease, arch *arch.Arch) string {
+func labelForISO(os *osinfo.OSRelease, arch *arch.Arch) string {
 	switch os.ID {
 	case "fedora":
 		return fmt.Sprintf("Fedora-S-dvd-%s-%s", arch, os.VersionID)
@@ -478,7 +477,7 @@ func labelForISO(os *source.OSRelease, arch *arch.Arch) string {
 	}
 }
 
-func needsRHELLoraxTemplates(si source.OSRelease) bool {
+func needsRHELLoraxTemplates(si osinfo.OSRelease) bool {
 	return si.ID == "rhel" || slices.Contains(si.IDLike, "rhel") || si.VersionID == "eln"
 }
 
@@ -607,7 +606,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	return &mf, err
 }
 
-func getDistroAndRunner(osRelease source.OSRelease) (manifest.Distro, runner.Runner, error) {
+func getDistroAndRunner(osRelease osinfo.OSRelease) (manifest.Distro, runner.Runner, error) {
 	switch osRelease.ID {
 	case "fedora":
 		version, err := strconv.ParseUint(osRelease.VersionID, 10, 64)

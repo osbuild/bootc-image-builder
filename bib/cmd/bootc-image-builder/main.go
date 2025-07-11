@@ -19,6 +19,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/osbuild/images/pkg/arch"
+	"github.com/osbuild/images/pkg/bib/blueprintload"
 	"github.com/osbuild/images/pkg/cloud"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 	"github.com/osbuild/images/pkg/container"
@@ -28,10 +29,9 @@ import (
 	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/rpmmd"
 
-	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
-	podman_container "github.com/osbuild/bootc-image-builder/bib/internal/container"
 	"github.com/osbuild/bootc-image-builder/bib/internal/imagetypes"
-	"github.com/osbuild/bootc-image-builder/bib/internal/source"
+	podman_container "github.com/osbuild/images/pkg/bib/container"
+	"github.com/osbuild/images/pkg/bib/osinfo"
 
 	"github.com/osbuild/image-builder-cli/pkg/progress"
 	"github.com/osbuild/image-builder-cli/pkg/setup"
@@ -246,7 +246,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 		return nil, nil, fmt.Errorf("cannot detect build types %v: %w", imgTypes, err)
 	}
 
-	config, err := buildconfig.ReadWithFallback(userConfigFile)
+	config, err := blueprintload.LoadWithFallback(userConfigFile)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot read config: %w", err)
 	}
@@ -286,7 +286,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	}
 
 	// Gather some data from the containers distro
-	sourceinfo, err := source.LoadInfo(container.Root())
+	sourceinfo, err := osinfo.Load(container.Root())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -310,7 +310,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 		startedBuildContainer = true
 
 		// Gather some data from the containers distro
-		buildSourceinfo, err = source.LoadInfo(buildContainer.Root())
+		buildSourceinfo, err = osinfo.Load(buildContainer.Root())
 		if err != nil {
 			return nil, nil, err
 		}
