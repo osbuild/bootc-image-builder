@@ -369,15 +369,15 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 	}
 
 	img := image.NewBootcDiskImage(containerSource, buildContainerSource)
-	img.Users = users.UsersFromBP(customizations.GetUsers())
-	img.Groups = users.GroupsFromBP(customizations.GetGroups())
-	img.SELinux = c.SourceInfo.SELinuxPolicy
-	img.BuildSELinux = img.SELinux
+	img.OSCustomizations.Users = users.UsersFromBP(customizations.GetUsers())
+	img.OSCustomizations.Groups = users.GroupsFromBP(customizations.GetGroups())
+	img.OSCustomizations.SELinux = c.SourceInfo.SELinuxPolicy
+	img.OSCustomizations.BuildSELinux = img.OSCustomizations.SELinux
 	if c.BuildSourceInfo != nil {
-		img.BuildSELinux = c.BuildSourceInfo.SELinuxPolicy
+		img.OSCustomizations.BuildSELinux = c.BuildSourceInfo.SELinuxPolicy
 	}
 
-	img.KernelOptionsAppend = []string{
+	img.OSCustomizations.KernelOptionsAppend = []string{
 		"rw",
 		// TODO: Drop this as we expect kargs to come from the container image,
 		// xref https://github.com/CentOS/centos-bootc-layered/blob/main/cloud/usr/lib/bootc/install/05-cloud-kargs.toml
@@ -415,7 +415,7 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 	}
 
 	if kopts := customizations.GetKernel(); kopts != nil && kopts.Append != "" {
-		img.KernelOptionsAppend = append(img.KernelOptionsAppend, kopts.Append)
+		img.OSCustomizations.KernelOptionsAppend = append(img.OSCustomizations.KernelOptionsAppend, kopts.Append)
 	}
 
 	pt, err := genPartitionTable(c, customizations, rng)
@@ -436,11 +436,11 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 	if err := blueprint.CheckFileCustomizationsPolicy(fc, policies.OstreeCustomFilesPolicies); err != nil {
 		return nil, err
 	}
-	img.Files, err = blueprint.FileCustomizationsToFsNodeFiles(fc)
+	img.OSCustomizations.Files, err = blueprint.FileCustomizationsToFsNodeFiles(fc)
 	if err != nil {
 		return nil, err
 	}
-	img.Directories, err = blueprint.DirectoryCustomizationsToFsNodeDirectories(dc)
+	img.OSCustomizations.Directories, err = blueprint.DirectoryCustomizationsToFsNodeDirectories(dc)
 	if err != nil {
 		return nil, err
 	}
