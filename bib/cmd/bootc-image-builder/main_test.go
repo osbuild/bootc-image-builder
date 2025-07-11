@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/osbuild/images/pkg/arch"
+	"github.com/osbuild/images/pkg/bib/osinfo"
 	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/container"
 	"github.com/osbuild/images/pkg/dnfjson"
@@ -22,9 +23,7 @@ import (
 	"github.com/osbuild/images/pkg/rpmmd"
 
 	main "github.com/osbuild/bootc-image-builder/bib/cmd/bootc-image-builder"
-	"github.com/osbuild/bootc-image-builder/bib/internal/buildconfig"
 	"github.com/osbuild/bootc-image-builder/bib/internal/imagetypes"
-	"github.com/osbuild/bootc-image-builder/bib/internal/source"
 )
 
 func TestCanChownInPathHappy(t *testing.T) {
@@ -75,8 +74,8 @@ func getBaseConfig() *main.ManifestConfig {
 	return &main.ManifestConfig{
 		Architecture: arch.ARCH_X86_64,
 		Imgref:       "testempty",
-		SourceInfo: &source.Info{
-			OSRelease: source.OSRelease{
+		SourceInfo: &osinfo.Info{
+			OSRelease: osinfo.OSRelease{
 				ID:         "fedora",
 				VersionID:  "40",
 				Name:       "Fedora Linux",
@@ -100,7 +99,7 @@ func getUserConfig() *main.ManifestConfig {
 	return &main.ManifestConfig{
 		Architecture: arch.ARCH_X86_64,
 		Imgref:       "testuser",
-		Config: &buildconfig.BuildConfig{
+		Config: &blueprint.Blueprint{
 			Customizations: &blueprint.Customizations{
 				User: []blueprint.UserCustomization{
 					{
@@ -111,8 +110,8 @@ func getUserConfig() *main.ManifestConfig {
 				},
 			},
 		},
-		SourceInfo: &source.Info{
-			OSRelease: source.OSRelease{
+		SourceInfo: &osinfo.Info{
+			OSRelease: osinfo.OSRelease{
 				ID:         "fedora",
 				VersionID:  "40",
 				Name:       "Fedora Linux",
