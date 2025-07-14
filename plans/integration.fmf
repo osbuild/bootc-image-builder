@@ -33,7 +33,8 @@ execute:
     echo "Install test requirements"
     pip install --user -r test/requirements.txt
     echo "Run tests"
-    pytest --force-aws-upload
+    # mvo:2025-07-14: disabled AWS upload test until we add back the credentials
+    pytest  # --force-aws-upload
   duration: 4h
 finish:
   how: shell
