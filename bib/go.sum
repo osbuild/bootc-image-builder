@@ -237,8 +237,8 @@ github.com/opencontainers/selinux v1.12.0 h1:6n5JV4Cf+4y0KNXW48TLj5DwfXpvWlxXplU
 github.com/opencontainers/selinux v1.12.0/go.mod h1:BTPX+bjVbWGXw7ZZWUbdENt8w0htPSrlgOOysQaU62U=
 github.com/osbuild/blueprint v1.10.0 h1:6TG+mSV5kUA3Vq+0fc10MchDilBcDd8SEA8KbDFUn2w=
 github.com/osbuild/blueprint v1.10.0/go.mod h1:uknOfX/bAoi+dbeNJj+uAir1T++/LVEtoY8HO3U7MiQ=
-github.com/osbuild/image-builder-cli v0.0.0-20250331194259-63bb56e12db3 h1:M3yYunKH4quwJLQrnFo7dEwCTKorafNC+AUqAo7m5Yo=
-github.com/osbuild/image-builder-cli v0.0.0-20250331194259-63bb56e12db3/go.mod h1:0sEmiQiMo1ChSuOoeONN0RmsoZbQEvj2mlO2448gC5w=
+github.com/osbuild/image-builder-cli v0.0.0-20250717064530-e8b52d7a31f8 h1:CbX/6bEGgAmxduGCmSRClTvNoqtXbCjz63buvJyk1fc=
+github.com/osbuild/image-builder-cli v0.0.0-20250717064530-e8b52d7a31f8/go.mod h1:ZQgbbpKfok2LjvhGgtc47q9akTJbccrRjYk2bC6U3v4=
 github.com/osbuild/images v0.163.0 h1:JPA8DY5rAr8qcmfSH5CHFl7HPtcc0G7gvw13C2M0NGc=
 github.com/osbuild/images v0.163.0/go.mod h1:/akyaFWxh7IN0ezlXB+6F4N/rKi/Vod1RAh8XLNzCKE=
 github.com/ostreedev/ostree-go v0.0.0-20210805093236-719684c64e4f h1:/UDgs8FGMqwnHagNDPGOlts35QkhAZ8by3DR7nMih7M=
