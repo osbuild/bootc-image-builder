@@ -411,7 +411,15 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 			},
 			BIOS: true,
 		}
+	case arch.ARCH_RISCV64:
+		img.Platform = &platform.RISCV64{
+			UEFIVendor: "fedora",
+			BasePlatform: platform.BasePlatform{
+				QCOW2Compat: "1.1",
+			},
+		}
 	}
+	
 
 	if kopts := customizations.GetKernel(); kopts != nil && kopts.Append != "" {
 		img.OSCustomizations.KernelOptionsAppend = append(img.OSCustomizations.KernelOptionsAppend, kopts.Append)
@@ -580,6 +588,13 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 			BasePlatform: platform.BasePlatform{
 				ImageFormat: platform.FORMAT_ISO,
 			},
+		}
+	case arch.ARCH_RISCV64:
+		img.Platform = &platform.RISCV64{
+			BasePlatform: platform.BasePlatform{
+				ImageFormat: platform.FORMAT_ISO,
+			},
+			UEFIVendor: c.SourceInfo.UEFIVendor,
 		}
 	default:
 		return nil, fmt.Errorf("unsupported architecture %v", c.Architecture)
