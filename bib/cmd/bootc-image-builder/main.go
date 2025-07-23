@@ -26,6 +26,7 @@ import (
 	"github.com/osbuild/images/pkg/dnfjson"
 	"github.com/osbuild/images/pkg/experimentalflags"
 	"github.com/osbuild/images/pkg/manifest"
+	"github.com/osbuild/images/pkg/manifestgen/manifestmock"
 	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/rpmmd"
 
@@ -140,20 +141,24 @@ func makeManifest(c *ManifestConfig, solver *dnfjson.Solver, cacheRoot string) (
 	resolver := container.NewResolver(c.Architecture.String())
 
 	containerSpecs := make(map[string][]container.Spec)
-	for plName, sourceSpecs := range mani.GetContainerSourceSpecs() {
-		for _, c := range sourceSpecs {
-			resolver.Add(c)
-		}
-		specs, err := resolver.Finish()
-		if err != nil {
-			return nil, nil, fmt.Errorf("cannot resolve containers: %w", err)
-		}
-		for _, spec := range specs {
-			if spec.Arch != c.Architecture {
-				return nil, nil, fmt.Errorf("image found is for unexpected architecture %q (expected %q), if that is intentional, please make sure --target-arch matches", spec.Arch, c.Architecture)
+	if experimentalflags.Bool("bib-mock-resolvers") {
+		containerSpecs = manifestmock.ResolveContainers(mani.GetContainerSourceSpecs())
+	} else {
+		for plName, sourceSpecs := range mani.GetContainerSourceSpecs() {
+			for _, c := range sourceSpecs {
+				resolver.Add(c)
 			}
+			specs, err := resolver.Finish()
+			if err != nil {
+				return nil, nil, fmt.Errorf("cannot resolve containers: %w", err)
+			}
+			for _, spec := range specs {
+				if spec.Arch != c.Architecture {
+					return nil, nil, fmt.Errorf("image found is for unexpected architecture %q (expected %q), if that is intentional, please make sure --target-arch matches", spec.Arch, c.Architecture)
+				}
+			}
+			containerSpecs[plName] = specs
 		}
-		containerSpecs[plName] = specs
 	}
 
 	var opts manifest.SerializeOptions
