@@ -279,8 +279,8 @@ github.com/sigstore/protobuf-specs v0.4.1 h1:5SsMqZbdkcO/DNHudaxuCUEjj6x29tS2Xby
 github.com/sigstore/protobuf-specs v0.4.1/go.mod h1:+gXR+38nIa2oEupqDdzg4qSBT0Os+sP7oYv6alWewWc=
 github.com/sigstore/rekor v1.3.10 h1:/mSvRo4MZ/59ECIlARhyykAlQlkmeAQpvBPlmJtZOCU=
 github.com/sigstore/rekor v1.3.10/go.mod h1:JvryKJ40O0XA48MdzYUPu0y4fyvqt0C4iSY7ri9iu3A=
-github.com/sigstore/sigstore v1.9.3 h1:y2qlTj+vh+Or3ictKuR3JUFawZPdDxAjrWkeFhon0OQ=
-github.com/sigstore/sigstore v1.9.3/go.mod h1:VwYkiw0G0dRtwL25KSs04hCyVFF6CYMd/qvNeYrl7EQ=
+github.com/sigstore/sigstore v1.9.5 h1:Wm1LT9yF4LhQdEMy5A2JeGRHTrAWGjT3ubE5JUSrGVU=
+github.com/sigstore/sigstore v1.9.5/go.mod h1:VtxgvGqCmEZN9X2zhFSOkfXxvKUjpy8RpUW39oCtoII=
 github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ=
 github.com/sirupsen/logrus v1.9.3/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
 github.com/smallstep/pkcs7 v0.1.1 h1:x+rPdt2W088V9Vkjho4KtoggyktZJlMduZAtRHm68LU=
