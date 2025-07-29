@@ -1,0 +1,54 @@
+#!/usr/bin/bash
+#
+# Generates mock manifests (i.e. without real resolved content)
+# XXX: copied from the images library, this is temporary until
+# all image manifest generation for bib moves into "images" itself.
+
+set -euo pipefail
+
+tmpdir="$(mktemp -d)"
+cleanup() {
+    rm -r "${tmpdir}"
+}
+trap cleanup EXIT
+
+manifests_dir="${1:-test/data/manifests}"
+# XXX: we look into the image so we need a real bootc container
+# available, this is not ideal
+bootc_ref="${2:-quay.io/centos-bootc/centos-bootc:stream9}"
+refp=$(echo $bootc_ref | sed s#/#_#g)
+
+if [ "$manifests_dir" = "" ]; then
+    echo "need a manifests dir as first argument"
+    exit 1
+fi
+mkdir -p "$manifests_dir"
+
+export OSBUILD_TESTING_RNG_SEED=0
+export IMAGE_BUILDER_EXPERIMENTAL=bib-mock-resolvers
+
+echo "Checking if bib compiles"
+if ! (cd bib && go build -v -o "${tmpdir}/bin/" ./cmd/bootc-image-builder); then
+    echo "Failed to compile bootc-image-builder. Skipping..."
+    exit 0
+fi
+
+echo "Generating mock manifests"
+podman pull "$bootc_ref"
+# xxx: more arches?
+for arch in x86_64 aarch64; do
+    # XXX: add anaconda-iso once we can mock it too
+    for imgtype in ami qcow2 vmdk raw vhd gce; do
+	if ! "${tmpdir}/bin/bootc-image-builder" \
+	     manifest -v "$bootc_ref" \
+	     --target-arch "$arch" \
+	     --type "$imgtype" \
+	     2> "${tmpdir}/stderr" \
+	     | jq > "$manifests_dir/manifest-$refp-$arch-$imgtype.json"; then
+	    cat "${tmpdir}/stderr"
+	    exit 1
+	fi
+    done
+done
+
+echo "Manifests saved to ${manifests_dir}"
