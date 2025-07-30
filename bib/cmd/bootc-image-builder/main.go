@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,14 +21,20 @@ import (
 
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/bib/blueprintload"
+	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/cloud"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 	"github.com/osbuild/images/pkg/container"
+	"github.com/osbuild/images/pkg/distro"
+	"github.com/osbuild/images/pkg/distro/generic"
 	"github.com/osbuild/images/pkg/dnfjson"
 	"github.com/osbuild/images/pkg/experimentalflags"
+	"github.com/osbuild/images/pkg/imagefilter"
 	"github.com/osbuild/images/pkg/manifest"
+	"github.com/osbuild/images/pkg/manifestgen"
 	"github.com/osbuild/images/pkg/manifestgen/manifestmock"
 	"github.com/osbuild/images/pkg/osbuild"
+	"github.com/osbuild/images/pkg/reporegistry"
 	"github.com/osbuild/images/pkg/rpmmd"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/imagetypes"
@@ -189,6 +196,40 @@ func saveManifest(ms manifest.OSBuildManifest, fpath string) (err error) {
 	return nil
 }
 
+func makeManifestForDisk(bootcRef, imgTypeStr, archStr string, bp blueprint.Blueprint) ([]byte, *mTLSConfig, error) {
+	imgType, err := generic.ImageFromBootc(bootcRef, imgTypeStr, archStr)
+	if err != nil {
+		return nil, nil, err
+	}
+	img := &imagefilter.Result{imgType.Arch().Distro(), imgType.Arch(), imgType}
+	var buf bytes.Buffer
+	randSeed := randSeed()
+	manifestGenOpts := &manifestgen.Options{
+		Output: &buf,
+		// XXX: hack to shut up manifestgen about missing repos
+		OverrideRepos: []rpmmd.RepoConfig{},
+		// use our own randSeed helper so that we honor OSBUILD_TESTING_RNG_SEED
+		CustomSeed: &randSeed,
+	}
+	repos := &reporegistry.RepoRegistry{}
+	mg, err := manifestgen.New(repos, manifestGenOpts)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	imgOpts := &distro.ImageOptions{
+		Bootc: &distro.BootcRef{
+			Imgref: &bootcRef,
+			// XXX: add BuildImgref
+		},
+	}
+	if err := mg.Generate(&bp, img.Distro, img.ImgType, img.Arch, imgOpts); err != nil {
+		return nil, nil, err
+	}
+
+	return buf.Bytes(), nil, nil
+}
+
 // manifestFromCobra generate an osbuild manifest from a cobra commandline.
 //
 // It takes an unstarted progres bar and will start it at the right
@@ -263,6 +304,16 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 		return nil, nil, err
 	}
 
+	// For now shortcircut here and build ding "images" for anything
+	// that is not the iso
+	if !imageTypes.BuildsISO() {
+		return makeManifestForDisk(imgref, imgTypes[0], cntArch.String(), blueprint.Blueprint(*config))
+	}
+
+	// XXX: this is all for iso now
+	// XXX2: port everything we have here so that it works the
+	// same with the "images" library, i.e. all tests should
+	// pass
 	cntSize, err := getContainerSize(imgref)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot get container size: %w", err)
