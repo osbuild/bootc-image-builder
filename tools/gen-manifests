@@ -35,8 +35,8 @@ fi
 
 echo "Generating mock manifests"
 podman pull "$bootc_ref"
-# xxx: more arches?
-for arch in x86_64 aarch64; do
+
+for arch in x86_64 aarch64 ppc64le s390x; do
     # XXX: add anaconda-iso once we can mock it too
     for imgtype in ami qcow2 vmdk raw vhd gce; do
 	if ! "${tmpdir}/bin/bootc-image-builder" \
