@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/big"
 	"math/rand"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -667,13 +668,23 @@ func getDistroAndRunner(osRelease osinfo.OSRelease) (manifest.Distro, runner.Run
 	return manifest.DISTRO_NULL, &runner.Linux{}, nil
 }
 
-func createRand() *rand.Rand {
-	seed, err := cryptorand.Int(cryptorand.Reader, big.NewInt(math.MaxInt64))
-	if err != nil {
-		panic("Cannot generate an RNG seed.")
-	}
+// XXX: copied from images:internal/cmdutil/rand.go
+const RNG_SEED_ENV_KEY = "OSBUILD_TESTING_RNG_SEED"
 
+func createRand() *rand.Rand {
+	if envSeedStr := os.Getenv(RNG_SEED_ENV_KEY); envSeedStr != "" {
+		envSeedInt, err := strconv.ParseInt(envSeedStr, 10, 64)
+		if err != nil {
+			panic(fmt.Errorf("failed to parse %s: %s", RNG_SEED_ENV_KEY, err))
+		}
+		fmt.Fprintf(os.Stderr, "TEST MODE: using rng seed %d\n", envSeedInt)
+		return rand.New(rand.NewSource(envSeedInt))
+	}
+	randSeed, err := cryptorand.Int(cryptorand.Reader, big.NewInt(math.MaxInt64))
+	if err != nil {
+		panic(fmt.Errorf("failed to generate random seed: %s", err))
+	}
 	// math/rand is good enough in this case
 	/* #nosec G404 */
-	return rand.New(rand.NewSource(seed.Int64()))
+	return rand.New(rand.NewSource(randSeed.Int64()))
 }
