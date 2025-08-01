@@ -207,8 +207,8 @@ github.com/opencontainers/runtime-spec v1.2.1 h1:S4k4ryNgEpxW1dzyqffOmhI1BHYcjzU
 github.com/opencontainers/runtime-spec v1.2.1/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
 github.com/opencontainers/selinux v1.12.0 h1:6n5JV4Cf+4y0KNXW48TLj5DwfXpvWlxXplUkdTrmPb8=
 github.com/opencontainers/selinux v1.12.0/go.mod h1:BTPX+bjVbWGXw7ZZWUbdENt8w0htPSrlgOOysQaU62U=
-github.com/osbuild/blueprint v1.10.0 h1:6TG+mSV5kUA3Vq+0fc10MchDilBcDd8SEA8KbDFUn2w=
-github.com/osbuild/blueprint v1.10.0/go.mod h1:uknOfX/bAoi+dbeNJj+uAir1T++/LVEtoY8HO3U7MiQ=
+github.com/osbuild/blueprint v1.11.0 h1:Crqt+RRSE84JOoajzTIGrQaXXxnAgGUCDYe3nump54g=
+github.com/osbuild/blueprint v1.11.0/go.mod h1:uknOfX/bAoi+dbeNJj+uAir1T++/LVEtoY8HO3U7MiQ=
 github.com/osbuild/image-builder-cli v0.0.0-20250331194259-63bb56e12db3 h1:M3yYunKH4quwJLQrnFo7dEwCTKorafNC+AUqAo7m5Yo=
 github.com/osbuild/image-builder-cli v0.0.0-20250331194259-63bb56e12db3/go.mod h1:0sEmiQiMo1ChSuOoeONN0RmsoZbQEvj2mlO2448gC5w=
 github.com/osbuild/images v0.168.0 h1:qPmm9d28Py8/TrfzzyCjHAOdcXG4//NbF1EO3I8NanA=
