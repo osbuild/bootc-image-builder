@@ -25,6 +25,7 @@ import (
 	"github.com/osbuild/images/pkg/cloud"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 	"github.com/osbuild/images/pkg/container"
+	"github.com/osbuild/images/pkg/disk"
 	"github.com/osbuild/images/pkg/distro"
 	"github.com/osbuild/images/pkg/distro/generic"
 	"github.com/osbuild/images/pkg/dnfjson"
@@ -217,11 +218,17 @@ func makeManifestForDisk(bootcRef, imgTypeStr, archStr string, bp blueprint.Blue
 		return nil, nil, err
 	}
 
+	partitioningMode := disk.RawPartitioningMode
+	if rootfs == "btrfs" {
+		partitioningMode = disk.BtrfsPartitioningMode
+	}
+
 	imgOpts := &distro.ImageOptions{
 		Bootc: &distro.BootcRef{
 			Imgref: &bootcRef,
 			// XXX: add BuildImgref
 		},
+		PartitioningMode: partitioningMode,
 	}
 	if err := mg.Generate(&bp, img.Distro, img.ImgType, img.Arch, imgOpts); err != nil {
 		return nil, nil, err
