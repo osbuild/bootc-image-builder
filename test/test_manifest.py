@@ -631,6 +631,28 @@ def test_manifest_disk_customization_lvm(tmp_path, build_container):
     assert st["devices"]["rootlv"]["type"] == "org.osbuild.lvm2.lv"
 
 
+def test_manifest_disk_customization_dos(tmp_path, build_container):
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
+
+    config = textwrap.dedent("""\
+    [customizations.disk]
+    type = "dos"
+    """)
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(config)
+
+    testutil.pull_container(container_ref)
+    output = subprocess.check_output([
+        *testutil.podman_run_common,
+        "-v", f"{config_path}:/config.toml:ro",
+        build_container,
+        "manifest", f"{container_ref}",
+    ])
+    st = find_sfdisk_stage_from(output)
+    assert st["label"] == "dos"
+
+
 def test_manifest_disk_customization_btrfs(tmp_path, build_container):
     container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
 
