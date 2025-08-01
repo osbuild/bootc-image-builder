@@ -311,6 +311,39 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 		return nil, nil, err
 	}
 
+	// XXX: This is really not nice, we need to inspect the
+	// container to get the embedded filesystem/disk blueprint
+	// and then apply them . What we should have instead is a
+	// imageTypeYAML like thing in bootc image that fully defines the
+	// partition table so that we can apply a blueprint customization
+	// on top still.
+	container, err := podman_container.New(imgref)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() {
+		if err := container.Stop(); err != nil {
+			logrus.Warnf("error stopping container: %v", err)
+		}
+	}()
+	sourceinfo, err := osinfo.Load(container.Root())
+	if err != nil {
+		return nil, nil, err
+	}
+	if config.Customizations == nil {
+		config.Customizations = &blueprint.Customizations{}
+	}
+	if config.Customizations.GetFilesystems() == nil {
+		config.Customizations.Filesystem = sourceinfo.ImageCustomization.GetFilesystems()
+	}
+	if p, _ := config.Customizations.GetPartitioning(); p == nil {
+		diskCust, err := sourceinfo.ImageCustomization.GetPartitioning()
+		if err != nil {
+			return nil, nil, err
+		}
+		config.Customizations.Disk = diskCust
+	}
+
 	// For now shortcircut here and build ding "images" for anything
 	// that is not the iso
 	if !imageTypes.BuildsISO() {
@@ -325,15 +358,6 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot get container size: %w", err)
 	}
-	container, err := podman_container.New(imgref)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer func() {
-		if err := container.Stop(); err != nil {
-			logrus.Warnf("error stopping container: %v", err)
-		}
-	}()
 
 	var rootfsType string
 	if rootFs != "" {
@@ -346,12 +370,6 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 		if rootfsType == "" {
 			return nil, nil, fmt.Errorf(`no default root filesystem type specified in container, please use "--rootfs" to set manually`)
 		}
-	}
-
-	// Gather some data from the containers distro
-	sourceinfo, err := osinfo.Load(container.Root())
-	if err != nil {
-		return nil, nil, err
 	}
 
 	buildContainer := container
