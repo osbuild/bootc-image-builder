@@ -197,8 +197,8 @@ func saveManifest(ms manifest.OSBuildManifest, fpath string) (err error) {
 	return nil
 }
 
-func makeManifestForDisk(bootcRef, imgTypeStr, archStr string, bp blueprint.Blueprint) ([]byte, *mTLSConfig, error) {
-	imgType, err := generic.ImageFromBootc(bootcRef, imgTypeStr, archStr)
+func makeManifestForDisk(bootcRef, imgTypeStr, archStr string, bp blueprint.Blueprint, rootfs string) ([]byte, *mTLSConfig, error) {
+	imgType, err := generic.ImageFromBootc(bootcRef, imgTypeStr, archStr, rootfs)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -314,7 +314,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	// For now shortcircut here and build ding "images" for anything
 	// that is not the iso
 	if !imageTypes.BuildsISO() {
-		return makeManifestForDisk(imgref, imgTypes[0], cntArch.String(), blueprint.Blueprint(*config))
+		return makeManifestForDisk(imgref, imgTypes[0], cntArch.String(), blueprint.Blueprint(*config), rootFs)
 	}
 
 	// XXX: this is all for iso now
