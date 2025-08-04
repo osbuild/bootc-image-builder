@@ -197,7 +197,7 @@ func saveManifest(ms manifest.OSBuildManifest, fpath string) (err error) {
 	return nil
 }
 
-func makeManifestForDisk(bootcRef, imgTypeStr, archStr string, bp blueprint.Blueprint, rootfs string) ([]byte, *mTLSConfig, error) {
+func makeManifestForDisk(bootcRef, imgTypeStr, archStr string, bp blueprint.Blueprint, rootfs string, cntSize uint64) ([]byte, *mTLSConfig, error) {
 	imgType, err := generic.ImageFromBootc(bootcRef, imgTypeStr, archStr, rootfs)
 	if err != nil {
 		return nil, nil, err
@@ -222,6 +222,7 @@ func makeManifestForDisk(bootcRef, imgTypeStr, archStr string, bp blueprint.Blue
 	if rootfs == "btrfs" {
 		partitioningMode = disk.BtrfsPartitioningMode
 	}
+	diskSize := max(cntSize*containerSizeToDiskSizeMultiplier, img.ImgType.Size(0))
 
 	imgOpts := &distro.ImageOptions{
 		Bootc: &distro.BootcRef{
@@ -229,6 +230,7 @@ func makeManifestForDisk(bootcRef, imgTypeStr, archStr string, bp blueprint.Blue
 			// XXX: add BuildImgref
 		},
 		PartitioningMode: partitioningMode,
+		Size:             diskSize,
 	}
 	if err := mg.Generate(&bp, img.Distro, img.ImgType, img.Arch, imgOpts); err != nil {
 		return nil, nil, err
@@ -344,20 +346,21 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 		config.Customizations.Disk = diskCust
 	}
 
+	cntSize, err := getContainerSize(imgref)
+	if err != nil {
+		return nil, nil, fmt.Errorf("cannot get container size: %w", err)
+	}
+
 	// For now shortcircut here and build ding "images" for anything
 	// that is not the iso
 	if !imageTypes.BuildsISO() {
-		return makeManifestForDisk(imgref, imgTypes[0], cntArch.String(), blueprint.Blueprint(*config), rootFs)
+		return makeManifestForDisk(imgref, imgTypes[0], cntArch.String(), blueprint.Blueprint(*config), rootFs, cntSize)
 	}
 
 	// XXX: this is all for iso now
 	// XXX2: port everything we have here so that it works the
 	// same with the "images" library, i.e. all tests should
 	// pass
-	cntSize, err := getContainerSize(imgref)
-	if err != nil {
-		return nil, nil, fmt.Errorf("cannot get container size: %w", err)
-	}
 
 	var rootfsType string
 	if rootFs != "" {
