@@ -558,6 +558,11 @@ def test_manifest_fs_customizations_xarch(tmp_path, build_container, fscustomiza
 
     assert_fs_customizations(fscustomizations, rootfs, output)
 
+    # aarch64 partition table does not include boot partition (UEFI only)
+    sfdisk_options = find_sfdisk_stage_from(output)
+    assert sfdisk_options["partitions"][0]["size"] != 2048
+    assert not sfdisk_options["partitions"][0].get("bootable", False)
+
 
 def find_grub2_iso_stage_from(manifest_str):
     manifest = json.loads(manifest_str)
@@ -946,3 +951,12 @@ def test_manifest_image_customize_disk(tmp_path, build_container):
         ], encoding="utf8")
         sfdisk_options = find_sfdisk_stage_from(manifest_str)
         assert sfdisk_options["partitions"][2]["size"] == 3 * 1024 * 1024 * 1024 / 512
+
+        if platform.uname().machine == "x86_64":
+            # x86_64 partition table always includes boot partition for hybrid boot
+            assert sfdisk_options["partitions"][0]["size"] == 2048
+            assert sfdisk_options["partitions"][0]["bootable"]
+        elif platform.uname().machine == "aarch64":
+            # aarch64 partition table does not include boot partition (UEFI only)
+            assert sfdisk_options["partitions"][0]["size"] != 2048
+            assert not sfdisk_options["partitions"][0].get("bootable", False)

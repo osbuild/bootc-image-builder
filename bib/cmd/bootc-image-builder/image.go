@@ -310,10 +310,16 @@ func genPartitionTableDiskCust(c *ManifestConfig, diskCust *blueprint.DiskCustom
 	if err != nil {
 		return nil, err
 	}
+
+	bootMode := platform.BOOT_HYBRID
+	if c.Architecture == arch.ARCH_AARCH64 {
+		// This prevents the creation of BIOS boot partitions for ARM devices
+		bootMode = platform.BOOT_UEFI
+	}
 	partOptions := &disk.CustomPartitionTableOptions{
 		PartitionTableType: basept.Type,
 		// XXX: not setting/defaults will fail to boot with btrfs/lvm
-		BootMode:         platform.BOOT_HYBRID,
+		BootMode:         bootMode,
 		DefaultFSType:    defaultFSType,
 		RequiredMinSizes: requiredMinSizes,
 		Architecture:     c.Architecture,
