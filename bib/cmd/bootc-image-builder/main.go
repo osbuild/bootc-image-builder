@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
@@ -18,15 +20,19 @@ import (
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
 
+	repos "github.com/osbuild/images/data/repositories"
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/bib/blueprintload"
 	"github.com/osbuild/images/pkg/cloud"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 	"github.com/osbuild/images/pkg/container"
+	"github.com/osbuild/images/pkg/distro/bootc"
 	"github.com/osbuild/images/pkg/dnfjson"
 	"github.com/osbuild/images/pkg/experimentalflags"
 	"github.com/osbuild/images/pkg/manifest"
+	"github.com/osbuild/images/pkg/manifestgen"
 	"github.com/osbuild/images/pkg/osbuild"
+	"github.com/osbuild/images/pkg/reporegistry"
 	"github.com/osbuild/images/pkg/rpmmd"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/imagetypes"
@@ -35,15 +41,6 @@ import (
 
 	"github.com/osbuild/image-builder-cli/pkg/progress"
 	"github.com/osbuild/image-builder-cli/pkg/setup"
-	"github.com/osbuild/image-builder-cli/pkg/util"
-)
-
-const (
-	// As a baseline heuristic we double the size of
-	// the input container to support in-place updates.
-	// This is planned to be more configurable in the
-	// future.
-	containerSizeToDiskSizeMultiplier = 2
 )
 
 // all possible locations for the bib's distro definitions
@@ -96,23 +93,9 @@ func inContainerOrUnknown() bool {
 	return err == nil
 }
 
-// getContainerSize returns the size of an already pulled container image in bytes
-func getContainerSize(imgref string) (uint64, error) {
-	output, err := exec.Command("podman", "image", "inspect", imgref, "--format", "{{.Size}}").Output()
-	if err != nil {
-		return 0, fmt.Errorf("failed inspect image: %w", util.OutputErr(err))
-	}
-	size, err := strconv.ParseUint(strings.TrimSpace(string(output)), 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("cannot parse image size: %w", err)
-	}
-
-	logrus.Debugf("container size: %v", size)
-	return size, nil
-}
-
 func makeManifest(c *ManifestConfig, solver *dnfjson.Solver, cacheRoot string) (manifest.OSBuildManifest, map[string][]rpmmd.RepoConfig, error) {
-	mani, err := Manifest(c)
+	rng := createRand()
+	mani, err := manifestForISO(c, rng)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot get manifest: %w", err)
 	}
@@ -245,23 +228,67 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot detect build types %v: %w", imgTypes, err)
 	}
-
 	config, err := blueprintload.LoadWithFallback(userConfigFile)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot read config: %w", err)
 	}
 
-	pbar.SetPulseMsgf("Manifest generation step")
-	pbar.Start()
-
 	if err := setup.ValidateHasContainerTags(imgref); err != nil {
 		return nil, nil, err
 	}
 
-	cntSize, err := getContainerSize(imgref)
-	if err != nil {
-		return nil, nil, fmt.Errorf("cannot get container size: %w", err)
+	pbar.SetPulseMsgf("Manifest generation step")
+	pbar.Start()
+
+	// For now shortcut here and build ding "images" for anything
+	// that is not the iso
+	if !imageTypes.BuildsISO() {
+		distro, err := bootc.NewBootcDistro(imgref)
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := distro.SetBuildContainer(buildImgref); err != nil {
+			return nil, nil, err
+		}
+		if err := distro.SetDefaultFs(rootFs); err != nil {
+			return nil, nil, err
+		}
+		// XXX: consider target-arch
+		archi, err := distro.GetArch(cntArch.String())
+		if err != nil {
+			return nil, nil, err
+		}
+		// XXX: how to generate for all image types
+		imgType, err := archi.GetImageType(imgTypes[0])
+		if err != nil {
+			return nil, nil, err
+		}
+
+		var buf bytes.Buffer
+		repos, err := reporegistry.New(nil, []fs.FS{repos.FS})
+		if err != nil {
+			return nil, nil, err
+		}
+		mg, err := manifestgen.New(repos, &manifestgen.Options{
+			Output: &buf,
+			// XXX: hack to skip repo loading for the bootc image.
+			// We need to add a SkipRepositories or similar to
+			// manifestgen instead to make this clean
+			OverrideRepos: []rpmmd.RepoConfig{
+				{
+					BaseURLs: []string{"https://example.com/not-used"},
+				},
+			},
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := mg.Generate(config, distro, imgType, archi, nil); err != nil {
+			return nil, nil, err
+		}
+		return buf.Bytes(), nil, nil
 	}
+
 	container, err := podman_container.New(imgref)
 	if err != nil {
 		return nil, nil, err
@@ -334,7 +361,6 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 		ImageTypes:      imageTypes,
 		Imgref:          imgref,
 		BuildImgref:     buildImgref,
-		RootfsMinsize:   cntSize * containerSizeToDiskSizeMultiplier,
 		DistroDefPaths:  distroDefPaths,
 		SourceInfo:      sourceinfo,
 		BuildSourceInfo: buildSourceinfo,
