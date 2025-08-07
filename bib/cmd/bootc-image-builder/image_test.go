@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/osbuild/blueprint/pkg/blueprint"
 	"github.com/osbuild/images/pkg/arch"
-	"github.com/osbuild/images/pkg/blueprint"
 	"github.com/osbuild/images/pkg/datasizes"
 	"github.com/osbuild/images/pkg/disk"
 	"github.com/osbuild/images/pkg/manifest"
