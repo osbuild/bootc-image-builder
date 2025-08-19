@@ -13,19 +13,10 @@ import (
 	"github.com/osbuild/blueprint/pkg/blueprint"
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/bib/osinfo"
-	"github.com/osbuild/images/pkg/container"
-	"github.com/osbuild/images/pkg/customizations/anaconda"
-	"github.com/osbuild/images/pkg/customizations/kickstart"
-	"github.com/osbuild/images/pkg/disk"
-	"github.com/osbuild/images/pkg/image"
 	"github.com/osbuild/images/pkg/manifest"
-	"github.com/osbuild/images/pkg/osbuild"
-	"github.com/osbuild/images/pkg/platform"
-	"github.com/osbuild/images/pkg/rpmmd"
 	"github.com/osbuild/images/pkg/runner"
 	"github.com/sirupsen/logrus"
 
-	"github.com/osbuild/bootc-image-builder/bib/internal/distrodef"
 	"github.com/osbuild/bootc-image-builder/bib/internal/imagetypes"
 )
 
@@ -76,118 +67,6 @@ func labelForISO(os *osinfo.OSRelease, arch *arch.Arch) string {
 
 func needsRHELLoraxTemplates(si osinfo.OSRelease) bool {
 	return si.ID == "rhel" || slices.Contains(si.IDLike, "rhel") || si.VersionID == "eln"
-}
-
-func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, error) {
-	if c.Imgref == "" {
-		return nil, fmt.Errorf("pipeline: no base image defined")
-	}
-
-	imageDef, err := distrodef.LoadImageDef(c.DistroDefPaths, c.SourceInfo.OSRelease.ID, c.SourceInfo.OSRelease.VersionID, "anaconda-iso")
-	if err != nil {
-		return nil, err
-	}
-
-	containerSource := container.SourceSpec{
-		Source: c.Imgref,
-		Name:   c.Imgref,
-		Local:  true,
-	}
-
-	platform := &platform.Data{
-		Arch:        c.Architecture,
-		ImageFormat: platform.FORMAT_ISO,
-		UEFIVendor:  c.SourceInfo.UEFIVendor,
-	}
-	switch c.Architecture {
-	case arch.ARCH_X86_64:
-		platform.BIOSPlatform = "i386-pc"
-	case arch.ARCH_AARCH64:
-		// aarch64 always uses UEFI, so let's enforce the vendor
-		if c.SourceInfo.UEFIVendor == "" {
-			return nil, fmt.Errorf("UEFI vendor must be set for aarch64 ISO")
-		}
-	case arch.ARCH_S390X:
-		platform.ZiplSupport = true
-	case arch.ARCH_PPC64LE:
-		platform.BIOSPlatform = "powerpc-ieee1275"
-	}
-	// The ref is not needed and will be removed from the ctor later
-	// in time
-	img := image.NewAnacondaContainerInstaller(platform, "install.iso", containerSource, "")
-	img.ContainerRemoveSignatures = true
-	img.RootfsCompression = "zstd"
-	if c.Architecture == arch.ARCH_X86_64 {
-		img.InstallerCustomizations.ISOBoot = manifest.Grub2ISOBoot
-	}
-
-	img.Product = c.SourceInfo.OSRelease.Name
-	img.OSVersion = c.SourceInfo.OSRelease.VersionID
-
-	img.ExtraBasePackages = rpmmd.PackageSet{
-		Include: imageDef.Packages,
-	}
-
-	img.ISOLabel = labelForISO(&c.SourceInfo.OSRelease, &c.Architecture)
-
-	var customizations *blueprint.Customizations
-	if c.Config != nil {
-		customizations = c.Config.Customizations
-	}
-	img.InstallerCustomizations.FIPS = customizations.GetFIPS()
-	img.Kickstart, err = kickstart.New(customizations)
-	if err != nil {
-		return nil, err
-	}
-	img.Kickstart.Path = osbuild.KickstartPathOSBuild
-	if kopts := customizations.GetKernel(); kopts != nil && kopts.Append != "" {
-		img.Kickstart.KernelOptionsAppend = append(img.Kickstart.KernelOptionsAppend, kopts.Append)
-	}
-	img.Kickstart.NetworkOnBoot = true
-
-	instCust, err := customizations.GetInstaller()
-	if err != nil {
-		return nil, err
-	}
-	if instCust != nil && instCust.Modules != nil {
-		img.InstallerCustomizations.EnabledAnacondaModules = append(img.InstallerCustomizations.EnabledAnacondaModules, instCust.Modules.Enable...)
-		img.InstallerCustomizations.DisabledAnacondaModules = append(img.InstallerCustomizations.DisabledAnacondaModules, instCust.Modules.Disable...)
-	}
-	img.InstallerCustomizations.EnabledAnacondaModules = append(img.InstallerCustomizations.EnabledAnacondaModules,
-		anaconda.ModuleUsers,
-		anaconda.ModuleServices,
-		anaconda.ModuleSecurity,
-		// XXX: get from the imagedefs
-		anaconda.ModuleNetwork,
-		anaconda.ModulePayloads,
-		anaconda.ModuleRuntime,
-		anaconda.ModuleStorage,
-	)
-
-	img.Kickstart.OSTree = &kickstart.OSTree{
-		OSName: "default",
-	}
-	img.InstallerCustomizations.UseRHELLoraxTemplates = needsRHELLoraxTemplates(c.SourceInfo.OSRelease)
-
-	// see https://github.com/osbuild/bootc-image-builder/issues/733
-	img.InstallerCustomizations.ISORootfsType = manifest.SquashfsRootfs
-
-	installRootfsType, err := disk.NewFSType(c.RootFSType)
-	if err != nil {
-		return nil, err
-	}
-	img.InstallRootfsType = installRootfsType
-
-	mf := manifest.New()
-
-	foundDistro, foundRunner, err := getDistroAndRunner(c.SourceInfo.OSRelease)
-	if err != nil {
-		return nil, fmt.Errorf("failed to infer distro and runner: %w", err)
-	}
-	mf.Distro = foundDistro
-
-	_, err = img.InstantiateManifest(&mf, nil, foundRunner, rng)
-	return &mf, err
 }
 
 func getDistroAndRunner(osRelease osinfo.OSRelease) (manifest.Distro, runner.Runner, error) {

@@ -5,7 +5,6 @@ go 1.23.9
 require (
 	github.com/cheggaaa/pb/v3 v3.1.7
 	github.com/hashicorp/go-version v1.7.0
-	github.com/osbuild/blueprint v1.13.0
 	github.com/osbuild/image-builder-cli v0.0.0-20250331194259-63bb56e12db3
 	github.com/osbuild/images v0.180.1-0.20250827153323-b3eeac43188f
 	github.com/sirupsen/logrus v1.9.3
@@ -99,6 +98,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/opencontainers/runtime-spec v1.2.1 // indirect
 	github.com/opencontainers/selinux v1.12.0 // indirect
+	github.com/osbuild/blueprint v1.13.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/proglottis/gpgme v0.1.4 // indirect
@@ -133,3 +133,5 @@ require (
 	google.golang.org/protobuf v1.36.7 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )
+
+replace github.com/osbuild/images => github.com/mvo5/images v0.0.0-20250828130520-bbe53a9fa6ad

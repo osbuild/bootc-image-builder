@@ -25,19 +25,14 @@ import (
 	"github.com/osbuild/images/pkg/bib/blueprintload"
 	"github.com/osbuild/images/pkg/cloud"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
-	"github.com/osbuild/images/pkg/container"
 	"github.com/osbuild/images/pkg/distro/bootc"
-	"github.com/osbuild/images/pkg/dnfjson"
 	"github.com/osbuild/images/pkg/experimentalflags"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/manifestgen"
-	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/reporegistry"
 	"github.com/osbuild/images/pkg/rpmmd"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/imagetypes"
-	podman_container "github.com/osbuild/images/pkg/bib/container"
-	"github.com/osbuild/images/pkg/bib/osinfo"
 
 	"github.com/osbuild/image-builder-cli/pkg/progress"
 	"github.com/osbuild/image-builder-cli/pkg/setup"
@@ -93,63 +88,6 @@ func inContainerOrUnknown() bool {
 	return err == nil
 }
 
-func makeManifest(c *ManifestConfig, solver *dnfjson.Solver, cacheRoot string) (manifest.OSBuildManifest, map[string][]rpmmd.RepoConfig, error) {
-	rng := createRand()
-	mani, err := manifestForISO(c, rng)
-	if err != nil {
-		return nil, nil, fmt.Errorf("cannot get manifest: %w", err)
-	}
-
-	// depsolve packages
-	depsolvedSets := make(map[string]dnfjson.DepsolveResult)
-	depsolvedRepos := make(map[string][]rpmmd.RepoConfig)
-	for name, pkgSet := range mani.GetPackageSetChains() {
-		res, err := solver.Depsolve(pkgSet, 0)
-		if err != nil {
-			return nil, nil, fmt.Errorf("cannot depsolve: %w", err)
-		}
-		depsolvedSets[name] = *res
-		depsolvedRepos[name] = res.Repos
-	}
-
-	// Resolve container - the normal case is that host and target
-	// architecture are the same. However it is possible to build
-	// cross-arch images by using qemu-user. This will run everything
-	// (including the build-root) with the target arch then, it
-	// is fast enough (given that it's mostly I/O and all I/O is
-	// run naively via syscall translation)
-
-	// XXX: should NewResolver() take "arch.Arch"?
-	resolver := container.NewResolver(c.Architecture.String())
-
-	containerSpecs := make(map[string][]container.Spec)
-	for plName, sourceSpecs := range mani.GetContainerSourceSpecs() {
-		for _, c := range sourceSpecs {
-			resolver.Add(c)
-		}
-		specs, err := resolver.Finish()
-		if err != nil {
-			return nil, nil, fmt.Errorf("cannot resolve containers: %w", err)
-		}
-		for _, spec := range specs {
-			if spec.Arch != c.Architecture {
-				return nil, nil, fmt.Errorf("image found is for unexpected architecture %q (expected %q), if that is intentional, please make sure --target-arch matches", spec.Arch, c.Architecture)
-			}
-		}
-		containerSpecs[plName] = specs
-	}
-
-	var opts manifest.SerializeOptions
-	if c.UseLibrepo {
-		opts.RpmDownloader = osbuild.RpmDownloaderLibrepo
-	}
-	mf, err := mani.Serialize(depsolvedSets, containerSpecs, nil, &opts)
-	if err != nil {
-		return nil, nil, fmt.Errorf("[ERROR] manifest serialization failed: %s", err.Error())
-	}
-	return mf, depsolvedRepos, nil
-}
-
 func saveManifest(ms manifest.OSBuildManifest, fpath string) (err error) {
 	b, err := json.MarshalIndent(ms, "", "  ")
 	if err != nil {
@@ -183,11 +121,11 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	imgref := args[0]
 	userConfigFile, _ := cmd.Flags().GetString("config")
 	imgTypes, _ := cmd.Flags().GetStringArray("type")
-	rpmCacheRoot, _ := cmd.Flags().GetString("rpmmd")
+	//rpmCacheRoot, _ := cmd.Flags().GetString("rpmmd")
 	targetArch, _ := cmd.Flags().GetString("target-arch")
 	rootFs, _ := cmd.Flags().GetString("rootfs")
 	buildImgref, _ := cmd.Flags().GetString("build-container")
-	useLibrepo, _ := cmd.Flags().GetBool("use-librepo")
+	//useLibrepo, _ := cmd.Flags().GetBool("use-librepo")
 
 	// If --local was given, warn in the case of --local or --local=true (true is the default), error in the case of --local=false
 	if cmd.Flags().Changed("local") {
@@ -224,10 +162,6 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 		return nil, nil, fmt.Errorf("could not access container storage, did you forget -v /var/lib/containers/storage:/var/lib/containers/storage? (%w)", err)
 	}
 
-	imageTypes, err := imagetypes.New(imgTypes...)
-	if err != nil {
-		return nil, nil, fmt.Errorf("cannot detect build types %v: %w", imgTypes, err)
-	}
 	config, err := blueprintload.LoadWithFallback(userConfigFile)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot read config: %w", err)
@@ -242,143 +176,60 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 
 	// For now shortcut here and build ding "images" for anything
 	// that is not the iso
-	if !imageTypes.BuildsISO() {
-		distro, err := bootc.NewBootcDistro(imgref)
-		if err != nil {
-			return nil, nil, err
-		}
-		if err := distro.SetBuildContainer(buildImgref); err != nil {
-			return nil, nil, err
-		}
-		if err := distro.SetDefaultFs(rootFs); err != nil {
-			return nil, nil, err
-		}
-		// XXX: consider target-arch
-		archi, err := distro.GetArch(cntArch.String())
-		if err != nil {
-			return nil, nil, err
-		}
-		// XXX: how to generate for all image types
-		imgType, err := archi.GetImageType(imgTypes[0])
-		if err != nil {
-			return nil, nil, err
-		}
 
-		var buf bytes.Buffer
-		repos, err := reporegistry.New(nil, []fs.FS{repos.FS})
-		if err != nil {
-			return nil, nil, err
-		}
-		mg, err := manifestgen.New(repos, &manifestgen.Options{
-			Output: &buf,
-			// XXX: hack to skip repo loading for the bootc image.
-			// We need to add a SkipRepositories or similar to
-			// manifestgen instead to make this clean
-			OverrideRepos: []rpmmd.RepoConfig{
-				{
-					BaseURLs: []string{"https://example.com/not-used"},
-				},
+	distro, err := bootc.NewBootcDistro(imgref)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := distro.SetBuildContainer(buildImgref); err != nil {
+		return nil, nil, err
+	}
+	if err := distro.SetDefaultFs(rootFs); err != nil {
+		return nil, nil, err
+	}
+	// XXX: consider target-arch
+	archi, err := distro.GetArch(cntArch.String())
+	if err != nil {
+		return nil, nil, err
+	}
+	// XXX: how to generate for all image types
+	imgType, err := archi.GetImageType(imgTypes[0])
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var buf bytes.Buffer
+	repos, err := reporegistry.New(nil, []fs.FS{repos.FS})
+	if err != nil {
+		return nil, nil, err
+	}
+	mg, err := manifestgen.New(repos, &manifestgen.Options{
+		Output: &buf,
+		// XXX: hack to skip repo loading for the bootc image.
+		// We need to add a SkipRepositories or similar to
+		// manifestgen instead to make this clean
+		OverrideRepos: []rpmmd.RepoConfig{
+			{
+				BaseURLs: []string{"https://example.com/not-used"},
 			},
-		})
+		},
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := mg.Generate(config, distro, imgType, archi, nil); err != nil {
+		return nil, nil, err
+	}
+	return buf.Bytes(), nil, nil
+	// XXX: portme
+	/*
+		mTLS, err := extractTLSKeys(SimpleFileReader{}, repos)
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := mg.Generate(config, distro, imgType, archi, nil); err != nil {
-			return nil, nil, err
-		}
-		return buf.Bytes(), nil, nil
-	}
 
-	container, err := podman_container.New(imgref)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer func() {
-		if err := container.Stop(); err != nil {
-			logrus.Warnf("error stopping container: %v", err)
-		}
-	}()
-
-	var rootfsType string
-	if rootFs != "" {
-		rootfsType = rootFs
-	} else {
-		rootfsType, err = container.DefaultRootfsType()
-		if err != nil {
-			return nil, nil, fmt.Errorf("cannot get rootfs type for container: %w", err)
-		}
-		if rootfsType == "" {
-			return nil, nil, fmt.Errorf(`no default root filesystem type specified in container, please use "--rootfs" to set manually`)
-		}
-	}
-
-	// Gather some data from the containers distro
-	sourceinfo, err := osinfo.Load(container.Root())
-	if err != nil {
-		return nil, nil, err
-	}
-
-	buildContainer := container
-	buildSourceinfo := sourceinfo
-	startedBuildContainer := false
-	defer func() {
-		if startedBuildContainer {
-			if err := buildContainer.Stop(); err != nil {
-				logrus.Warnf("error stopping container: %v", err)
-			}
-		}
-	}()
-
-	if buildImgref != "" {
-		buildContainer, err = podman_container.New(buildImgref)
-		if err != nil {
-			return nil, nil, err
-		}
-		startedBuildContainer = true
-
-		// Gather some data from the containers distro
-		buildSourceinfo, err = osinfo.Load(buildContainer.Root())
-		if err != nil {
-			return nil, nil, err
-		}
-	} else {
-		buildImgref = imgref
-	}
-
-	// This is needed just for RHEL and RHSM in most cases, but let's run it every time in case
-	// the image has some non-standard dnf plugins.
-	if err := buildContainer.InitDNF(); err != nil {
-		return nil, nil, err
-	}
-	solver, err := buildContainer.NewContainerSolver(rpmCacheRoot, cntArch, sourceinfo)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	manifestConfig := &ManifestConfig{
-		Architecture:    cntArch,
-		Config:          config,
-		ImageTypes:      imageTypes,
-		Imgref:          imgref,
-		BuildImgref:     buildImgref,
-		DistroDefPaths:  distroDefPaths,
-		SourceInfo:      sourceinfo,
-		BuildSourceInfo: buildSourceinfo,
-		RootFSType:      rootfsType,
-		UseLibrepo:      useLibrepo,
-	}
-
-	manifest, repos, err := makeManifest(manifestConfig, solver, rpmCacheRoot)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	mTLS, err := extractTLSKeys(repos)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return manifest, mTLS, nil
+		return manifest, mTLS, nil
+	*/
 }
 
 func cmdManifest(cmd *cobra.Command, args []string) error {
