@@ -15,17 +15,9 @@ type mTLSConfig struct {
 	ca   []byte
 }
 
-type fileReader interface {
-	ReadFile(string) ([]byte, error)
-}
+var osReadFile = os.ReadFile
 
-type SimpleFileReader struct{}
-
-func (SimpleFileReader) ReadFile(path string) ([]byte, error) {
-	return os.ReadFile(path)
-}
-
-func extractTLSKeys(reader fileReader, repoSets map[string][]rpmmd.RepoConfig) (*mTLSConfig, error) {
+func extractTLSKeys(repoSets map[string][]rpmmd.RepoConfig) (*mTLSConfig, error) {
 	var keyPath, certPath, caPath string
 	for _, set := range repoSets {
 		for _, r := range set {
@@ -44,17 +36,17 @@ func extractTLSKeys(reader fileReader, repoSets map[string][]rpmmd.RepoConfig) (
 		return nil, nil
 	}
 
-	key, err := reader.ReadFile(keyPath)
+	key, err := osReadFile(keyPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read TLS client key from the container: %w", err)
 	}
 
-	cert, err := reader.ReadFile(certPath)
+	cert, err := osReadFile(certPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read TLS client certificate from the container: %w", err)
 	}
 
-	ca, err := reader.ReadFile(caPath)
+	ca, err := osReadFile(caPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read TLS CA certificate from the container: %w", err)
 	}
