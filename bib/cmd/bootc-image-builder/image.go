@@ -547,6 +547,11 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		anaconda.ModuleUsers,
 		anaconda.ModuleServices,
 		anaconda.ModuleSecurity,
+		// XXX: get from the imagedefs
+		anaconda.ModuleNetwork,
+		anaconda.ModulePayloads,
+		anaconda.ModuleRuntime,
+		anaconda.ModuleStorage,
 	)
 
 	img.Kickstart.OSTree = &kickstart.OSTree{
