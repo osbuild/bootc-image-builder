@@ -33,8 +33,10 @@ func TestExtractTLSKeysHappy(t *testing.T) {
 	}
 
 	fakeReader := &fakeFileReader{}
+	restore := MockOsReadFile(fakeReader.ReadFile)
+	defer restore()
 
-	mTLS, err := extractTLSKeys(fakeReader, repos)
+	mTLS, err := extractTLSKeys(repos)
 	require.NoError(t, err)
 	require.Equal(t, mTLS.ca, []byte("content of /ca"))
 	require.Equal(t, mTLS.cert, []byte("content of /cert"))
@@ -43,7 +45,7 @@ func TestExtractTLSKeysHappy(t *testing.T) {
 
 	// also check that adding another repo with same keys still succeeds
 	repos["toucan"] = repos["kingfisher"]
-	_, err = extractTLSKeys(fakeReader, repos)
+	_, err = extractTLSKeys(repos)
 	require.NoError(t, err)
 	require.Len(t, fakeReader.readPaths, 6)
 }
@@ -68,8 +70,10 @@ func TestExtractTLSKeysUnhappy(t *testing.T) {
 	}
 
 	fakeReader := &fakeFileReader{}
+	restore := MockOsReadFile(fakeReader.ReadFile)
+	defer restore()
 
-	_, err := extractTLSKeys(fakeReader, repos)
+	_, err := extractTLSKeys(repos)
 	require.EqualError(t, err, "multiple TLS client keys found, this is currently unsupported")
 }
 

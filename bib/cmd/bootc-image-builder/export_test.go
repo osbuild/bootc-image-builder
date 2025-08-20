@@ -20,3 +20,11 @@ func MockOsGetuid(new func() int) (restore func()) {
 		osGetuid = saved
 	}
 }
+
+func MockOsReadFile(new func(string) ([]byte, error)) (restore func()) {
+	saved := osReadFile
+	osReadFile = new
+	return func() {
+		osReadFile = saved
+	}
+}
