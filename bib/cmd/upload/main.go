@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 )
 
@@ -29,9 +30,11 @@ func uploadAMI(cmd *cobra.Command, args []string) {
 	check(err)
 	imageName, err := flags.GetString("ami-name")
 	check(err)
-	targetArch, err := flags.GetString("target-arch")
+	targetArchStr, err := flags.GetString("target-arch")
 	check(err)
 
+	targetArch, err := arch.FromString(targetArchStr)
+	check(err)
 	opts := &awscloud.UploaderOptions{
 		TargetArch: targetArch,
 	}
