@@ -220,16 +220,21 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	if err := mg.Generate(config, distro, imgType, archi, nil); err != nil {
 		return nil, nil, err
 	}
+
 	return buf.Bytes(), nil, nil
 	// XXX: portme
 	/*
-		mTLS, err := extractTLSKeys(SimpleFileReader{}, repos)
-		if err != nil {
-			return nil, nil, err
-		}
+		osbuildExtraEnv := mg.OsbuildExtraEnv
 
-		return manifest, mTLS, nil
+			mTLS, err := extractTLSKeys(repos)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			return manifest, mTLS, nil
 	*/
+
+	return buf.Bytes(), nil, nil
 }
 
 func cmdManifest(cmd *cobra.Command, args []string) error {

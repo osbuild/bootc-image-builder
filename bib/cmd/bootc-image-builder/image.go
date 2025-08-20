@@ -10,12 +10,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/osbuild/blueprint/pkg/blueprint"
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/bib/osinfo"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/runner"
-	"github.com/sirupsen/logrus"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/imagetypes"
 )
