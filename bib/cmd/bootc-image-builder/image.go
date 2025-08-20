@@ -19,6 +19,7 @@ import (
 	"github.com/osbuild/images/pkg/customizations/kickstart"
 	"github.com/osbuild/images/pkg/customizations/users"
 	"github.com/osbuild/images/pkg/disk"
+	"github.com/osbuild/images/pkg/disk/partition"
 	"github.com/osbuild/images/pkg/image"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/osbuild"
@@ -132,10 +133,10 @@ func checkMountpoints(filesystems []blueprint.FilesystemCustomization, policy *p
 	return nil
 }
 
-func checkFilesystemCustomizations(fsCustomizations []blueprint.FilesystemCustomization, ptmode disk.PartitioningMode) error {
+func checkFilesystemCustomizations(fsCustomizations []blueprint.FilesystemCustomization, ptmode partition.PartitioningMode) error {
 	var policy *pathpolicy.PathPolicies
 	switch ptmode {
-	case disk.BtrfsPartitioningMode:
+	case partition.BtrfsPartitioningMode:
 		// btrfs subvolumes are not supported at build time yet, so we only
 		// allow / and /boot to be customized when building a btrfs disk (the
 		// minimal policy)
@@ -327,9 +328,9 @@ func genPartitionTableFsCust(c *ManifestConfig, fsCust []blueprint.FilesystemCus
 		return nil, fmt.Errorf("pipelines: no partition tables defined for %s", c.Architecture)
 	}
 
-	partitioningMode := disk.RawPartitioningMode
+	partitioningMode := partition.RawPartitioningMode
 	if c.RootFSType == "btrfs" {
-		partitioningMode = disk.BtrfsPartitioningMode
+		partitioningMode = partition.BtrfsPartitioningMode
 	}
 	if err := checkFilesystemCustomizations(fsCust, partitioningMode); err != nil {
 		return nil, err
@@ -523,7 +524,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	if c.Config != nil {
 		customizations = c.Config.Customizations
 	}
-	img.FIPS = customizations.GetFIPS()
+	img.InstallerCustomizations.FIPS = customizations.GetFIPS()
 	img.Kickstart, err = kickstart.New(customizations)
 	if err != nil {
 		return nil, err
@@ -539,10 +540,10 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		return nil, err
 	}
 	if instCust != nil && instCust.Modules != nil {
-		img.AdditionalAnacondaModules = append(img.AdditionalAnacondaModules, instCust.Modules.Enable...)
-		img.DisabledAnacondaModules = append(img.DisabledAnacondaModules, instCust.Modules.Disable...)
+		img.InstallerCustomizations.EnabledAnacondaModules = append(img.InstallerCustomizations.EnabledAnacondaModules, instCust.Modules.Enable...)
+		img.InstallerCustomizations.DisabledAnacondaModules = append(img.InstallerCustomizations.DisabledAnacondaModules, instCust.Modules.Disable...)
 	}
-	img.AdditionalAnacondaModules = append(img.AdditionalAnacondaModules,
+	img.InstallerCustomizations.EnabledAnacondaModules = append(img.InstallerCustomizations.EnabledAnacondaModules,
 		anaconda.ModuleUsers,
 		anaconda.ModuleServices,
 		anaconda.ModuleSecurity,
@@ -551,7 +552,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.Kickstart.OSTree = &kickstart.OSTree{
 		OSName: "default",
 	}
-	img.UseRHELLoraxTemplates = needsRHELLoraxTemplates(c.SourceInfo.OSRelease)
+	img.InstallerCustomizations.UseRHELLoraxTemplates = needsRHELLoraxTemplates(c.SourceInfo.OSRelease)
 
 	switch c.Architecture {
 	case arch.ARCH_X86_64:
@@ -562,7 +563,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 			BIOS:       true,
 			UEFIVendor: c.SourceInfo.UEFIVendor,
 		}
-		img.ISOBoot = manifest.Grub2ISOBoot
+		img.InstallerCustomizations.ISOBoot = manifest.Grub2ISOBoot
 	case arch.ARCH_AARCH64:
 		// aarch64 always uses UEFI, so let's enforce the vendor
 		if c.SourceInfo.UEFIVendor == "" {
@@ -599,7 +600,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		return nil, fmt.Errorf("unsupported architecture %v", c.Architecture)
 	}
 	// see https://github.com/osbuild/bootc-image-builder/issues/733
-	img.RootfsType = manifest.SquashfsRootfs
+	img.InstallerCustomizations.ISORootfsType = manifest.SquashfsRootfs
 	img.Filename = "install.iso"
 
 	installRootfsType, err := disk.NewFSType(c.RootFSType)
