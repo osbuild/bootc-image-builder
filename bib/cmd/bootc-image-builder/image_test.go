@@ -11,6 +11,7 @@ import (
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/datasizes"
 	"github.com/osbuild/images/pkg/disk"
+	"github.com/osbuild/images/pkg/disk/partition"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/runner"
 
@@ -64,7 +65,7 @@ func TestGetDistroAndRunner(t *testing.T) {
 func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 	for _, tc := range []struct {
 		fsCust      []blueprint.FilesystemCustomization
-		ptmode      disk.PartitioningMode
+		ptmode      partition.PartitioningMode
 		expectedErr string
 	}{
 		// happy
@@ -74,21 +75,21 @@ func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 		},
 		{
 			fsCust:      []blueprint.FilesystemCustomization{},
-			ptmode:      disk.BtrfsPartitioningMode,
+			ptmode:      partition.BtrfsPartitioningMode,
 			expectedErr: "",
 		},
 		{
 			fsCust: []blueprint.FilesystemCustomization{
 				{Mountpoint: "/"}, {Mountpoint: "/boot"},
 			},
-			ptmode:      disk.RawPartitioningMode,
+			ptmode:      partition.RawPartitioningMode,
 			expectedErr: "",
 		},
 		{
 			fsCust: []blueprint.FilesystemCustomization{
 				{Mountpoint: "/"}, {Mountpoint: "/boot"},
 			},
-			ptmode:      disk.BtrfsPartitioningMode,
+			ptmode:      partition.BtrfsPartitioningMode,
 			expectedErr: "",
 		},
 		{
@@ -106,7 +107,7 @@ func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 				{Mountpoint: "/"},
 				{Mountpoint: "/ostree"},
 			},
-			ptmode:      disk.RawPartitioningMode,
+			ptmode:      partition.RawPartitioningMode,
 			expectedErr: "the following errors occurred while validating custom mountpoints:\npath \"/ostree\" is not allowed",
 		},
 		{
@@ -114,7 +115,7 @@ func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 				{Mountpoint: "/"},
 				{Mountpoint: "/var"},
 			},
-			ptmode:      disk.RawPartitioningMode,
+			ptmode:      partition.RawPartitioningMode,
 			expectedErr: "the following errors occurred while validating custom mountpoints:\npath \"/var\" is not allowed",
 		},
 		{
@@ -122,7 +123,7 @@ func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 				{Mountpoint: "/"},
 				{Mountpoint: "/var/data"},
 			},
-			ptmode:      disk.BtrfsPartitioningMode,
+			ptmode:      partition.BtrfsPartitioningMode,
 			expectedErr: "the following errors occurred while validating custom mountpoints:\npath \"/var/data\" is not allowed",
 		},
 		{
@@ -130,7 +131,7 @@ func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 				{Mountpoint: "/"},
 				{Mountpoint: "/boot/"},
 			},
-			ptmode:      disk.BtrfsPartitioningMode,
+			ptmode:      partition.BtrfsPartitioningMode,
 			expectedErr: "the following errors occurred while validating custom mountpoints:\npath \"/boot/\" must be canonical",
 		},
 		{
@@ -139,7 +140,7 @@ func TestCheckFilesystemCustomizationsValidates(t *testing.T) {
 				{Mountpoint: "/boot/"},
 				{Mountpoint: "/opt"},
 			},
-			ptmode:      disk.BtrfsPartitioningMode,
+			ptmode:      partition.BtrfsPartitioningMode,
 			expectedErr: "the following errors occurred while validating custom mountpoints:\npath \"/boot/\" must be canonical\npath \"/opt\" is not allowed",
 		},
 	} {
@@ -202,7 +203,7 @@ func TestLocalMountpointPolicy(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.path, func(t *testing.T) {
-			err := bib.CheckFilesystemCustomizations([]blueprint.FilesystemCustomization{{Mountpoint: tc.path}}, disk.RawPartitioningMode)
+			err := bib.CheckFilesystemCustomizations([]blueprint.FilesystemCustomization{{Mountpoint: tc.path}}, partition.RawPartitioningMode)
 			if err != nil && tc.allowed {
 				t.Errorf("expected %s to be allowed, but got error: %v", tc.path, err)
 			} else if err == nil && !tc.allowed {

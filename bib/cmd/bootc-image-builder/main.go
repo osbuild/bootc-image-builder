@@ -379,13 +379,17 @@ func handleAWSFlags(cmd *cobra.Command) (cloud.Uploader, error) {
 	}
 	bucketName, _ := cmd.Flags().GetString("aws-bucket")
 	imageName, _ := cmd.Flags().GetString("aws-ami-name")
-	targetArch, _ := cmd.Flags().GetString("target-arch")
+	targetArchStr, _ := cmd.Flags().GetString("target-arch")
 
 	if !slices.Contains(imgTypes, "ami") {
 		return nil, fmt.Errorf("aws flags set for non-ami image type (type is set to %s)", strings.Join(imgTypes, ","))
 	}
 
 	// check as many permission prerequisites as possible before starting
+	targetArch, err := arch.FromString(targetArchStr)
+	if err != nil {
+		return nil, err
+	}
 	uploaderOpts := &awscloud.UploaderOptions{
 		TargetArch: targetArch,
 	}
