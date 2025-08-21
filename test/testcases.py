@@ -99,7 +99,8 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
             # 2024-12-19: disabled for now until the mirror situation becomes
             # a bit more stable
             # TestCaseFedora(image="anaconda-iso", sign=True),
-            TestCaseC9S(image="anaconda-iso"),
+            # 2025-08-21: disabled because of https://issues.redhat.com/browse/RHEL-109635
+            # TestCaseC9S(image="anaconda-iso"),
             TestCaseC10S(image="anaconda-iso"),
         ]
     if what == "qemu-cross":
