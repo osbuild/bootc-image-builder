@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/big"
 	"math/rand"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -247,6 +248,28 @@ func genPartitionTable(c *ManifestConfig, customizations *blueprint.Customizatio
 		case *disk.Filesystem:
 			if elem.Type == "ext4" {
 				elem.MkfsOptions = append(elem.MkfsOptions, []disk.MkfsOption{disk.MkfsVerity}...)
+			}
+		}
+	}
+
+	if c.SourceInfo != nil && c.SourceInfo.KernelInfo != nil && c.SourceInfo.KernelInfo.HasAbootImg {
+		idx := slices.IndexFunc(partitionTable.Partitions, func(part disk.Partition) bool {
+			// The aboot support in ostree supports both traditional android verified boot and
+			// ukiboot. For aboot,  the partition is labeled "boot_a", as described in
+			// https://source.android.com/docs/core/ota/ab/ab_implement
+			// For ukibooot (https://gitlab.com/CentOS/automotive/src/ukiboot) the partition
+			// either has label ukiboot_a (GPT) or type 0x46 (MBR).
+			return part.Label == "boot_a" || part.Label == "ukiboot_a" || part.Type == "46"
+		})
+		if idx >= 0 {
+			sourcePipeline := "build"
+			if c.BuildSourceInfo != nil {
+				sourcePipeline = "target"
+			}
+
+			partitionTable.Partitions[idx].Payload = &disk.Raw{
+				SourcePipeline: sourcePipeline,
+				SourcePath:     filepath.Join("/usr/lib/modules/", c.SourceInfo.KernelInfo.Version, "aboot.img"),
 			}
 		}
 	}
