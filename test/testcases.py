@@ -97,8 +97,7 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
     if what == "anaconda-iso":
         return [
             TestCaseFedora(image="anaconda-iso", sign=True),
-            # 2025-08-21: disabled because of https://issues.redhat.com/browse/RHEL-109635
-            # TestCaseC9S(image="anaconda-iso"),
+            TestCaseC9S(image="anaconda-iso"),
             TestCaseC10S(image="anaconda-iso"),
         ]
     if what == "qemu-cross":
