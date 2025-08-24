@@ -1,6 +1,7 @@
 import json
 import pathlib
 import subprocess
+import tempfile
 import pytest
 
 import testutil
@@ -114,7 +115,6 @@ def test_lorax_template_integration_build(build_container, tc):
 
     custom_template = "test/custom-lorax.tmpl"
 
-    import tempfile
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_dir = pathlib.Path(tmp_dir)
         # Build ISO with custom lorax template
