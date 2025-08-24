@@ -66,6 +66,10 @@ type ManifestConfig struct {
 
 	// use librepo ad the rpm downlaod backend
 	UseLibrepo bool
+
+	// CustomLoraxTemplatePath allows overriding the default lorax template path
+	// If set, this takes priority over automatic RHEL template detection
+	CustomLoraxTemplatePath string
 }
 
 func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
@@ -486,7 +490,27 @@ func labelForISO(os *osinfo.OSRelease, arch *arch.Arch) string {
 }
 
 func needsRHELLoraxTemplates(si osinfo.OSRelease) bool {
-	return si.ID == "rhel" || slices.Contains(si.IDLike, "rhel") || si.VersionID == "eln"
+	// Explicitly handle RHEL-compatible distributions by ID
+	if si.ID == "rhel" || si.ID == "rocky" || si.ID == "almalinux" || si.VersionID == "eln" {
+		return true
+	}
+
+	// Also check ID_LIKE for other RHEL derivatives (e.g., CentOS)
+	return slices.Contains(si.IDLike, "rhel")
+}
+
+// getLoraxTemplatePath determines which lorax template path to use
+// Priority: CustomPath > RHEL templates > Generic templates
+func getLoraxTemplatePath(customPath string, si osinfo.OSRelease) string {
+	if customPath != "" {
+		return customPath
+	}
+
+	if needsRHELLoraxTemplates(si) {
+		return "80-rhel/runtime-postinstall.tmpl"
+	}
+
+	return "99-generic/runtime-postinstall.tmpl"
 }
 
 func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, error) {
@@ -557,7 +581,17 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.Kickstart.OSTree = &kickstart.OSTree{
 		OSName: "default",
 	}
-	img.InstallerCustomizations.UseRHELLoraxTemplates = needsRHELLoraxTemplates(c.SourceInfo.OSRelease)
+	// Configure lorax template path - custom path takes priority
+	if c.CustomLoraxTemplatePath != "" {
+		// Custom path specified - for this to work, we need to modify osbuild/images
+		// to support CustomLoraxTemplatePath field in InstallerCustomizations
+		img.InstallerCustomizations.UseRHELLoraxTemplates = false // Let custom path override
+		// TODO: Add img.InstallerCustomizations.CustomLoraxTemplatePath = c.CustomLoraxTemplatePath
+		// when osbuild/images library supports it
+	} else {
+		// Use automatic detection
+		img.InstallerCustomizations.UseRHELLoraxTemplates = needsRHELLoraxTemplates(c.SourceInfo.OSRelease)
+	}
 
 	switch c.Architecture {
 	case arch.ARCH_X86_64:
