@@ -23,20 +23,29 @@ def find_lorax_path_from_manifest(manifest_str):
     return None
 
 
-@pytest.mark.parametrize("tc", gen_testcases("manifest"))
-def test_lorax_template_default_behavior(build_container, tc):
-    """Test that default lorax template selection works (RHEL vs generic detection)"""
+def generate_manifest_with_lorax_template(build_container, tc, lorax_template=None):
+    """Helper function to generate manifest with optional lorax template"""
     testutil.pull_container(tc.container_ref, tc.target_arch)
-
-    # Generate manifest without custom lorax template
-    output = subprocess.check_output([
+    
+    cmd = [
         *testutil.podman_run_common,
         build_container,
         "manifest",
         "--type", "anaconda-iso",
-        *tc.bib_rootfs_args(),
-        f"{tc.container_ref}",
-    ])
+    ]
+    
+    if lorax_template is not None:
+        cmd.extend(["--lorax-template", lorax_template])
+    
+    cmd.extend([*tc.bib_rootfs_args(), f"{tc.container_ref}"])
+    
+    return subprocess.check_output(cmd)
+
+
+@pytest.mark.parametrize("tc", gen_testcases("manifest"))
+def test_lorax_template_default_behavior(build_container, tc):
+    """Test that default lorax template selection works (RHEL vs generic detection)"""
+    output = generate_manifest_with_lorax_template(build_container, tc)
     
     manifest = json.loads(output)
     # Verify manifest is valid
@@ -52,20 +61,10 @@ def test_lorax_template_default_behavior(build_container, tc):
 @pytest.mark.parametrize("tc", gen_testcases("manifest"))
 def test_lorax_template_custom_override(build_container, tc):
     """Test that --lorax-template CLI flag overrides default behavior"""
-    testutil.pull_container(tc.container_ref, tc.target_arch)
-    
     custom_template = "custom/my-test-template.tmpl"
     
     # Generate manifest with custom lorax template
-    output = subprocess.check_output([
-        *testutil.podman_run_common,
-        build_container,
-        "manifest",
-        "--type", "anaconda-iso",
-        "--lorax-template", custom_template,
-        *tc.bib_rootfs_args(),
-        f"{tc.container_ref}",
-    ])
+    output = generate_manifest_with_lorax_template(build_container, tc, custom_template)
     
     manifest = json.loads(output)
     # Verify manifest is valid
@@ -94,18 +93,8 @@ def test_lorax_template_cli_flag_validation(build_container):
 @pytest.mark.parametrize("tc", gen_testcases("manifest"))
 def test_lorax_template_empty_flag(build_container, tc):
     """Test that empty --lorax-template flag falls back to default behavior"""
-    testutil.pull_container(tc.container_ref, tc.target_arch)
-
     # Generate manifest with empty lorax template flag
-    output = subprocess.check_output([
-        *testutil.podman_run_common,
-        build_container,
-        "manifest",
-        "--type", "anaconda-iso", 
-        "--lorax-template", "",
-        *tc.bib_rootfs_args(),
-        f"{tc.container_ref}",
-    ])
+    output = generate_manifest_with_lorax_template(build_container, tc, "")
     
     manifest = json.loads(output)
     # Verify manifest is valid
