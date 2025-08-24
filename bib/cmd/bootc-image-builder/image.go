@@ -499,19 +499,6 @@ func needsRHELLoraxTemplates(si osinfo.OSRelease) bool {
 	return slices.Contains(si.IDLike, "rhel")
 }
 
-// getLoraxTemplatePath determines which lorax template path to use
-// Priority: CustomPath > RHEL templates > Generic templates
-func getLoraxTemplatePath(customPath string, si osinfo.OSRelease) string {
-	if customPath != "" {
-		return customPath
-	}
-
-	if needsRHELLoraxTemplates(si) {
-		return "80-rhel/runtime-postinstall.tmpl"
-	}
-
-	return "99-generic/runtime-postinstall.tmpl"
-}
 
 func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, error) {
 	if c.Imgref == "" {
