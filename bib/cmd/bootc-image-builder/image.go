@@ -490,15 +490,8 @@ func labelForISO(os *osinfo.OSRelease, arch *arch.Arch) string {
 }
 
 func needsRHELLoraxTemplates(si osinfo.OSRelease) bool {
-	// Explicitly handle RHEL-compatible distributions by ID
-	if si.ID == "rhel" || si.ID == "rocky" || si.ID == "almalinux" || si.VersionID == "eln" {
-		return true
-	}
-
-	// Also check ID_LIKE for other RHEL derivatives (e.g., CentOS)
-	return slices.Contains(si.IDLike, "rhel")
+	return si.ID == "rhel" || slices.Contains(si.IDLike, "rhel") || si.VersionID == "eln"
 }
-
 
 func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, error) {
 	if c.Imgref == "" {
