@@ -1,4 +1,5 @@
 import json
+import pathlib
 import subprocess
 import pytest
 
@@ -26,7 +27,7 @@ def find_lorax_path_from_manifest(manifest_str):
 def generate_manifest_with_lorax_template(build_container, tc, lorax_template=None):
     """Helper function to generate manifest with optional lorax template"""
     testutil.pull_container(tc.container_ref, tc.target_arch)
-    
+
     cmd = [
         *testutil.podman_run_common,
         build_container,
@@ -50,7 +51,7 @@ def test_lorax_template_default_behavior(build_container, tc):
     manifest = json.loads(output)
     # Verify manifest is valid
     assert manifest["version"] == "2"
-    
+
     # Check that lorax path follows automatic detection logic
     lorax_path = find_lorax_path_from_manifest(output)
     if lorax_path:
@@ -69,7 +70,7 @@ def test_lorax_template_custom_override(build_container, tc):
     manifest = json.loads(output)
     # Verify manifest is valid
     assert manifest["version"] == "2"
-    
+
     # Check that custom lorax template is used
     lorax_path = find_lorax_path_from_manifest(output)
     assert lorax_path == custom_template
@@ -83,7 +84,7 @@ def test_lorax_template_cli_flag_validation(build_container):
         build_container,
         "manifest",
         "--help",
-    ], capture_output=True, text=True)
+    ], capture_output=True, text=True, check=False)
 
     assert "--lorax-template" in result.stdout
     assert "Custom lorax template path" in result.stdout
@@ -99,7 +100,7 @@ def test_lorax_template_empty_flag(build_container, tc):
     manifest = json.loads(output)
     # Verify manifest is valid
     assert manifest["version"] == "2"
-    
+
     # Should fall back to automatic detection (same as default behavior)
     lorax_path = find_lorax_path_from_manifest(output)
     if lorax_path:
@@ -110,10 +111,12 @@ def test_lorax_template_empty_flag(build_container, tc):
 def test_lorax_template_integration_build(build_container, tc):
     """Integration test: build ISO with custom lorax template"""
     testutil.pull_container(tc.container_ref, tc.target_arch)
-    
+
     custom_template = "test/custom-lorax.tmpl"
 
-    with testutil.tmp_dir() as tmp_dir:
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_dir = pathlib.Path(tmp_dir)
         # Build ISO with custom lorax template
         subprocess.check_call([
             *testutil.podman_run_common,
@@ -126,15 +129,15 @@ def test_lorax_template_integration_build(build_container, tc):
             *tc.bib_rootfs_args(),
             f"{tc.container_ref}",
         ])
-        
+
         # Verify ISO was created
         iso_files = list(tmp_dir.glob("*.iso"))
         assert len(iso_files) == 1
-        
+
         # Verify manifest was created and contains custom template
         manifest_files = list(tmp_dir.glob("manifest-*.json"))
         assert len(manifest_files) == 1
-        
+
         with open(manifest_files[0], "r", encoding="utf-8") as f:
             manifest_content = f.read()
 
@@ -147,7 +150,7 @@ def test_lorax_template_rhel_detection():
     # This is a unit-style test of the detection logic
     # We can't easily test this in integration without specific containers,
     # but this validates the logic is working
-    
+
     # Test cases for different distro IDs that should get RHEL templates
     rhel_distros = ["rhel", "rocky", "almalinux"]
 
