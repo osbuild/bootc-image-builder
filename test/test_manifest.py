@@ -58,7 +58,9 @@ def test_iso_manifest_smoke(build_container, tc):
         *testutil.podman_run_common,
         build_container,
         "manifest",
-        "--type=anaconda-iso", f"{tc.container_ref}",
+        *tc.bib_rootfs_args(),
+        "--type=anaconda-iso",
+        f"{tc.container_ref}",
     ])
     manifest = json.loads(output)
     # just some basic validation
