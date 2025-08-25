@@ -96,9 +96,7 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
         return [TestCaseC9S(image="ami"), TestCaseFedora(image="ami")]
     if what == "anaconda-iso":
         return [
-            # 2024-12-19: disabled for now until the mirror situation becomes
-            # a bit more stable
-            # TestCaseFedora(image="anaconda-iso", sign=True),
+            TestCaseFedora(image="anaconda-iso", sign=True),
             # 2025-08-21: disabled because of https://issues.redhat.com/browse/RHEL-109635
             # TestCaseC9S(image="anaconda-iso"),
             TestCaseC10S(image="anaconda-iso"),
