@@ -386,9 +386,13 @@ func handleAWSFlags(cmd *cobra.Command) (cloud.Uploader, error) {
 	}
 
 	// check as many permission prerequisites as possible before starting
-	targetArch, err := arch.FromString(targetArchStr)
-	if err != nil {
-		return nil, err
+	targetArch := arch.Current()
+	if targetArchStr != "" {
+		var err error
+		targetArch, err = arch.FromString(targetArchStr)
+		if err != nil {
+			return nil, err
+		}
 	}
 	uploaderOpts := &awscloud.UploaderOptions{
 		TargetArch: targetArch,
