@@ -33,8 +33,12 @@ func uploadAMI(cmd *cobra.Command, args []string) {
 	targetArchStr, err := flags.GetString("target-arch")
 	check(err)
 
-	targetArch, err := arch.FromString(targetArchStr)
-	check(err)
+	targetArch := arch.Current()
+	if targetArchStr != "" {
+		var err error
+		targetArch, err = arch.FromString(targetArchStr)
+		check(err)
+	}
 	opts := &awscloud.UploaderOptions{
 		TargetArch: targetArch,
 	}
