@@ -216,6 +216,8 @@ func cmdManifest(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+var awscloudNewUploader = awscloud.NewUploader
+
 func handleAWSFlags(cmd *cobra.Command) (cloud.Uploader, error) {
 	imgTypes, _ := cmd.Flags().GetStringArray("type")
 	region, _ := cmd.Flags().GetString("aws-region")
@@ -230,7 +232,6 @@ func handleAWSFlags(cmd *cobra.Command) (cloud.Uploader, error) {
 		return nil, fmt.Errorf("aws flags set for non-ami image type (type is set to %s)", strings.Join(imgTypes, ","))
 	}
 
-	// check as many permission prerequisites as possible before starting
 	targetArch := arch.Current()
 	if targetArchStr != "" {
 		var err error
@@ -242,7 +243,7 @@ func handleAWSFlags(cmd *cobra.Command) (cloud.Uploader, error) {
 	uploaderOpts := &awscloud.UploaderOptions{
 		TargetArch: targetArch,
 	}
-	uploader, err := awscloud.NewUploader(region, bucketName, imageName, uploaderOpts)
+	uploader, err := awscloudNewUploader(region, bucketName, imageName, uploaderOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -250,6 +251,7 @@ func handleAWSFlags(cmd *cobra.Command) (cloud.Uploader, error) {
 	if logrus.GetLevel() >= logrus.InfoLevel {
 		status = os.Stderr
 	}
+	// check as many permission prerequisites as possible before starting
 	if err := uploader.Check(status); err != nil {
 		return nil, err
 	}
