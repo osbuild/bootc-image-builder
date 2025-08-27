@@ -17,7 +17,6 @@ import (
 	"github.com/osbuild/images/pkg/customizations/anaconda"
 	"github.com/osbuild/images/pkg/customizations/kickstart"
 	"github.com/osbuild/images/pkg/disk"
-	"github.com/osbuild/images/pkg/disk/partition"
 	"github.com/osbuild/images/pkg/image"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/osbuild"
@@ -95,11 +94,32 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		Local:  true,
 	}
 
+	platform := &platform.Data{
+		Arch:        c.Architecture,
+		ImageFormat: platform.FORMAT_ISO,
+		UEFIVendor:  c.SourceInfo.UEFIVendor,
+	}
+	switch c.Architecture {
+	case arch.ARCH_X86_64:
+		platform.BIOSPlatform = "i386-pc"
+	case arch.ARCH_AARCH64:
+		// aarch64 always uses UEFI, so let's enforce the vendor
+		if c.SourceInfo.UEFIVendor == "" {
+			return nil, fmt.Errorf("UEFI vendor must be set for aarch64 ISO")
+		}
+	case arch.ARCH_S390X:
+		platform.ZiplSupport = true
+	case arch.ARCH_PPC64LE:
+		platform.BIOSPlatform = "powerpc-ieee1275"
+	}
 	// The ref is not needed and will be removed from the ctor later
 	// in time
-	img := image.NewAnacondaContainerInstaller(containerSource, "")
+	img := image.NewAnacondaContainerInstaller(platform, "install.iso", containerSource, "")
 	img.ContainerRemoveSignatures = true
 	img.RootfsCompression = "zstd"
+	if c.Architecture == arch.ARCH_X86_64 {
+		img.InstallerCustomizations.ISOBoot = manifest.Grub2ISOBoot
+	}
 
 	img.Product = c.SourceInfo.OSRelease.Name
 	img.OSVersion = c.SourceInfo.OSRelease.VersionID
@@ -149,32 +169,8 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	}
 	img.InstallerCustomizations.UseRHELLoraxTemplates = needsRHELLoraxTemplates(c.SourceInfo.OSRelease)
 
-	img.Platform = &platform.Data{
-		Arch:        c.Architecture,
-		ImageFormat: platform.FORMAT_ISO,
-		UEFIVendor:  c.SourceInfo.UEFIVendor,
-	}
-	switch c.Architecture {
-	case arch.ARCH_X86_64:
-		img.Platform.(*platform.Data).BIOSPlatform = "i386-pc"
-		img.InstallerCustomizations.ISOBoot = manifest.Grub2ISOBoot
-	case arch.ARCH_AARCH64:
-		// aarch64 always uses UEFI, so let's enforce the vendor
-		if c.SourceInfo.UEFIVendor == "" {
-			return nil, fmt.Errorf("UEFI vendor must be set for aarch64 ISO")
-		}
-	case arch.ARCH_S390X:
-		img.Platform.(*platform.Data).ZiplSupport = true
-	case arch.ARCH_PPC64LE:
-		img.Platform.(*platform.Data).BIOSPlatform = "powerpc-ieee1275"
-	case arch.ARCH_RISCV64:
-		// nothing special needed
-	default:
-		return nil, fmt.Errorf("unsupported architecture %v", c.Architecture)
-	}
 	// see https://github.com/osbuild/bootc-image-builder/issues/733
 	img.InstallerCustomizations.ISORootfsType = manifest.SquashfsRootfs
-	img.Filename = "install.iso"
 
 	installRootfsType, err := disk.NewFSType(c.RootFSType)
 	if err != nil {
