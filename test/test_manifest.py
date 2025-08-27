@@ -1,3 +1,5 @@
+# pylint: disable=too-many-lines
+
 import base64
 import hashlib
 import json
@@ -651,7 +653,7 @@ def test_manifest_disk_customization_dos(tmp_path, build_container):
         build_container,
         "manifest", f"{container_ref}",
     ])
-    st = find_sfdisk_stage_from(output)
+    st = find_stage_options_from(output, "org.osbuild.sfdisk")
     assert st["label"] == "dos"
 
 
@@ -852,14 +854,14 @@ def test_manifest_customization_custom_file_smoke(tmp_path, build_container):
             ',"options":{"filename":"disk.raw"') in output
 
 
-def find_sfdisk_stage_from(manifest_str):
+def find_stage_options_from(manifest_str, stage_type):
     manifest = json.loads(manifest_str)
     for pipl in manifest["pipelines"]:
         if pipl["name"] == "image":
             for st in pipl["stages"]:
-                if st["type"] == "org.osbuild.sfdisk":
+                if st["type"] == stage_type:
                     return st["options"]
-    raise ValueError(f"cannot find sfdisk stage manifest:\n{manifest_str}")
+    raise ValueError(f"cannot find {stage_type} stage manifest:\n{manifest_str}")
 
 
 def test_manifest_image_customize_filesystem(tmp_path, build_container):
@@ -900,7 +902,7 @@ def test_manifest_image_customize_filesystem(tmp_path, build_container):
             "manifest",
             f"localhost/{container_tag}",
         ], encoding="utf8")
-        sfdisk_options = find_sfdisk_stage_from(manifest_str)
+        sfdisk_options = find_stage_options_from(manifest_str, "org.osbuild.sfdisk")
         assert sfdisk_options["partitions"][2]["size"] == 3 * 1024 * 1024 * 1024 / 512
 
 
@@ -946,5 +948,71 @@ def test_manifest_image_customize_disk(tmp_path, build_container):
             "manifest",
             f"localhost/{container_tag}",
         ], encoding="utf8")
-        sfdisk_options = find_sfdisk_stage_from(manifest_str)
+        sfdisk_options = find_stage_options_from(manifest_str, "org.osbuild.sfdisk")
         assert sfdisk_options["partitions"][2]["size"] == 3 * 1024 * 1024 * 1024 / 512
+
+
+def test_manifest_image_aboot(tmp_path, build_container):
+    # no need to parameterize this test, overrides behaves same for all containers
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
+
+    cfg = {
+        "blueprint": {
+            "customizations": {
+                "disk": {
+                    "partitions": [
+                        {
+                            "part_label": "ukiboot_a",
+                            "part_uuid": "DF331E4D-BE00-463F-B4A7-8B43E18FB53A",
+                            "fs_type": "none",
+                            "minsize": "1 GiB",
+                        },
+                        {
+                            "part_label": "ukiboot_b",
+                            "part_uuid": "DF331E4D-BE00-463F-B4A7-8B43E18FB53A",
+                            "fs_type": "none",
+                            "minsize": "1 GiB",
+                        },
+                        {
+                            "part_label": "ukibootctl",
+                            "part_uuid": "FEFD9070-346F-4C9A-85E6-17F07F922773",
+                            "fs_type": "none",
+                            "minsize": "1 GiB",
+                        },
+                    ],
+                },
+            },
+        },
+    }
+
+    config_json_path = tmp_path / "config.json"
+    config_json_path.write_text(json.dumps(cfg), encoding="utf-8")
+
+    testdata_path = tmp_path / "testdata"
+    testdata_path.write_text("some test data", encoding="utf-8")
+
+    # Create derived container with the custom partitioning with an aboot
+    # partition and a kernel module dir with an aboot.img file
+    cntf_path = tmp_path / "Containerfile"
+    cntf_path.write_text(textwrap.dedent(f"""\n
+    FROM {container_ref}
+    RUN mkdir -p -m 0755 /usr/lib/bootc-image-builder
+    COPY config.json /usr/lib/bootc-image-builder/
+    RUN rm -rf /usr/lib/modules/*
+    RUN mkdir -p -m 0755 /usr/lib/modules/5.0-x86_64/
+    COPY testdata /usr/lib/modules/5.0-x86_64/vmlinuz
+    COPY testdata /usr/lib/modules/5.0-x86_64/aboot.img
+    """), encoding="utf8")
+
+    print(f"building filesystem customize container from {container_ref}")
+    with make_container(tmp_path) as container_tag:
+        print(f"using {container_tag}")
+        manifest_str = subprocess.check_output([
+            *testutil.podman_run_common,
+            build_container,
+            "manifest",
+            f"localhost/{container_tag}",
+        ], encoding="utf8")
+        write_device_options = find_stage_options_from(manifest_str, "org.osbuild.write-device")
+        assert write_device_options["from"] == "input://tree/usr/lib/modules/5.0-x86_64/aboot.img"
