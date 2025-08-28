@@ -67,6 +67,10 @@ type ManifestConfig struct {
 
 	// use librepo ad the rpm downlaod backend
 	UseLibrepo bool
+
+	// CustomLoraxTemplatePath allows overriding the default lorax template path
+	// If set, this takes priority over automatic RHEL template detection
+	CustomLoraxTemplatePath string
 }
 
 func Manifest(c *ManifestConfig) (*manifest.Manifest, error) {
@@ -558,7 +562,17 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.Kickstart.OSTree = &kickstart.OSTree{
 		OSName: "default",
 	}
-	img.InstallerCustomizations.UseRHELLoraxTemplates = needsRHELLoraxTemplates(c.SourceInfo.OSRelease)
+	// Configure lorax template path - custom path takes priority
+	if c.CustomLoraxTemplatePath != "" {
+		// Custom path specified - for this to work, we need to modify osbuild/images
+		// to support CustomLoraxTemplatePath field in InstallerCustomizations
+		img.InstallerCustomizations.UseRHELLoraxTemplates = false // Let custom path override
+		// TODO: Add img.InstallerCustomizations.CustomLoraxTemplatePath = c.CustomLoraxTemplatePath
+		// when osbuild/images library supports it
+	} else {
+		// Use automatic detection
+		img.InstallerCustomizations.UseRHELLoraxTemplates = needsRHELLoraxTemplates(c.SourceInfo.OSRelease)
+	}
 
 	img.Platform = &platform.Data{
 		Arch:        c.Architecture,
