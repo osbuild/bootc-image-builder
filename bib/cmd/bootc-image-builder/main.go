@@ -204,6 +204,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	targetArch, _ := cmd.Flags().GetString("target-arch")
 	rootFs, _ := cmd.Flags().GetString("rootfs")
 	buildImgref, _ := cmd.Flags().GetString("build-container")
+	loraxTemplate, _ := cmd.Flags().GetString("lorax-template")
 	useLibrepo, _ := cmd.Flags().GetBool("use-librepo")
 
 	// If --local was given, warn in the case of --local or --local=true (true is the default), error in the case of --local=false
@@ -329,17 +330,18 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	}
 
 	manifestConfig := &ManifestConfig{
-		Architecture:    cntArch,
-		Config:          config,
-		ImageTypes:      imageTypes,
-		Imgref:          imgref,
-		BuildImgref:     buildImgref,
-		RootfsMinsize:   cntSize * containerSizeToDiskSizeMultiplier,
-		DistroDefPaths:  distroDefPaths,
-		SourceInfo:      sourceinfo,
-		BuildSourceInfo: buildSourceinfo,
-		RootFSType:      rootfsType,
-		UseLibrepo:      useLibrepo,
+		Architecture:           cntArch,
+		Config:                 config,
+		ImageTypes:             imageTypes,
+		Imgref:                 imgref,
+		BuildImgref:            buildImgref,
+		RootfsMinsize:          cntSize * containerSizeToDiskSizeMultiplier,
+		DistroDefPaths:         distroDefPaths,
+		SourceInfo:             sourceinfo,
+		BuildSourceInfo:        buildSourceinfo,
+		RootFSType:             rootfsType,
+		CustomLoraxTemplatePath: loraxTemplate,
+		UseLibrepo:             useLibrepo,
 	}
 
 	manifest, repos, err := makeManifest(manifestConfig, solver, rpmCacheRoot)
@@ -694,6 +696,7 @@ func buildCobraCmdline() (*cobra.Command, error) {
 		return nil, fmt.Errorf("cannot hide 'local' :%w", err)
 	}
 	manifestCmd.Flags().String("rootfs", "", "Root filesystem type. If not given, the default configured in the source container image is used.")
+	manifestCmd.Flags().String("lorax-template", "", "Custom lorax template path (relative to /usr/share/lorax/templates.d/)")
 	manifestCmd.Flags().Bool("use-librepo", true, "switch to librepo for pkg download, needs new enough osbuild")
 	// --config is only useful for developers who run bib outside
 	// of a container to generate a manifest. so hide it by
