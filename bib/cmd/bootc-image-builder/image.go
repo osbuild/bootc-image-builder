@@ -391,7 +391,24 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		customizations = c.Config.Customizations
 	}
 
-	img := image.NewBootcDiskImage(containerSource, buildContainerSource)
+	platform := &platform.Data{
+		Arch:        c.Architecture,
+		UEFIVendor:  c.SourceInfo.UEFIVendor,
+		QCOW2Compat: "1.1",
+	}
+	switch c.Architecture {
+	case arch.ARCH_X86_64:
+		platform.BIOSPlatform = "i386-pc"
+	case arch.ARCH_PPC64LE:
+		platform.BIOSPlatform = "powerpc-ieee1275"
+	case arch.ARCH_S390X:
+		platform.ZiplSupport = true
+	}
+	// For the bootc-disk image, the filename is the basename and the extension
+	// is added automatically for each disk format
+	filename := "disk"
+
+	img := image.NewBootcDiskImage(platform, filename, containerSource, buildContainerSource)
 	img.OSCustomizations.Users = users.UsersFromBP(customizations.GetUsers())
 	img.OSCustomizations.Groups = users.GroupsFromBP(customizations.GetGroups())
 	img.OSCustomizations.SELinux = c.SourceInfo.SELinuxPolicy
@@ -406,20 +423,6 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 		// xref https://github.com/CentOS/centos-bootc-layered/blob/main/cloud/usr/lib/bootc/install/05-cloud-kargs.toml
 		"console=tty0",
 		"console=ttyS0",
-	}
-
-	img.Platform = &platform.Data{
-		Arch:        c.Architecture,
-		UEFIVendor:  c.SourceInfo.UEFIVendor,
-		QCOW2Compat: "1.1",
-	}
-	switch c.Architecture {
-	case arch.ARCH_X86_64:
-		img.Platform.(*platform.Data).BIOSPlatform = "i386-pc"
-	case arch.ARCH_PPC64LE:
-		img.Platform.(*platform.Data).BIOSPlatform = "powerpc-ieee1275"
-	case arch.ARCH_S390X:
-		img.Platform.(*platform.Data).ZiplSupport = true
 	}
 
 	if kopts := customizations.GetKernel(); kopts != nil && kopts.Append != "" {
@@ -452,10 +455,6 @@ func manifestForDiskImage(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest
 	if err != nil {
 		return nil, err
 	}
-
-	// For the bootc-disk image, the filename is the basename and the extension
-	// is added automatically for each disk format
-	img.Filename = "disk"
 
 	mf := manifest.New()
 	mf.Distro = manifest.DISTRO_FEDORA
@@ -506,20 +505,47 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		Local:  true,
 	}
 
+	platform := &platform.Data{
+		Arch:        c.Architecture,
+		ImageFormat: platform.FORMAT_ISO,
+		UEFIVendor:  c.SourceInfo.UEFIVendor,
+	}
+	switch c.Architecture {
+	case arch.ARCH_X86_64:
+		platform.BIOSPlatform = "i386-pc"
+	case arch.ARCH_AARCH64:
+		// aarch64 always uses UEFI, so let's enforce the vendor
+		if c.SourceInfo.UEFIVendor == "" {
+			return nil, fmt.Errorf("UEFI vendor must be set for aarch64 ISO")
+		}
+	case arch.ARCH_S390X:
+		platform.ZiplSupport = true
+	case arch.ARCH_PPC64LE:
+		platform.BIOSPlatform = "powerpc-ieee1275"
+	case arch.ARCH_RISCV64:
+		// nothing special needed
+	default:
+		return nil, fmt.Errorf("unsupported architecture %v", c.Architecture)
+	}
+	filename := "install.iso"
+
 	// The ref is not needed and will be removed from the ctor later
 	// in time
-	img := image.NewAnacondaContainerInstaller(containerSource, "")
+	img := image.NewAnacondaContainerInstaller(platform, filename, containerSource, "")
 	img.ContainerRemoveSignatures = true
 	img.RootfsCompression = "zstd"
 
-	img.Product = c.SourceInfo.OSRelease.Name
-	img.OSVersion = c.SourceInfo.OSRelease.VersionID
+	if c.Architecture == arch.ARCH_X86_64 {
+		img.InstallerCustomizations.ISOBoot = manifest.Grub2ISOBoot
+	}
+
+	img.InstallerCustomizations.Product = c.SourceInfo.OSRelease.Name
+	img.InstallerCustomizations.OSVersion = c.SourceInfo.OSRelease.VersionID
+	img.InstallerCustomizations.ISOLabel = labelForISO(&c.SourceInfo.OSRelease, &c.Architecture)
 
 	img.ExtraBasePackages = rpmmd.PackageSet{
 		Include: imageDef.Packages,
 	}
-
-	img.ISOLabel = labelForISO(&c.SourceInfo.OSRelease, &c.Architecture)
 
 	var customizations *blueprint.Customizations
 	if c.Config != nil {
@@ -560,32 +586,8 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	}
 	img.InstallerCustomizations.UseRHELLoraxTemplates = needsRHELLoraxTemplates(c.SourceInfo.OSRelease)
 
-	img.Platform = &platform.Data{
-		Arch:        c.Architecture,
-		ImageFormat: platform.FORMAT_ISO,
-		UEFIVendor:  c.SourceInfo.UEFIVendor,
-	}
-	switch c.Architecture {
-	case arch.ARCH_X86_64:
-		img.Platform.(*platform.Data).BIOSPlatform = "i386-pc"
-		img.InstallerCustomizations.ISOBoot = manifest.Grub2ISOBoot
-	case arch.ARCH_AARCH64:
-		// aarch64 always uses UEFI, so let's enforce the vendor
-		if c.SourceInfo.UEFIVendor == "" {
-			return nil, fmt.Errorf("UEFI vendor must be set for aarch64 ISO")
-		}
-	case arch.ARCH_S390X:
-		img.Platform.(*platform.Data).ZiplSupport = true
-	case arch.ARCH_PPC64LE:
-		img.Platform.(*platform.Data).BIOSPlatform = "powerpc-ieee1275"
-	case arch.ARCH_RISCV64:
-		// nothing special needed
-	default:
-		return nil, fmt.Errorf("unsupported architecture %v", c.Architecture)
-	}
 	// see https://github.com/osbuild/bootc-image-builder/issues/733
 	img.InstallerCustomizations.ISORootfsType = manifest.SquashfsRootfs
-	img.Filename = "install.iso"
 
 	installRootfsType, err := disk.NewFSType(c.RootFSType)
 	if err != nil {
