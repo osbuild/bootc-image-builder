@@ -8,8 +8,8 @@ require (
 	github.com/cheggaaa/pb/v3 v3.1.7
 	github.com/hashicorp/go-version v1.7.0
 	github.com/osbuild/blueprint v1.13.0
-	github.com/osbuild/image-builder-cli v0.0.0-20250904233321-481a120c0bee
-	github.com/osbuild/images v0.183.0
+	github.com/osbuild/image-builder-cli v0.0.0-20250331194259-63bb56e12db3
+	github.com/osbuild/images v0.186.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.7
