@@ -1,16 +1,10 @@
 package main
 
 var (
-	CanChownInPath                = canChownInPath
-	CheckFilesystemCustomizations = checkFilesystemCustomizations
-	GetDistroAndRunner            = getDistroAndRunner
-	CheckMountpoints              = checkMountpoints
-	PartitionTables               = partitionTables
-	UpdateFilesystemSizes         = updateFilesystemSizes
-	GenPartitionTable             = genPartitionTable
-	CreateRand                    = createRand
-	BuildCobraCmdline             = buildCobraCmdline
-	CalcRequiredDirectorySizes    = calcRequiredDirectorySizes
+	CanChownInPath     = canChownInPath
+	GetDistroAndRunner = getDistroAndRunner
+	CreateRand         = createRand
+	BuildCobraCmdline  = buildCobraCmdline
 )
 
 func MockOsGetuid(new func() int) (restore func()) {
