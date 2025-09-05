@@ -379,6 +379,11 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
     }
     testutil.maybe_create_filesystem_customizations(cfg, tc)
     testutil.maybe_create_disk_customizations(cfg, tc)
+    # if we build an iso we cannot have the "home" customization for
+    # user root or images will panic(), c.f.
+    # https://github.com/osbuild/images/pull/1806
+    if not image_types[0] in DISK_IMAGE_TYPES:
+        del cfg["customizations"]["user"][0]["home"]
 
     config_json_path = output_path / "config.json"
     config_json_path.write_text(json.dumps(cfg), encoding="utf-8")
@@ -416,6 +421,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
         if image_types[0] in DISK_IMAGE_TYPES:
             types_arg = [f"--type={it}" for it in DISK_IMAGE_TYPES]
         else:
+            # building an iso
             types_arg = [f"--type={image_types[0]}"]
 
         # run container to deploy an image into a bootable disk and upload to a cloud service if applicable
