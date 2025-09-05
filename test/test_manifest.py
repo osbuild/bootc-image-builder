@@ -953,45 +953,61 @@ def test_manifest_image_customize_disk(tmp_path, build_container):
         assert sfdisk_options["partitions"][2]["size"] == 3 * 1024 * 1024 * 1024 / 512
 
 
-def test_manifest_image_aboot(tmp_path, build_container):
+def test_manifest_image_disk_yaml(tmp_path, build_container):
     # no need to parameterize this test, overrides behaves same for all containers
     container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
     testutil.pull_container(container_ref)
 
-    cfg = {
-        "blueprint": {
-            "customizations": {
-                "disk": {
-                    "partitions": [
-                        {
-                            "part_label": "ukiboot_a",
-                            "part_uuid": "DF331E4D-BE00-463F-B4A7-8B43E18FB53A",
-                            "fs_type": "none",
-                            "minsize": "1 GiB",
-                        },
-                        {
-                            "part_label": "ukiboot_b",
-                            "part_uuid": "DF331E4D-BE00-463F-B4A7-8B43E18FB53A",
-                            "fs_type": "none",
-                            "minsize": "1 GiB",
-                        },
-                        {
-                            "part_label": "ukibootctl",
-                            "part_uuid": "FEFD9070-346F-4C9A-85E6-17F07F922773",
-                            "fs_type": "none",
-                            "minsize": "1 GiB",
-                        },
-                    ],
-                },
-            },
-        },
-    }
+    disk_yaml = textwrap.dedent("""---
+    #enabled once https://github.com/osbuild/images/pull/1834 is in
+    #mount_configuration: none
+    partition_table:
+      size: '8589934592'
+      partitions:
+      - bootable: true
+        size: 1 MiB
+        type: 21686148-6449-6E6F-744E-656564454649
+        uuid: fac7f1fb-3e8d-4137-a512-961de09a5549
+      - bootable: false
+        label: efi
+        payload:
+          label: ESP
+          mountpoint: /boot/efi
+          type: vfat
+        payload_type: filesystem
+        size: '104857600'
+        type: c12a7328-f81f-11d2-ba4b-00a0c93ec93b
+        uuid: 68b2905b-df3e-4fb3-80fa-49d1e773aa33
+      - label: ukiboot_a
+        size: '134217728'
+        type: df331e4d-be00-463f-b4a7-8b43e18fb53a
+        uuid: CD3B4BE3-0139-4A63-8060-658554C7273B
+        payload_type: raw
+        payload:
+          source_path: /usr/lib/modules/5.0-x86_64/aboot.img
+      - label: ukiboot_b
+        size: '134217728'
+        type: df331e4d-be00-463f-b4a7-8b43e18fb53a
+        uuid: E4D4DA50-7050-41AE-A5F9-DEF12B94DFB5
+      - label: ukibootctl
+        size: '1048576'
+        type: fefd9070-346f-4c9a-85e6-17f07f922773
+        uuid: 5A6F3ADE-EEB0-11EF-A838-E89C256C3906
+      - label: root
+        payload:
+          label: root
+          mountpoint: /
+          type: ext4
+        payload_type: filesystem
+        type: b921b045-1df0-41c3-af44-4c6f280d3fae
+        uuid: 6264d520-3fb9-423f-8ab8-7a0a8e3d3562
+    """)
 
-    config_json_path = tmp_path / "config.json"
-    config_json_path.write_text(json.dumps(cfg), encoding="utf-8")
+    disk_yaml_path = tmp_path / "disk.yaml"
+    disk_yaml_path.write_text(disk_yaml, encoding="utf-8")
 
-    testdata_path = tmp_path / "testdata"
-    testdata_path.write_text("some test data", encoding="utf-8")
+    testdata_path = tmp_path / "fake-aboot.img"
+    testdata_path.write_text("fake aboot.img content", encoding="utf-8")
 
     # Create derived container with the custom partitioning with an aboot
     # partition and a kernel module dir with an aboot.img file
@@ -999,11 +1015,10 @@ def test_manifest_image_aboot(tmp_path, build_container):
     cntf_path.write_text(textwrap.dedent(f"""\n
     FROM {container_ref}
     RUN mkdir -p -m 0755 /usr/lib/bootc-image-builder
-    COPY config.json /usr/lib/bootc-image-builder/
-    RUN rm -rf /usr/lib/modules/*
+    COPY disk.yaml /usr/lib/bootc-image-builder/
+    # add a preditable aboot.img for the write-device tes
     RUN mkdir -p -m 0755 /usr/lib/modules/5.0-x86_64/
-    COPY testdata /usr/lib/modules/5.0-x86_64/vmlinuz
-    COPY testdata /usr/lib/modules/5.0-x86_64/aboot.img
+    COPY fake-aboot.img /usr/lib/modules/5.0-x86_64/aboot.img
     """), encoding="utf8")
 
     print(f"building filesystem customize container from {container_ref}")
