@@ -262,14 +262,8 @@ func genPartitionTable(c *ManifestConfig, customizations *blueprint.Customizatio
 			return part.Label == "boot_a" || part.Label == "ukiboot_a" || part.Type == "46"
 		})
 		if idx >= 0 {
-			sourcePipeline := "build"
-			if c.BuildSourceInfo != nil {
-				sourcePipeline = "target"
-			}
-
 			partitionTable.Partitions[idx].Payload = &disk.Raw{
-				SourcePipeline: sourcePipeline,
-				SourcePath:     filepath.Join("/usr/lib/modules/", c.SourceInfo.KernelInfo.Version, "aboot.img"),
+				SourcePath: filepath.Join("/usr/lib/modules/", c.SourceInfo.KernelInfo.Version, "aboot.img"),
 			}
 		}
 	}
