@@ -111,13 +111,28 @@ func getContainerSize(imgref string) (uint64, error) {
 	return size, nil
 }
 
+func reposHaveOnlyHostMappedSecrets(repos []rpmmd.RepoConfig) error {
+	for _, repo := range repos {
+		if repo.SSLCACert != "" && !strings.Contains(repo.SSLCACert, "etc/rhsm-host/") {
+			return fmt.Errorf("unsupported cacert %q: not mapped from host", repo.SSLCACert)
+		}
+		if repo.SSLClientKey != "" && !strings.Contains(repo.SSLClientKey, "etc/pki/entitlement-host/") {
+			return fmt.Errorf("unsupported client key %q: not mapped from host", repo.SSLClientKey)
+		}
+		if repo.SSLClientCert != "" && !strings.Contains(repo.SSLClientCert, "etc/pki/entitlement-host/") {
+			return fmt.Errorf("unsupported client cert %q: not mapped from host", repo.SSLClientCert)
+		}
+	}
+	return nil
+}
+
 func makeManifest(c *ManifestConfig, solver *dnfjson.Solver, cacheRoot string) (manifest.OSBuildManifest, error) {
 	mani, err := Manifest(c)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get manifest: %w", err)
 	}
 
-	// depsolve packages
+	// depsolve packages (only needed for ISO image types)
 	depsolvedSets := make(map[string]dnfjson.DepsolveResult)
 	depsolvedRepos := make(map[string][]rpmmd.RepoConfig)
 	for name, pkgSet := range mani.GetPackageSetChains() {
@@ -125,14 +140,23 @@ func makeManifest(c *ManifestConfig, solver *dnfjson.Solver, cacheRoot string) (
 		if err != nil {
 			return nil, fmt.Errorf("cannot depsolve: %w", err)
 		}
-		// HACK: we depsolve the container with an alterantive
+
+		// We depsolve the container with an alterantive
 		// rootdir - this means the depsolver will assume any
 		// required secrets in the found rootdir repos must be
 		// provided via mtls. However in almost all cases in
 		// our containers this is unnecessary (and a headache)
 		// because podman maps our host entitlements into the
 		// container so we can build it with org.osbuild.rhsm
-		// XXX: find a better way to signal that to depsolve
+		//
+		// So we double check here that we only have content
+		// mapped from the host via podman. Then we just
+		// switch from org.osbuild.mtls to org.osbuild.rhsm
+		if err := reposHaveOnlyHostMappedSecrets(res.Repos); err != nil {
+			return nil, err
+		}
+		// we can switch from mtls->rhsm as we valided above that
+		// only host mounted entitlements are used
 		for idx := range res.Packages {
 			res.Packages[idx].Secrets = strings.ReplaceAll(res.Packages[idx].Secrets, "org.osbuild.mtls", "org.osbuild.rhsm")
 		}
