@@ -1,5 +1,10 @@
 package main
 
+import (
+	"github.com/osbuild/images/pkg/cloud"
+	"github.com/osbuild/images/pkg/cloud/awscloud"
+)
+
 var (
 	CanChownInPath                = canChownInPath
 	CheckFilesystemCustomizations = checkFilesystemCustomizations
@@ -11,6 +16,7 @@ var (
 	CreateRand                    = createRand
 	BuildCobraCmdline             = buildCobraCmdline
 	CalcRequiredDirectorySizes    = calcRequiredDirectorySizes
+	HandleAWSFlags                = handleAWSFlags
 )
 
 func MockOsGetuid(new func() int) (restore func()) {
@@ -26,5 +32,13 @@ func MockOsReadFile(new func(string) ([]byte, error)) (restore func()) {
 	osReadFile = new
 	return func() {
 		osReadFile = saved
+	}
+}
+
+func MockAwscloudNewUploader(f func(string, string, string, *awscloud.UploaderOptions) (cloud.Uploader, error)) (restore func()) {
+	saved := awscloudNewUploader
+	awscloudNewUploader = f
+	return func() {
+		awscloudNewUploader = saved
 	}
 }
