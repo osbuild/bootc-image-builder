@@ -245,8 +245,8 @@ github.com/osbuild/blueprint v1.13.0 h1:blo22+S2ZX5bBmjGcRveoTUrV4Ms7kLfKyb32Wyu
 github.com/osbuild/blueprint v1.13.0/go.mod h1:HPlJzkEl7q5g8hzaGksUk7ifFAy9QFw9LmzhuFOAVm4=
 github.com/osbuild/image-builder-cli v0.0.0-20250331194259-63bb56e12db3 h1:M3yYunKH4quwJLQrnFo7dEwCTKorafNC+AUqAo7m5Yo=
 github.com/osbuild/image-builder-cli v0.0.0-20250331194259-63bb56e12db3/go.mod h1:0sEmiQiMo1ChSuOoeONN0RmsoZbQEvj2mlO2448gC5w=
-github.com/osbuild/images v0.189.0 h1:fG9J9bxhdzkKkZ2EpW/LzT0YQBXY/kKiT99UpEzZhCo=
-github.com/osbuild/images v0.189.0/go.mod h1:KPiYBF0VrOXz5NAw6Lv4X170uN8wnOHpWuBzKT4jPrU=
+github.com/osbuild/images v0.191.0 h1:nhTIAf0JJTEf1gIUsU1II0BVIYBj537BvDpBBXCLYig=
+github.com/osbuild/images v0.191.0/go.mod h1:KPiYBF0VrOXz5NAw6Lv4X170uN8wnOHpWuBzKT4jPrU=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
