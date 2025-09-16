@@ -685,13 +685,16 @@ def assert_fs_customizations(image_type, test_vm):
     """
     # check the minsize specified in the build configuration for each mountpoint against the sizes in the image
     # TODO: replace 'df' call with 'parted --json' and find the partition size for each mountpoint
-    exit_status, output = test_vm.run("df --output=target,size", user="root",
+    exit_status, output = test_vm.run("df --all --output=target,size", user="root",
                                       keyfile=image_type.ssh_keyfile_private_path)
     assert exit_status == 0
     # parse the output of 'df' to a mountpoint -> size dict for convenience
     mountpoint_sizes = {}
     for line in output.splitlines()[1:]:
         fields = line.split()
+        # some filesystems to not report a size with --all
+        if fields[1] == "-":
+            continue
         # Note that df output is in 1k blocks, not bytes
         mountpoint_sizes[fields[0]] = int(fields[1]) * 2 ** 10  # in bytes
 
