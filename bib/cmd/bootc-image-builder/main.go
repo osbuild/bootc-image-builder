@@ -27,7 +27,7 @@ import (
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 	"github.com/osbuild/images/pkg/container"
 	"github.com/osbuild/images/pkg/distro/bootc"
-	"github.com/osbuild/images/pkg/dnfjson"
+	"github.com/osbuild/images/pkg/depsolvednf"
 	"github.com/osbuild/images/pkg/experimentalflags"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/manifestgen"
@@ -93,7 +93,7 @@ func inContainerOrUnknown() bool {
 	return err == nil
 }
 
-func makeManifest(c *ManifestConfig, solver *dnfjson.Solver, cacheRoot string) (manifest.OSBuildManifest, map[string][]rpmmd.RepoConfig, error) {
+func makeManifest(c *ManifestConfig, solver *depsolvednf.Solver, cacheRoot string) (manifest.OSBuildManifest, map[string][]rpmmd.RepoConfig, error) {
 	rng := createRand()
 	mani, err := manifestForISO(c, rng)
 	if err != nil {
@@ -101,7 +101,7 @@ func makeManifest(c *ManifestConfig, solver *dnfjson.Solver, cacheRoot string) (
 	}
 
 	// depsolve packages
-	depsolvedSets := make(map[string]dnfjson.DepsolveResult)
+	depsolvedSets := make(map[string]depsolvednf.DepsolveResult)
 	depsolvedRepos := make(map[string][]rpmmd.RepoConfig)
 	for name, pkgSet := range mani.GetPackageSetChains() {
 		res, err := solver.Depsolve(pkgSet, 0)
