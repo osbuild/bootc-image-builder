@@ -86,7 +86,6 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		Name:   c.Imgref,
 		Local:  true,
 	}
-
 	platform := &platform.Data{
 		Arch:        c.Architecture,
 		ImageFormat: platform.FORMAT_ISO,
@@ -94,6 +93,10 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	}
 	switch c.Architecture {
 	case arch.ARCH_X86_64:
+		// XXX: for now
+		if c.SourceInfo.UEFIVendor == "" {
+			return nil, fmt.Errorf("UEFI vendor must be set for x86")
+		}
 		platform.BIOSPlatform = "i386-pc"
 	case arch.ARCH_AARCH64:
 		// aarch64 always uses UEFI, so let's enforce the vendor
@@ -116,6 +119,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img := image.NewAnacondaContainerInstaller(platform, filename, containerSource, "")
 	img.ContainerRemoveSignatures = true
 	img.RootfsCompression = "zstd"
+	img.KernelVer = c.SourceInfo.KernelInfo.Version
 
 	if c.Architecture == arch.ARCH_X86_64 {
 		img.InstallerCustomizations.ISOBoot = manifest.Grub2ISOBoot

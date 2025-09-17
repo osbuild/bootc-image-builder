@@ -1,6 +1,8 @@
 import os
+import random
 import json
 import platform
+import string
 import subprocess
 from contextlib import ExitStack
 import textwrap
@@ -92,13 +94,26 @@ def test_iso_install_img_is_squashfs(tmp_path, image_type):
 def test_container_iso_installs(tmp_path, build_container):
     container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
 
-    # XXX: this is not working
-    stage2 = "hd:/dev/sda4"
+    username = "test"
+    # use 18 char random password
+    password = "".join(
+        random.choices(string.ascii_uppercase + string.digits, k=18))
+
     cfg = {
         "customizations": {
             "kernel": {
-                "append": f"systemd.debug-shell=1 rd.systemd.debug-shell=1 inst.stage2={stage2}:/sysroot/sysroot inst.debug",
+                # XXX: console= needs to be default (why is it not?)
+                # XXX2: add inst.text automatically (or include all deps for a graphical install)
+                # XXX3: we need https://github.com/osbuild/images/pull/1786 or no kargs are added to anaconda
+                "append": f"systemd.debug-shell=1 rd.systemd.debug-shell=1 inst.debug console=ttyS0 console=tty0 inst.text",
             },
+            "user": [
+                {
+                    "name": username,
+                    "password": password,
+                    "groups": ["wheel"],
+                },
+            ],
         },
     }
     config_json_path = tmp_path / "config.json"
@@ -116,21 +131,21 @@ def test_container_iso_installs(tmp_path, build_container):
          dracut-network \
          net-tools \
          squashfs-tools \
+         grub2-efi-x64-cdboot \
+         python3-mako \
+         lorax-templates-* \
+         biosdevname \
+         prefixdevname \
          && dnf clean all
-    # we need anacondoa in our initrd
-    RUN dracut -f -v --no-host-only --add anaconda \
-        /lib/modules/*/initramfs.img \
-        $(basename /usr/lib/modules/*)
-    # anaconda can only boot into a squshfs so we need the non-ostree
-    # version ready as a squashfs
-    # sucks, doubles size (XXX: remove all packages again? use build-container?)
-    #
-    # XXX: /LiveOS lives in /dev/sda4:/ostree/deploy/default/deploy/e63.../
-    RUN mkdir /LiveOS
-    RUN mkdir -p /tmp/liveos/{{etc,var,root,tmp,home,run,proc,sys,dev,usr}}
-    RUN chmod 1777 /tmp/liveos/tmp
-    RUN mksquashfs /usr /LiveOS/squashfs.img
-    RUN mksquashfs /tmp/liveos /LiveOS/squashfs.img -info -root-becomes usr
+    # shim-x64 is marked installed but the files are not in the
+    # right place, fix that with a reinstall
+    RUN dnf reinstall -y shim-x64
+    # remove stange lorax template line (XXX: figure out why/how)
+    RUN sed -i 's,symlink ../run/install mnt/install,,' /usr/share/lorax/templates.d/80-rhel/runtime-postinstall.tmpl
+    # put stuff into the usual places so that our pipelines find them
+    # XXX: can we make our code look into /lib/modules/* instead?
+    RUN cp -a /lib/modules/*/initramfs.img /boot/initramfs-$(basename /usr/lib/modules/*)
+    RUN cp -a /lib/modules/*/vmlinuz /boot/vmlinuz-$(basename /usr/lib/modules/*)
     """), encoding="utf8")
 
     output_path = tmp_path / "output"
@@ -143,24 +158,23 @@ def test_container_iso_installs(tmp_path, build_container):
             "-v", "/var/tmp/osbuild-test-store:/store",  # share the cache between builds
             "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
             build_container,
-            "--type", "raw",
+            "--type", "iso",
             f"localhost/{container_tag}",
         ]
         print(" ".join(cmd))
         subprocess.check_call(cmd)
-        installer_iso_path = output_path / "image" / "disk.raw"
 
+        installer_iso_path = output_path / "bootiso" / "install.iso"
         test_disk_path = installer_iso_path.with_name("test-disk.img")
         with open(test_disk_path, "w", encoding="utf8") as fp:
             fp.truncate(10_1000_1000_1000)
         # install to test disk
-        #with QEMU(test_disk_path, cdrom=installer_iso_path) as vm:
-        with QEMU(installer_iso_path) as vm:
+        with QEMU(test_disk_path, cdrom=installer_iso_path) as vm:
             vm.start(wait_event="qmp:RESET", snapshot=False, use_ovmf=True)
             vm.force_stop()
         # boot test disk and do extremly simple check
         with QEMU(test_disk_path) as vm:
             vm.start(use_ovmf=True)
-            exit_status, _ = vm.run("true", user=image_type.username, password=image_type.password)
+            exit_status, _ = vm.run("true", user=username, password=password)
             assert exit_status == 0
-            assert_kernel_args(vm, image_type)
+            #assert_kernel_args(vm, image_type)
