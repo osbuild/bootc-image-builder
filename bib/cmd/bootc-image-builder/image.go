@@ -21,11 +21,9 @@ import (
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/platform"
-	"github.com/osbuild/images/pkg/rpmmd"
 	"github.com/osbuild/images/pkg/runner"
 	"github.com/sirupsen/logrus"
 
-	"github.com/osbuild/bootc-image-builder/bib/internal/distrodef"
 	"github.com/osbuild/bootc-image-builder/bib/internal/imagetypes"
 )
 
@@ -83,11 +81,6 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		return nil, fmt.Errorf("pipeline: no base image defined")
 	}
 
-	imageDef, err := distrodef.LoadImageDef(c.DistroDefPaths, c.SourceInfo.OSRelease.ID, c.SourceInfo.OSRelease.VersionID, "anaconda-iso")
-	if err != nil {
-		return nil, err
-	}
-
 	containerSource := container.SourceSpec{
 		Source: c.Imgref,
 		Name:   c.Imgref,
@@ -132,15 +125,12 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.InstallerCustomizations.OSVersion = c.SourceInfo.OSRelease.VersionID
 	img.InstallerCustomizations.ISOLabel = labelForISO(&c.SourceInfo.OSRelease, &c.Architecture)
 
-	img.ExtraBasePackages = rpmmd.PackageSet{
-		Include: imageDef.Packages,
-	}
-
 	var customizations *blueprint.Customizations
 	if c.Config != nil {
 		customizations = c.Config.Customizations
 	}
 	img.InstallerCustomizations.FIPS = customizations.GetFIPS()
+	var err error
 	img.Kickstart, err = kickstart.New(customizations)
 	if err != nil {
 		return nil, err
@@ -192,7 +182,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	}
 	mf.Distro = foundDistro
 
-	_, err = img.InstantiateManifest(&mf, nil, foundRunner, rng)
+	_, err = img.InstantiateManifestFromContainers(&mf, []container.SourceSpec{containerSource}, foundRunner, rng)
 	return &mf, err
 }
 

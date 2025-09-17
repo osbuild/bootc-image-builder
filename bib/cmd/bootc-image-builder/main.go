@@ -43,15 +43,6 @@ import (
 	"github.com/osbuild/image-builder-cli/pkg/setup"
 )
 
-// all possible locations for the bib's distro definitions
-// ./data/defs and ./bib/data/defs are for development
-// /usr/share/bootc-image-builder/defs is for the production, containerized version
-var distroDefPaths = []string{
-	"./data/defs",
-	"./bib/data/defs",
-	"/usr/share/bootc-image-builder/defs",
-}
-
 var (
 	osGetuid = os.Getuid
 	osGetgid = os.Getgid
@@ -100,18 +91,6 @@ func makeManifest(c *ManifestConfig, solver *depsolvednf.Solver, cacheRoot strin
 		return nil, nil, fmt.Errorf("cannot get manifest: %w", err)
 	}
 
-	// depsolve packages
-	depsolvedSets := make(map[string]depsolvednf.DepsolveResult)
-	depsolvedRepos := make(map[string][]rpmmd.RepoConfig)
-	for name, pkgSet := range mani.GetPackageSetChains() {
-		res, err := solver.Depsolve(pkgSet, 0)
-		if err != nil {
-			return nil, nil, fmt.Errorf("cannot depsolve: %w", err)
-		}
-		depsolvedSets[name] = *res
-		depsolvedRepos[name] = res.Repos
-	}
-
 	// Resolve container - the normal case is that host and target
 	// architecture are the same. However it is possible to build
 	// cross-arch images by using qemu-user. This will run everything
@@ -143,11 +122,11 @@ func makeManifest(c *ManifestConfig, solver *depsolvednf.Solver, cacheRoot strin
 	if c.UseLibrepo {
 		opts.RpmDownloader = osbuild.RpmDownloaderLibrepo
 	}
-	mf, err := mani.Serialize(depsolvedSets, containerSpecs, nil, &opts)
+	mf, err := mani.Serialize(nil, containerSpecs, nil, &opts)
 	if err != nil {
 		return nil, nil, fmt.Errorf("[ERROR] manifest serialization failed: %s", err.Error())
 	}
-	return mf, depsolvedRepos, nil
+	return mf, nil, nil
 }
 
 func saveManifest(ms manifest.OSBuildManifest, fpath string) (err error) {
@@ -361,7 +340,6 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 		ImageTypes:      imageTypes,
 		Imgref:          imgref,
 		BuildImgref:     buildImgref,
-		DistroDefPaths:  distroDefPaths,
 		SourceInfo:      sourceinfo,
 		BuildSourceInfo: buildSourceinfo,
 		RootFSType:      rootfsType,
