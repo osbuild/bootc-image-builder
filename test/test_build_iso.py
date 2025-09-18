@@ -94,26 +94,42 @@ def test_iso_install_img_is_squashfs(tmp_path, image_type):
 def test_container_iso_installs(tmp_path, build_container):
     container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
 
+    # XXX: duplicated from test_build_disk.py
     username = "test"
-    # use 18 char random password
     password = "".join(
         random.choices(string.ascii_uppercase + string.digits, k=18))
+    ssh_keyfile_private_path = tmp_path / "ssh-keyfile"
+    ssh_keyfile_public_path = ssh_keyfile_private_path.with_suffix(".pub")
+    if not ssh_keyfile_private_path.exists():
+        subprocess.run([
+            "ssh-keygen",
+            "-N", "",
+            # be very conservative with keys for paramiko
+            "-b", "2048",
+            "-t", "rsa",
+            "-f", os.fspath(ssh_keyfile_private_path),
+        ], check=True)
+    ssh_pubkey = ssh_keyfile_public_path.read_text(encoding="utf8").strip()
 
     cfg = {
         "customizations": {
-            "kernel": {
-                # XXX: console= needs to be default (why is it not?)
-                # XXX2: add inst.text automatically (or include all deps for a graphical install)
-                # XXX3: we need https://github.com/osbuild/images/pull/1786 or no kargs are added to anaconda
-                "append": f"systemd.debug-shell=1 rd.systemd.debug-shell=1 inst.debug console=ttyS0 console=tty0 inst.text",
-            },
             "user": [
                 {
+                    "name": "root",
+                    "key": ssh_pubkey,
+                    # note that we have no "home" here for ISOs
+                }, {
                     "name": username,
                     "password": password,
                     "groups": ["wheel"],
                 },
             ],
+            "kernel": {
+                # XXX: console= needs to be default (why is it not?)
+                # XXX2: add inst.text automatically (or include all deps for a graphical install)
+                # XXX3: we need https://github.com/osbuild/images/pull/1786 or no kargs are added to anaconda
+                "append": f"systemd.debug-shell=1 rd.systemd.debug-shell=1 inst.debug",
+            },
         },
     }
     config_json_path = tmp_path / "config.json"
@@ -177,6 +193,6 @@ def test_container_iso_installs(tmp_path, build_container):
             exit_status, _ = vm.run("true", user=username, password=password)
             assert exit_status == 0
             #assert_kernel_args(vm, image_type)
-            exit_status, output = vm.run("sudo bootc status", user=username, password=password)
+            exit_status, output = vm.run("bootc status", user="root", keyfile=ssh_keyfile_private_path)
             assert exit_status == 0
             assert f"Booted image: {container_ref}" in output
