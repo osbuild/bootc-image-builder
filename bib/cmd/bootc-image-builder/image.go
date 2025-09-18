@@ -21,11 +21,9 @@ import (
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/platform"
-	"github.com/osbuild/images/pkg/rpmmd"
 	"github.com/osbuild/images/pkg/runner"
 	"github.com/sirupsen/logrus"
 
-	"github.com/osbuild/bootc-image-builder/bib/internal/distrodef"
 	"github.com/osbuild/bootc-image-builder/bib/internal/imagetypes"
 )
 
@@ -33,6 +31,8 @@ type ManifestConfig struct {
 	// OCI image path (without the transport, that is always docker://)
 	Imgref      string
 	BuildImgref string
+
+	InstallerPayload string
 
 	ImageTypes imagetypes.ImageTypes
 
@@ -83,17 +83,11 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		return nil, fmt.Errorf("pipeline: no base image defined")
 	}
 
-	imageDef, err := distrodef.LoadImageDef(c.DistroDefPaths, c.SourceInfo.OSRelease.ID, c.SourceInfo.OSRelease.VersionID, "anaconda-iso")
-	if err != nil {
-		return nil, err
-	}
-
 	containerSource := container.SourceSpec{
 		Source: c.Imgref,
 		Name:   c.Imgref,
 		Local:  true,
 	}
-
 	platform := &platform.Data{
 		Arch:        c.Architecture,
 		ImageFormat: platform.FORMAT_ISO,
@@ -101,6 +95,10 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	}
 	switch c.Architecture {
 	case arch.ARCH_X86_64:
+		// XXX: for now
+		if c.SourceInfo.UEFIVendor == "" {
+			return nil, fmt.Errorf("UEFI vendor must be set for x86")
+		}
 		platform.BIOSPlatform = "i386-pc"
 	case arch.ARCH_AARCH64:
 		// aarch64 always uses UEFI, so let's enforce the vendor
@@ -123,6 +121,17 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img := image.NewAnacondaContainerInstaller(platform, filename, containerSource, "")
 	img.ContainerRemoveSignatures = true
 	img.RootfsCompression = "zstd"
+	// kernelVer is used by dracut
+	img.KernelVer = c.SourceInfo.KernelInfo.Version
+	img.KernelPath = fmt.Sprintf("lib/modules/%s/vmlinuz", c.SourceInfo.KernelInfo.Version)
+	img.InitramfsPath = fmt.Sprintf("lib/modules/%s/initramfs.img", c.SourceInfo.KernelInfo.Version)
+
+	payloadSource := container.SourceSpec{
+		Source: c.InstallerPayload,
+		Name:   c.InstallerPayload,
+		Local:  true,
+	}
+	img.InstallerPayload = payloadSource
 
 	if c.Architecture == arch.ARCH_X86_64 {
 		img.InstallerCustomizations.ISOBoot = manifest.Grub2ISOBoot
@@ -132,15 +141,12 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.InstallerCustomizations.OSVersion = c.SourceInfo.OSRelease.VersionID
 	img.InstallerCustomizations.ISOLabel = labelForISO(&c.SourceInfo.OSRelease, &c.Architecture)
 
-	img.ExtraBasePackages = rpmmd.PackageSet{
-		Include: imageDef.Packages,
-	}
-
 	var customizations *blueprint.Customizations
 	if c.Config != nil {
 		customizations = c.Config.Customizations
 	}
 	img.InstallerCustomizations.FIPS = customizations.GetFIPS()
+	var err error
 	img.Kickstart, err = kickstart.New(customizations)
 	if err != nil {
 		return nil, err
@@ -192,7 +198,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	}
 	mf.Distro = foundDistro
 
-	_, err = img.InstantiateManifest(&mf, nil, foundRunner, rng)
+	_, err = img.InstantiateManifestFromContainers(&mf, []container.SourceSpec{containerSource}, foundRunner, rng)
 	return &mf, err
 }
 

@@ -26,8 +26,8 @@ import (
 	"github.com/osbuild/images/pkg/cloud"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 	"github.com/osbuild/images/pkg/container"
+	"github.com/osbuild/images/pkg/depsolvednf"
 	"github.com/osbuild/images/pkg/distro/bootc"
-	"github.com/osbuild/images/pkg/dnfjson"
 	"github.com/osbuild/images/pkg/experimentalflags"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/manifestgen"
@@ -42,15 +42,6 @@ import (
 	"github.com/osbuild/image-builder-cli/pkg/progress"
 	"github.com/osbuild/image-builder-cli/pkg/setup"
 )
-
-// all possible locations for the bib's distro definitions
-// ./data/defs and ./bib/data/defs are for development
-// /usr/share/bootc-image-builder/defs is for the production, containerized version
-var distroDefPaths = []string{
-	"./data/defs",
-	"./bib/data/defs",
-	"/usr/share/bootc-image-builder/defs",
-}
 
 var (
 	osGetuid = os.Getuid
@@ -93,23 +84,11 @@ func inContainerOrUnknown() bool {
 	return err == nil
 }
 
-func makeManifest(c *ManifestConfig, solver *dnfjson.Solver, cacheRoot string) (manifest.OSBuildManifest, map[string][]rpmmd.RepoConfig, error) {
+func makeManifest(c *ManifestConfig, solver *depsolvednf.Solver, cacheRoot string) (manifest.OSBuildManifest, map[string][]rpmmd.RepoConfig, error) {
 	rng := createRand()
 	mani, err := manifestForISO(c, rng)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot get manifest: %w", err)
-	}
-
-	// depsolve packages
-	depsolvedSets := make(map[string]dnfjson.DepsolveResult)
-	depsolvedRepos := make(map[string][]rpmmd.RepoConfig)
-	for name, pkgSet := range mani.GetPackageSetChains() {
-		res, err := solver.Depsolve(pkgSet, 0)
-		if err != nil {
-			return nil, nil, fmt.Errorf("cannot depsolve: %w", err)
-		}
-		depsolvedSets[name] = *res
-		depsolvedRepos[name] = res.Repos
 	}
 
 	// Resolve container - the normal case is that host and target
@@ -143,11 +122,11 @@ func makeManifest(c *ManifestConfig, solver *dnfjson.Solver, cacheRoot string) (
 	if c.UseLibrepo {
 		opts.RpmDownloader = osbuild.RpmDownloaderLibrepo
 	}
-	mf, err := mani.Serialize(depsolvedSets, containerSpecs, nil, &opts)
+	mf, err := mani.Serialize(nil, containerSpecs, nil, &opts)
 	if err != nil {
 		return nil, nil, fmt.Errorf("[ERROR] manifest serialization failed: %s", err.Error())
 	}
-	return mf, depsolvedRepos, nil
+	return mf, nil, nil
 }
 
 func saveManifest(ms manifest.OSBuildManifest, fpath string) (err error) {
@@ -187,6 +166,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	targetArch, _ := cmd.Flags().GetString("target-arch")
 	rootFs, _ := cmd.Flags().GetString("rootfs")
 	buildImgref, _ := cmd.Flags().GetString("build-container")
+	installerPayload, _ := cmd.Flags().GetString("installer-payload")
 	useLibrepo, _ := cmd.Flags().GetBool("use-librepo")
 
 	// If --local was given, warn in the case of --local or --local=true (true is the default), error in the case of --local=false
@@ -356,16 +336,16 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	}
 
 	manifestConfig := &ManifestConfig{
-		Architecture:    cntArch,
-		Config:          config,
-		ImageTypes:      imageTypes,
-		Imgref:          imgref,
-		BuildImgref:     buildImgref,
-		DistroDefPaths:  distroDefPaths,
-		SourceInfo:      sourceinfo,
-		BuildSourceInfo: buildSourceinfo,
-		RootFSType:      rootfsType,
-		UseLibrepo:      useLibrepo,
+		Architecture:     cntArch,
+		Config:           config,
+		ImageTypes:       imageTypes,
+		Imgref:           imgref,
+		BuildImgref:      buildImgref,
+		InstallerPayload: installerPayload,
+		SourceInfo:       sourceinfo,
+		BuildSourceInfo:  buildSourceinfo,
+		RootFSType:       rootfsType,
+		UseLibrepo:       useLibrepo,
 	}
 
 	manifest, repos, err := makeManifest(manifestConfig, solver, rpmCacheRoot)
@@ -714,6 +694,8 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	manifestCmd.Flags().String("rpmmd", "/rpmmd", "rpm metadata cache directory")
 	manifestCmd.Flags().String("target-arch", "", "build for the given target architecture (experimental)")
 	manifestCmd.Flags().String("build-container", "", "Use a custom container for the image build")
+	// XXX: better name
+	manifestCmd.Flags().String("installer-payload", "", "Use this container for the installer payload")
 	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, fmt.Sprintf("image types to build [%s]", imagetypes.Available()))
 	manifestCmd.Flags().Bool("local", true, "DEPRECATED: --local is now the default behavior, make sure to pull the container image before running bootc-image-builder")
 	if err := manifestCmd.Flags().MarkHidden("local"); err != nil {
