@@ -202,6 +202,7 @@ class QEMU(VM):
     def force_stop(self):
         if self._qemu_p:
             self._qemu_p.kill()
+            self._qemu_p.wait()
             self._qemu_p = None
             self._address = None
             self._ssh_port = None
