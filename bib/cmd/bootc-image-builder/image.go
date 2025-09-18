@@ -121,7 +121,10 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img := image.NewAnacondaContainerInstaller(platform, filename, containerSource, "")
 	img.ContainerRemoveSignatures = true
 	img.RootfsCompression = "zstd"
+	// kernelVer is used by dracut
 	img.KernelVer = c.SourceInfo.KernelInfo.Version
+	img.KernelPath = fmt.Sprintf("lib/modules/%s/vmlinuz", c.SourceInfo.KernelInfo.Version)
+	img.InitramfsPath = fmt.Sprintf("lib/modules/%s/initramfs.img", c.SourceInfo.KernelInfo.Version)
 
 	payloadSource := container.SourceSpec{
 		Source: c.InstallerPayload,

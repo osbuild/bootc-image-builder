@@ -113,10 +113,6 @@ def test_container_iso_installs(tmp_path, build_container):
                     "password": password,
                     "groups": ["wheel"],
                 },
-                {
-                    "name": "root",
-                    "password": password,
-                },
             ],
         },
     }
@@ -141,15 +137,13 @@ def test_container_iso_installs(tmp_path, build_container):
          biosdevname \
          prefixdevname \
          && dnf clean all
-    # shim-x64 is marked installed but the files are not in the
-    # right place, fix that with a reinstall
+    # shim-x64 is marked installed but the files are not in the expected
+    # place for https://github.com/osbuild/osbuild/blob/v160/stages/org.osbuild.grub2.iso#L91
+    # workaround via reinstall, we could add a config to the grub2.iso
+    # stage to allow a different prefix that then would be used by anaconda
     RUN dnf reinstall -y shim-x64
-    # remove stange lorax template line (XXX: figure out why/how)
+    # remove stange lorax template line (XXX: figure out what this is about or if there is a different workaround, it seems not needed)
     RUN sed -i 's,symlink ../run/install mnt/install,,' /usr/share/lorax/templates.d/80-rhel/runtime-postinstall.tmpl
-    # put stuff into the usual places so that our pipelines find them
-    # XXX: can we make our code look into /lib/modules/* instead?
-    RUN cp -a /lib/modules/*/initramfs.img /boot/initramfs-$(basename /usr/lib/modules/*)
-    RUN cp -a /lib/modules/*/vmlinuz /boot/vmlinuz-$(basename /usr/lib/modules/*)
     """), encoding="utf8")
 
     output_path = tmp_path / "output"
