@@ -92,7 +92,8 @@ def test_iso_install_img_is_squashfs(tmp_path, image_type):
 
 @pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
 def test_container_iso_installs(tmp_path, build_container):
-    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    #container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    container_ref = "quay.io/fedora/fedora-bootc:42"
 
     # XXX: duplicated from test_build_disk.py
     username = "test"
@@ -159,7 +160,11 @@ def test_container_iso_installs(tmp_path, build_container):
     # stage to allow a different prefix that then would be used by anaconda
     RUN dnf reinstall -y shim-x64
     # remove stange lorax template line (XXX: figure out what this is about or if there is a different workaround, it seems not needed)
-    RUN sed -i 's,symlink ../run/install mnt/install,,' /usr/share/lorax/templates.d/80-rhel/runtime-postinstall.tmpl
+    RUN sed -i 's,symlink ../run/install mnt/install,,' /usr/share/lorax/templates.d/*/runtime-postinstall.tmpl || true
+    # the fedora version of anaconda needs a real /root dir (instead of the bootc default /root -> /var/roothome)
+    # centos9 is fine, it seems https://github.com/weldr/lorax/blob/master/share/templates.d/99-generic/runtime-postinstall.tmpl#L73 is the reason but its unclear why the symlink is notworking
+    RUN rm -f /root
+    RUN mkdir -m0700 /root
     """), encoding="utf8")
 
     output_path = tmp_path / "output"
@@ -173,6 +178,7 @@ def test_container_iso_installs(tmp_path, build_container):
             "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
             build_container,
             "--type", "iso",
+            "--rootfs", "ext4",
             "--installer-payload", container_ref,
             f"localhost/{container_tag}",
         ]
