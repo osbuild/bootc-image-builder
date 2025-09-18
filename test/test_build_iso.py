@@ -91,10 +91,12 @@ def test_iso_install_img_is_squashfs(tmp_path, image_type):
 
 
 @pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
-def test_container_iso_installs(tmp_path, build_container):
-    #container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
-    container_ref = "quay.io/fedora/fedora-bootc:42"
-
+@pytest.mark.parametrize("container_ref", [
+    "quay.io/centos-bootc/centos-bootc:stream10",
+    "quay.io/fedora/fedora-bootc:42",
+    "quay.io/centos-bootc/centos-bootc:stream9",
+])
+def test_container_iso_installs(tmp_path, build_container, container_ref):
     # XXX: duplicated from test_build_disk.py
     username = "test"
     password = "".join(
