@@ -166,6 +166,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	targetArch, _ := cmd.Flags().GetString("target-arch")
 	rootFs, _ := cmd.Flags().GetString("rootfs")
 	buildImgref, _ := cmd.Flags().GetString("build-container")
+	installerPayload, _ := cmd.Flags().GetString("installer-payload")
 	useLibrepo, _ := cmd.Flags().GetBool("use-librepo")
 
 	// If --local was given, warn in the case of --local or --local=true (true is the default), error in the case of --local=false
@@ -335,15 +336,16 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	}
 
 	manifestConfig := &ManifestConfig{
-		Architecture:    cntArch,
-		Config:          config,
-		ImageTypes:      imageTypes,
-		Imgref:          imgref,
-		BuildImgref:     buildImgref,
-		SourceInfo:      sourceinfo,
-		BuildSourceInfo: buildSourceinfo,
-		RootFSType:      rootfsType,
-		UseLibrepo:      useLibrepo,
+		Architecture:     cntArch,
+		Config:           config,
+		ImageTypes:       imageTypes,
+		Imgref:           imgref,
+		BuildImgref:      buildImgref,
+		InstallerPayload: installerPayload,
+		SourceInfo:       sourceinfo,
+		BuildSourceInfo:  buildSourceinfo,
+		RootFSType:       rootfsType,
+		UseLibrepo:       useLibrepo,
 	}
 
 	manifest, repos, err := makeManifest(manifestConfig, solver, rpmCacheRoot)
@@ -692,6 +694,8 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	manifestCmd.Flags().String("rpmmd", "/rpmmd", "rpm metadata cache directory")
 	manifestCmd.Flags().String("target-arch", "", "build for the given target architecture (experimental)")
 	manifestCmd.Flags().String("build-container", "", "Use a custom container for the image build")
+	// XXX: better name
+	manifestCmd.Flags().String("installer-payload", "", "Use this container for the installer payload")
 	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, fmt.Sprintf("image types to build [%s]", imagetypes.Available()))
 	manifestCmd.Flags().Bool("local", true, "DEPRECATED: --local is now the default behavior, make sure to pull the container image before running bootc-image-builder")
 	if err := manifestCmd.Flags().MarkHidden("local"); err != nil {

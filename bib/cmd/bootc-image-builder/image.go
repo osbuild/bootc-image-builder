@@ -32,6 +32,8 @@ type ManifestConfig struct {
 	Imgref      string
 	BuildImgref string
 
+	InstallerPayload string
+
 	ImageTypes imagetypes.ImageTypes
 
 	// Build config
@@ -120,6 +122,13 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.ContainerRemoveSignatures = true
 	img.RootfsCompression = "zstd"
 	img.KernelVer = c.SourceInfo.KernelInfo.Version
+
+	payloadSource := container.SourceSpec{
+		Source: c.InstallerPayload,
+		Name:   c.InstallerPayload,
+		Local:  true,
+	}
+	img.InstallerPayload = payloadSource
 
 	if c.Architecture == arch.ARCH_X86_64 {
 		img.InstallerCustomizations.ISOBoot = manifest.Grub2ISOBoot

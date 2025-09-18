@@ -113,6 +113,10 @@ def test_container_iso_installs(tmp_path, build_container):
                     "password": password,
                     "groups": ["wheel"],
                 },
+                {
+                    "name": "root",
+                    "password": password,
+                },
             ],
         },
     }
@@ -159,6 +163,7 @@ def test_container_iso_installs(tmp_path, build_container):
             "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
             build_container,
             "--type", "iso",
+            "--installer-payload", container_ref,
             f"localhost/{container_tag}",
         ]
         print(" ".join(cmd))
@@ -178,3 +183,6 @@ def test_container_iso_installs(tmp_path, build_container):
             exit_status, _ = vm.run("true", user=username, password=password)
             assert exit_status == 0
             #assert_kernel_args(vm, image_type)
+            exit_status, output = vm.run("sudo bootc status", user=username, password=password)
+            assert exit_status == 0
+            assert f"Booted image: {container_ref}" in output
