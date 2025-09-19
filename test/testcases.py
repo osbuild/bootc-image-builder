@@ -104,8 +104,11 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
     if what == "qemu-cross":
         test_cases = []
         if platform.machine() == "x86_64":
-            test_cases.append(
-                TestCaseC9S(image="raw", target_arch="arm64"))
+            # 2025-09-19: disabled because CI hangs, see
+            # https://github.com/osbuild/bootc-image-builder/actions/runs/17821609665
+            # test_cases.append(
+            #    TestCaseC9S(image="raw", target_arch="arm64"))
+            pass
         elif platform.machine() == "arm64":
             # TODO: add arm64->x86_64 cross build test too
             pass
