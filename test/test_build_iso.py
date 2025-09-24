@@ -162,8 +162,9 @@ def test_container_iso_installs(tmp_path, build_container, container_ref):
     # workaround via reinstall, we could add a config to the grub2.iso
     # stage to allow a different prefix that then would be used by anaconda
     RUN dnf reinstall -y shim-x64
-    # remove stange lorax template line (XXX: figure out what this is about or if there is a different workaround, it seems not needed)
-    RUN sed -i 's,symlink ../run/install mnt/install,,' /usr/share/lorax/templates.d/*/runtime-postinstall.tmpl || true
+    # lorax wants to create a symlink in /mnt which points to /var/mnt
+    # on bootc but /var/mnt does not exist on some images
+    RUN mkdir /var/mnt
     """), encoding="utf8")
 
     output_path = tmp_path / "output"
