@@ -164,10 +164,6 @@ def test_container_iso_installs(tmp_path, build_container, container_ref):
     RUN dnf reinstall -y shim-x64
     # remove stange lorax template line (XXX: figure out what this is about or if there is a different workaround, it seems not needed)
     RUN sed -i 's,symlink ../run/install mnt/install,,' /usr/share/lorax/templates.d/*/runtime-postinstall.tmpl || true
-    # the fedora version of anaconda needs a real /root dir (instead of the bootc default /root -> /var/roothome)
-    # centos9 is fine, it seems https://github.com/weldr/lorax/blob/master/share/templates.d/99-generic/runtime-postinstall.tmpl#L73 is the reason but its unclear why the symlink is notworking
-    RUN rm -f /root
-    RUN mkdir -m0700 /root
     """), encoding="utf8")
 
     output_path = tmp_path / "output"

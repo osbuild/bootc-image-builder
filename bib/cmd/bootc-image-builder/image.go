@@ -125,6 +125,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.KernelVer = c.SourceInfo.KernelInfo.Version
 	img.KernelPath = fmt.Sprintf("lib/modules/%s/vmlinuz", c.SourceInfo.KernelInfo.Version)
 	img.InitramfsPath = fmt.Sprintf("lib/modules/%s/initramfs.img", c.SourceInfo.KernelInfo.Version)
+	img.InstallerHome = "/var/roothome"
 
 	payloadSource := container.SourceSpec{
 		Source: c.InstallerPayload,
