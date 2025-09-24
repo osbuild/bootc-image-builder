@@ -157,7 +157,8 @@ def test_container_iso_installs(tmp_path, build_container, container_ref):
          prefixdevname \
          && dnf clean all
     # shim-x64 is marked installed but the files are not in the expected
-    # place for https://github.com/osbuild/osbuild/blob/v160/stages/org.osbuild.grub2.iso#L91
+    # place for https://github.com/osbuild/osbuild/blob/v160/stages/org.osbuild.grub2.iso#L91, see
+    # https://github.com/osbuild/osbuild/pull/2202 for proper fix
     # workaround via reinstall, we could add a config to the grub2.iso
     # stage to allow a different prefix that then would be used by anaconda
     RUN dnf reinstall -y shim-x64
