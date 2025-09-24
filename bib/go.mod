@@ -136,4 +136,4 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )
 
-replace github.com/osbuild/images => github.com/mvo5/images v0.0.0-20250918095551-6ec6e827a66d
+replace github.com/osbuild/images => github.com/mvo5/images v0.0.0-20250924104030-c68cb1db7550
