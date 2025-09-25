@@ -33,12 +33,14 @@ func upload(uploader cloud.Uploader, path string, flags *pflag.FlagSet) error {
 	defer file.Close()
 
 	var r io.Reader = file
+	var size int64
 	if pbar != nil {
 		st, err := file.Stat()
 		if err != nil {
 			return err
 		}
-		pbar.SetTotal(st.Size())
+		size = st.Size()
+		pbar.SetTotal(size)
 		pbar.Set(pb.Bytes, true)
 		pbar.SetWriter(osStdout)
 		r = pbar.NewProxyReader(file)
@@ -46,5 +48,5 @@ func upload(uploader cloud.Uploader, path string, flags *pflag.FlagSet) error {
 		defer pbar.Finish()
 	}
 
-	return uploader.UploadAndRegister(r, osStderr)
+	return uploader.UploadAndRegister(r, uint64(size), osStderr)
 }

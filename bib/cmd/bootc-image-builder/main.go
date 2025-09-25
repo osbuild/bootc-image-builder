@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,8 +25,8 @@ import (
 	"github.com/osbuild/images/pkg/cloud"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 	"github.com/osbuild/images/pkg/container"
-	"github.com/osbuild/images/pkg/distro/bootc"
 	"github.com/osbuild/images/pkg/depsolvednf"
+	"github.com/osbuild/images/pkg/distro/bootc"
 	"github.com/osbuild/images/pkg/experimentalflags"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/manifestgen"
@@ -103,7 +102,11 @@ func makeManifest(c *ManifestConfig, solver *depsolvednf.Solver, cacheRoot strin
 	// depsolve packages
 	depsolvedSets := make(map[string]depsolvednf.DepsolveResult)
 	depsolvedRepos := make(map[string][]rpmmd.RepoConfig)
-	for name, pkgSet := range mani.GetPackageSetChains() {
+	pkgSetChains, err := mani.GetPackageSetChains()
+	if err != nil {
+		return nil, nil, err
+	}
+	for name, pkgSet := range pkgSetChains {
 		res, err := solver.Depsolve(pkgSet, 0)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot depsolve: %w", err)
@@ -264,13 +267,11 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 			return nil, nil, err
 		}
 
-		var buf bytes.Buffer
 		repos, err := reporegistry.New(nil, []fs.FS{repos.FS})
 		if err != nil {
 			return nil, nil, err
 		}
 		mg, err := manifestgen.New(repos, &manifestgen.Options{
-			Output: &buf,
 			// XXX: hack to skip repo loading for the bootc image.
 			// We need to add a SkipRepositories or similar to
 			// manifestgen instead to make this clean
@@ -283,10 +284,11 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := mg.Generate(config, distro, imgType, archi, nil); err != nil {
+		output, err := mg.Generate(config, imgType, nil)
+		if err != nil {
 			return nil, nil, err
 		}
-		return buf.Bytes(), nil, nil
+		return output, nil, nil
 	}
 
 	container, err := podman_container.New(imgref)

@@ -50,7 +50,7 @@ func uploadAMI(cmd *cobra.Command, args []string) {
 	// nolint:errcheck
 	defer f.Close()
 
-	check(uploader.UploadAndRegister(f, os.Stderr))
+	check(uploader.UploadAndRegister(f, 0, os.Stderr))
 }
 
 func setupCLI() *cobra.Command {
