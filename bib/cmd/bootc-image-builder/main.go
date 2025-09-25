@@ -245,7 +245,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 
 	// For now shortcut here and build ding "images" for anything
 	// that is not the iso
-	if !imageTypes.BuildsISO() {
+	if !imageTypes.Legacy() {
 		distro, err := bootc.NewBootcDistro(imgref)
 		if err != nil {
 			return nil, nil, err

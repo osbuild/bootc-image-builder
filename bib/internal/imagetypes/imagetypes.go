@@ -10,6 +10,7 @@ import (
 type imageType struct {
 	Export string
 	ISO    bool
+	Legacy bool
 }
 
 var supportedImageTypes = map[string]imageType{
@@ -19,8 +20,10 @@ var supportedImageTypes = map[string]imageType{
 	"vmdk":         imageType{Export: "vmdk"},
 	"vhd":          imageType{Export: "vpc"},
 	"gce":          imageType{Export: "gce"},
-	"anaconda-iso": imageType{Export: "bootiso", ISO: true},
-	"iso":          imageType{Export: "bootiso", ISO: true},
+	"anaconda-iso": imageType{Export: "bootiso", ISO: true, Legacy: true},
+	"iso":          imageType{Export: "bootiso", ISO: true, Legacy: true},
+	// XXX: consider good name
+	"bootc-installer": imageType{Export: "bootiso", ISO: true},
 }
 
 // Available() returns a comma-separated list of supported image types
@@ -85,4 +88,9 @@ func (it ImageTypes) Exports() []string {
 func (it ImageTypes) BuildsISO() bool {
 	// XXX: this assumes a valid ImagTypes object
 	return supportedImageTypes[it[0]].ISO
+}
+
+func (it ImageTypes) Legacy() bool {
+	// XXX: this assumes a valid ImagTypes object
+	return supportedImageTypes[it[0]].Legacy
 }
