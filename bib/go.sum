@@ -233,6 +233,8 @@ github.com/morikuni/aec v1.0.0 h1:nP9CBfwrvYnBRgY6qfDQkygYDmYwOilePFkwzv4dU8A=
 github.com/morikuni/aec v1.0.0/go.mod h1:BbKIizmSmc5MMPqRYbxO4ZU0S0+P200+tUnFx7PXmsc=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
+github.com/mvo5/images v0.0.0-20251009122100-a281674e76f1 h1:2v+jNx7H4oI9jq93vkBYJVwVenWpQn6bS+njMKZeK1k=
+github.com/mvo5/images v0.0.0-20251009122100-a281674e76f1/go.mod h1:xkXfw5CIy0bVNTNdB6GXiewu/IzBgpofkItDJPAzGA4=
 github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8Oi/yOhh5U=
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJwooC2xJA040=
@@ -245,8 +247,6 @@ github.com/osbuild/blueprint v1.16.0 h1:f/kHih+xpeJ1v7wtIfzdHPZTsiXsqKeDQ1+rrue6
 github.com/osbuild/blueprint v1.16.0/go.mod h1:HPlJzkEl7q5g8hzaGksUk7ifFAy9QFw9LmzhuFOAVm4=
 github.com/osbuild/image-builder-cli v0.0.0-20250924085931-15de5139f521 h1:Mo1htXYyEoKrBQD+/RC/kluAWu4+E0oEjPorujVn/K8=
 github.com/osbuild/image-builder-cli v0.0.0-20250924085931-15de5139f521/go.mod h1:oTn9T+bV9g/760hM/jX7AV0c4vuVIn6FjAnaVM9RzRo=
-github.com/osbuild/images v0.202.0 h1:OPvfmr5RJHcOJgU8Win6kHyoCNQZEiILlgIDI64/YIM=
-github.com/osbuild/images v0.202.0/go.mod h1:xkXfw5CIy0bVNTNdB6GXiewu/IzBgpofkItDJPAzGA4=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
