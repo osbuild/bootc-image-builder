@@ -23,6 +23,8 @@ var supportedImageTypes = map[string]imageType{
 	"vmdk":  imageType{Export: "vmdk"},
 	"vhd":   imageType{Export: "vpc"},
 	"gce":   imageType{Export: "gce"},
+	// new images bootc-installer type
+	"bootc-installer": imageType{Export: "bootiso", ISO: true},
 	// the iso image types are RPM based and legacy/deprecated
 	"anaconda-iso": imageType{Export: "bootiso", ISO: true, Legacy: true},
 	"iso":          imageType{Export: "bootiso", ISO: true, Legacy: true},

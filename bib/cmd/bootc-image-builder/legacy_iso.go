@@ -305,7 +305,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 
 	// The ref is not needed and will be removed from the ctor later
 	// in time
-	img := image.NewAnacondaContainerInstaller(platform, filename, containerSource, "")
+	img := image.NewAnacondaContainerInstallerLegacy(platform, filename, containerSource, "")
 	img.ContainerRemoveSignatures = true
 	img.RootfsCompression = "zstd"
 
