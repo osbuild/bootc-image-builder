@@ -164,7 +164,11 @@ func makeISOManifest(c *ManifestConfig, solver *depsolvednf.Solver, cacheRoot st
 	// depsolve packages
 	depsolvedSets := make(map[string]depsolvednf.DepsolveResult)
 	depsolvedRepos := make(map[string][]rpmmd.RepoConfig)
-	for name, pkgSet := range mani.GetPackageSetChains() {
+	pkgSetChains, err := mani.GetPackageSetChains()
+	if err != nil {
+		return nil, nil, err
+	}
+	for name, pkgSet := range pkgSetChains {
 		res, err := solver.Depsolve(pkgSet, 0)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot depsolve: %w", err)
