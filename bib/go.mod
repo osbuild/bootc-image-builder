@@ -8,8 +8,8 @@ require (
 	github.com/cheggaaa/pb/v3 v3.1.7
 	github.com/hashicorp/go-version v1.7.0
 	github.com/osbuild/blueprint v1.13.0
-	github.com/osbuild/image-builder-cli v0.0.0-20250331194259-63bb56e12db3
-	github.com/osbuild/images v0.191.0
+	github.com/osbuild/image-builder-cli v0.0.0-20250924085931-15de5139f521
+	github.com/osbuild/images v0.197.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/pflag v1.0.10
@@ -135,3 +135,5 @@ require (
 	google.golang.org/protobuf v1.36.8 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )
+
+replace github.com/osbuild/images => github.com/mvo5/images v0.0.0-20250926143126-2fc1f7aa87a1
