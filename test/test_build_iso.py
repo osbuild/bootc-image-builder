@@ -141,18 +141,15 @@ def test_container_iso_installs(tmp_path, build_container, container_ref):
     cntf_path.write_text(textwrap.dedent(f"""\n
     FROM {container_ref}
     RUN dnf install -y \
-         anaconda \
-         anaconda-install-env-deps \
          anaconda-dracut \
-         dracut-config-generic \
-         dracut-network \
-         net-tools \
-         squashfs-tools \
+         anaconda-install-img-deps \
+         biosdevname \
          grub2-efi-x64-cdboot \
+         net-tools \
+         prefixdevname \
          python3-mako \
          lorax-templates-* \
-         biosdevname \
-         prefixdevname \
+         squashfs-tools \
          && dnf clean all
     # shim-x64 is marked installed but the files are not in the expected
     # place for https://github.com/osbuild/osbuild/blob/v160/stages/org.osbuild.grub2.iso#L91, see
