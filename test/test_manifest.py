@@ -153,7 +153,8 @@ def test_manifest_cross_arch_check(tmp_path, build_container):
                 "manifest", "--target-arch=aarch64",
                 f"localhost/{container_tag}"
             ], check=True, capture_output=True, encoding="utf8")
-        assert 'cannot generate manifest: invalid arch: aarch64' in exc.value.stderr
+        assert ('cannot generate manifest: requested bootc arch "aarch64" '
+                'does not match available arches [x86_64]') in exc.value.stderr
 
 
 def find_rootfs_type_from(manifest_str):
