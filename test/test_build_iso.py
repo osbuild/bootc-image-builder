@@ -127,10 +127,13 @@ def test_container_iso_installs(tmp_path, build_container, container_ref):
                 },
             ],
             "kernel": {
-                # XXX: console= needs to be default (why is it not?)
-                # XXX2: add inst.text automatically (or include all deps for a graphical install)
-                # XXX3: we need https://github.com/osbuild/images/pull/1786 or no kargs are added to anaconda
-                "append": "systemd.debug-shell=1 rd.systemd.debug-shell=1 inst.debug",
+                # XXX: we need https://github.com/osbuild/images/pull/1786 or no kargs are added to anaconda
+                # XXX2: drop a bunch of the debug flags
+                #
+                # Use console=ttyS0 so that we see output in our debug
+                # logs. by default anaconda prints to the last console=
+                # from the kernel commandline
+                "append": "systemd.debug-shell=1 rd.systemd.debug-shell=1 inst.debug console=ttyS0",
             },
         },
     }
