@@ -162,6 +162,7 @@ def test_container_iso_installs(tmp_path, build_container, container_ref):
     # once https://github.com/osbuild/osbuild/pull/2202 is merged we
     # can update images/ to set the correct efi_src_dir and this can
     # be removed
+    # see also https://bugzilla.redhat.com/show_bug.cgi?id=1750708
     RUN dnf reinstall -y shim-x64
     # lorax wants to create a symlink in /mnt which points to /var/mnt
     # on bootc but /var/mnt does not exist on some images.
