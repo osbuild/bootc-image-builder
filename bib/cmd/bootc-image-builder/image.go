@@ -1,10 +1,7 @@
 package main
 
 import (
-	cryptorand "crypto/rand"
 	"fmt"
-	"math"
-	"math/big"
 	"math/rand"
 	"slices"
 	"strconv"
@@ -255,15 +252,4 @@ func getDistroAndRunner(osRelease osinfo.OSRelease) (manifest.Distro, runner.Run
 
 	logrus.Warnf("Unknown distro %s, using default runner", osRelease.ID)
 	return manifest.DISTRO_NULL, &runner.Linux{}, nil
-}
-
-func createRand() *rand.Rand {
-	seed, err := cryptorand.Int(cryptorand.Reader, big.NewInt(math.MaxInt64))
-	if err != nil {
-		panic("Cannot generate an RNG seed.")
-	}
-
-	// math/rand is good enough in this case
-	/* #nosec G404 */
-	return rand.New(rand.NewSource(seed.Int64()))
 }

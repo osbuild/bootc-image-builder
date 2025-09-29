@@ -26,8 +26,8 @@ import (
 	"github.com/osbuild/images/pkg/cloud"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 	"github.com/osbuild/images/pkg/container"
-	"github.com/osbuild/images/pkg/distro/bootc"
 	"github.com/osbuild/images/pkg/depsolvednf"
+	"github.com/osbuild/images/pkg/distro/bootc"
 	"github.com/osbuild/images/pkg/experimentalflags"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/manifestgen"
@@ -59,29 +59,6 @@ var (
 	osStdout = os.Stdout
 	osStderr = os.Stderr
 )
-
-// canChownInPath checks if the ownership of files can be set in a given path.
-func canChownInPath(path string) (bool, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return false, err
-	}
-	if !info.IsDir() {
-		return false, fmt.Errorf("%s is not a directory", path)
-	}
-
-	checkFile, err := os.CreateTemp(path, ".writecheck")
-	if err != nil {
-		return false, err
-	}
-	defer func() {
-		if err := os.Remove(checkFile.Name()); err != nil {
-			// print the error message for info but don't error out
-			fmt.Fprintf(os.Stderr, "error deleting %s: %s\n", checkFile.Name(), err.Error())
-		}
-	}()
-	return checkFile.Chown(osGetuid(), osGetgid()) == nil, nil
-}
 
 func inContainerOrUnknown() bool {
 	// no systemd-detect-virt, err on the side of container
@@ -560,35 +537,6 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
-}
-
-func chownR(path string, chown string) error {
-	if chown == "" {
-		return nil
-	}
-	errFmt := "cannot parse chown: %v"
-
-	var gid int
-	uidS, gidS, _ := strings.Cut(chown, ":")
-	uid, err := strconv.Atoi(uidS)
-	if err != nil {
-		return fmt.Errorf(errFmt, err)
-	}
-	if gidS != "" {
-		gid, err = strconv.Atoi(gidS)
-		if err != nil {
-			return fmt.Errorf(errFmt, err)
-		}
-	} else {
-		gid = osGetgid()
-	}
-
-	return filepath.Walk(path, func(name string, info os.FileInfo, err error) error {
-		if err == nil {
-			err = os.Chown(name, uid, gid)
-		}
-		return err
-	})
 }
 
 var rootLogLevel string
