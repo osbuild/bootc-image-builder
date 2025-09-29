@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
 
+	"github.com/osbuild/blueprint/pkg/blueprint"
 	repos "github.com/osbuild/images/data/repositories"
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/bib/blueprintload"
@@ -70,7 +71,7 @@ func inContainerOrUnknown() bool {
 	return err == nil
 }
 
-func makeManifest(c *ManifestConfig, solver *depsolvednf.Solver, cacheRoot string) (manifest.OSBuildManifest, map[string][]rpmmd.RepoConfig, error) {
+func makeISOManifest(c *ManifestConfig, solver *depsolvednf.Solver, cacheRoot string) (manifest.OSBuildManifest, map[string][]rpmmd.RepoConfig, error) {
 	rng := createRand()
 	mani, err := manifestForISO(c, rng)
 	if err != nil {
@@ -217,55 +218,63 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	pbar.SetPulseMsgf("Manifest generation step")
 	pbar.Start()
 
-	// For now shortcut here and build ding "images" for anything
-	// that is not the iso
-	if !imageTypes.BuildsISO() {
-		distro, err := bootc.NewBootcDistro(imgref)
-		if err != nil {
-			return nil, nil, err
-		}
-		if err := distro.SetBuildContainer(buildImgref); err != nil {
-			return nil, nil, err
-		}
-		if err := distro.SetDefaultFs(rootFs); err != nil {
-			return nil, nil, err
-		}
-		// XXX: consider target-arch
-		archi, err := distro.GetArch(cntArch.String())
-		if err != nil {
-			return nil, nil, err
-		}
-		// XXX: how to generate for all image types
-		imgType, err := archi.GetImageType(imgTypes[0])
-		if err != nil {
-			return nil, nil, err
-		}
+	// Note that we only need to pass a single imgType here into the manifest generation because:
+	// 1. the bootc disk manifests contains exports for all supported image types
+	// 2. the bootc iso is always a single build
+	imgType := imgTypes[0]
+	if imageTypes.BuildsISO() {
+		return manifestFromCobraForISO(imgref, buildImgref, imgType, rootFs, rpmCacheRoot, config, useLibrepo, cntArch)
+	}
+	return manifestFromCobraForDisk(imgref, buildImgref, imgType, rootFs, rpmCacheRoot, config, useLibrepo, cntArch)
+}
 
-		var buf bytes.Buffer
-		repos, err := reporegistry.New(nil, []fs.FS{repos.FS})
-		if err != nil {
-			return nil, nil, err
-		}
-		mg, err := manifestgen.New(repos, &manifestgen.Options{
-			Output: &buf,
-			// XXX: hack to skip repo loading for the bootc image.
-			// We need to add a SkipRepositories or similar to
-			// manifestgen instead to make this clean
-			OverrideRepos: []rpmmd.RepoConfig{
-				{
-					BaseURLs: []string{"https://example.com/not-used"},
-				},
-			},
-		})
-		if err != nil {
-			return nil, nil, err
-		}
-		if err := mg.Generate(config, distro, imgType, archi, nil); err != nil {
-			return nil, nil, err
-		}
-		return buf.Bytes(), nil, nil
+func manifestFromCobraForDisk(imgref, buildImgref, imgTypeStr, rootFs, rpmCacheRoot string, config *blueprint.Blueprint, useLibrepo bool, cntArch arch.Arch) ([]byte, *mTLSConfig, error) {
+	distro, err := bootc.NewBootcDistro(imgref)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := distro.SetBuildContainer(buildImgref); err != nil {
+		return nil, nil, err
+	}
+	if err := distro.SetDefaultFs(rootFs); err != nil {
+		return nil, nil, err
+	}
+	archi, err := distro.GetArch(cntArch.String())
+	if err != nil {
+		return nil, nil, err
+	}
+	imgType, err := archi.GetImageType(imgTypeStr)
+	if err != nil {
+		return nil, nil, err
 	}
 
+	var buf bytes.Buffer
+	repos, err := reporegistry.New(nil, []fs.FS{repos.FS})
+	if err != nil {
+		return nil, nil, err
+	}
+	mg, err := manifestgen.New(repos, &manifestgen.Options{
+		Output: &buf,
+		// XXX: hack to skip repo loading for the bootc image.
+		// We need to add a SkipRepositories or similar to
+		// manifestgen instead to make this clean
+		OverrideRepos: []rpmmd.RepoConfig{
+			{
+				BaseURLs: []string{"https://example.com/not-used"},
+			},
+		},
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := mg.Generate(config, distro, imgType, archi, nil); err != nil {
+		return nil, nil, err
+	}
+	return buf.Bytes(), nil, nil
+
+}
+
+func manifestFromCobraForISO(imgref, buildImgref, imgTypeStr, rootFs, rpmCacheRoot string, config *blueprint.Blueprint, useLibrepo bool, cntArch arch.Arch) ([]byte, *mTLSConfig, error) {
 	container, err := podman_container.New(imgref)
 	if err != nil {
 		return nil, nil, err
@@ -335,7 +344,6 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	manifestConfig := &ManifestConfig{
 		Architecture:    cntArch,
 		Config:          config,
-		ImageTypes:      imageTypes,
 		Imgref:          imgref,
 		BuildImgref:     buildImgref,
 		DistroDefPaths:  distroDefPaths,
@@ -345,7 +353,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 		UseLibrepo:      useLibrepo,
 	}
 
-	manifest, repos, err := makeManifest(manifestConfig, solver, rpmCacheRoot)
+	manifest, repos, err := makeISOManifest(manifestConfig, solver, rpmCacheRoot)
 	if err != nil {
 		return nil, nil, err
 	}
