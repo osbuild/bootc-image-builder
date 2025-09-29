@@ -23,15 +23,12 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/distrodef"
-	"github.com/osbuild/bootc-image-builder/bib/internal/imagetypes"
 )
 
 type ManifestConfig struct {
 	// OCI image path (without the transport, that is always docker://)
 	Imgref      string
 	BuildImgref string
-
-	ImageTypes imagetypes.ImageTypes
 
 	// Build config
 	Config *blueprint.Blueprint
