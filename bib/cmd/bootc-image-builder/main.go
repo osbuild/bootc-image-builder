@@ -149,10 +149,10 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 
 	// Note that we only need to pass a single imgType here into the manifest generation because:
 	// 1. the bootc disk manifests contains exports for all supported image types
-	// 2. the bootc iso is always a single build
+	// 2. the bootc legacy types (iso, anaconda-iso) always do a single build
 	imgType := imgTypes[0]
-	if imageTypes.BuildsISO() {
-		return manifestFromCobraForISO(imgref, buildImgref, imgType, rootFs, rpmCacheRoot, config, useLibrepo, cntArch)
+	if imageTypes.Legacy() {
+		return manifestFromCobraForLegacyISO(imgref, buildImgref, imgType, rootFs, rpmCacheRoot, config, useLibrepo, cntArch)
 	}
 	return manifestFromCobraForDisk(imgref, buildImgref, imgType, rootFs, rpmCacheRoot, config, useLibrepo, cntArch)
 }
