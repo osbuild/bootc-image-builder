@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -177,13 +176,11 @@ func manifestFromCobraForDisk(imgref, buildImgref, imgTypeStr, rootFs, rpmCacheR
 		return nil, nil, err
 	}
 
-	var buf bytes.Buffer
 	repos, err := reporegistry.New(nil, []fs.FS{repos.FS})
 	if err != nil {
 		return nil, nil, err
 	}
 	mg, err := manifestgen.New(repos, &manifestgen.Options{
-		Output: &buf,
 		// XXX: hack to skip repo loading for the bootc image.
 		// We need to add a SkipRepositories or similar to
 		// manifestgen instead to make this clean
@@ -196,10 +193,11 @@ func manifestFromCobraForDisk(imgref, buildImgref, imgTypeStr, rootFs, rpmCacheR
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := mg.Generate(config, distro, imgType, archi, nil); err != nil {
+	manifest, err := mg.Generate(config, imgType, nil)
+	if err != nil {
 		return nil, nil, err
 	}
-	return buf.Bytes(), nil, nil
+	return manifest, nil, nil
 }
 
 func cmdManifest(cmd *cobra.Command, args []string) error {
