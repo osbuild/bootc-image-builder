@@ -233,8 +233,34 @@ func labelForISO(os *osinfo.OSRelease, arch *arch.Arch) string {
 	}
 }
 
-func needsRHELLoraxTemplates(si osinfo.OSRelease) bool {
-	return si.ID == "rhel" || slices.Contains(si.IDLike, "rhel") || si.VersionID == "eln"
+// from:https://github.com/osbuild/images/blob/v0.201.0/data/distrodefs/rhel-10/imagetypes.yaml#L169
+var loraxRhelTemplates = []string{
+	"80-rhel/runtime-postinstall.tmpl",
+	"80-rhel/runtime-cleanup.tmpl",
+}
+
+// from:https://github.com/osbuild/images/blob/v0.201.0/data/distrodefs/fedora/imagetypes.yaml#L408
+var loraxFedoraTemplates = []string{
+	"99-generic/runtime-postinstall.tmpl",
+	"99-generic/runtime-cleanup.tmpl",
+}
+
+func loraxTemplates(si osinfo.OSRelease) []string {
+	switch {
+	case si.ID == "rhel" || slices.Contains(si.IDLike, "rhel") || si.VersionID == "eln":
+		return loraxRhelTemplates
+	default:
+		return loraxFedoraTemplates
+	}
+}
+
+func loraxTemplatePackage(si osinfo.OSRelease) string {
+	switch {
+	case si.ID == "rhel" || slices.Contains(si.IDLike, "rhel") || si.VersionID == "eln":
+		return "lorax-templates-rhel"
+	default:
+		return "lorax-templates-generic"
+	}
 }
 
 func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, error) {
@@ -332,7 +358,8 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.Kickstart.OSTree = &kickstart.OSTree{
 		OSName: "default",
 	}
-	img.InstallerCustomizations.UseRHELLoraxTemplates = needsRHELLoraxTemplates(c.SourceInfo.OSRelease)
+	img.InstallerCustomizations.LoraxTemplates = loraxTemplates(c.SourceInfo.OSRelease)
+	img.InstallerCustomizations.LoraxTemplatePackage = loraxTemplatePackage(c.SourceInfo.OSRelease)
 
 	// see https://github.com/osbuild/bootc-image-builder/issues/733
 	img.InstallerCustomizations.ISORootfsType = manifest.SquashfsRootfs
