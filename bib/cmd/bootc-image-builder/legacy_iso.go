@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"math/rand"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -15,6 +14,8 @@ import (
 	"github.com/osbuild/images/pkg/customizations/kickstart"
 	"github.com/osbuild/images/pkg/depsolvednf"
 	"github.com/osbuild/images/pkg/disk"
+	"github.com/osbuild/images/pkg/distro"
+	"github.com/osbuild/images/pkg/distro/defs"
 	"github.com/osbuild/images/pkg/image"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/osbuild"
@@ -24,18 +25,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	podman_container "github.com/osbuild/images/pkg/bib/container"
-
-	"github.com/osbuild/bootc-image-builder/bib/internal/distrodef"
 )
-
-// all possible locations for the bib's distro definitions
-// ./data/defs and ./bib/data/defs are for development
-// /usr/share/bootc-image-builder/defs is for the production, containerized version
-var distroDefPaths = []string{
-	"./data/defs",
-	"./bib/data/defs",
-	"/usr/share/bootc-image-builder/defs",
-}
 
 type ManifestConfig struct {
 	// OCI image path (without the transport, that is always docker://)
@@ -134,7 +124,6 @@ func manifestFromCobraForLegacyISO(imgref, buildImgref, imgTypeStr, rootFs, rpmC
 		Config:          config,
 		Imgref:          imgref,
 		BuildImgref:     buildImgref,
-		DistroDefPaths:  distroDefPaths,
 		SourceInfo:      sourceinfo,
 		BuildSourceInfo: buildSourceinfo,
 		RootFSType:      rootfsType,
@@ -233,44 +222,35 @@ func labelForISO(os *osinfo.OSRelease, arch *arch.Arch) string {
 	}
 }
 
-// from:https://github.com/osbuild/images/blob/v0.207.0/data/distrodefs/rhel-10/imagetypes.yaml#L169
-var loraxRhelTemplates = []manifest.InstallerLoraxTemplate{
-	manifest.InstallerLoraxTemplate{Path: "80-rhel/runtime-postinstall.tmpl"},
-	manifest.InstallerLoraxTemplate{Path: "80-rhel/runtime-cleanup.tmpl", AfterDracut: true},
-}
-
-// from:https://github.com/osbuild/images/blob/v0.207.0/data/distrodefs/fedora/imagetypes.yaml#L408
-var loraxFedoraTemplates = []manifest.InstallerLoraxTemplate{
-	manifest.InstallerLoraxTemplate{Path: "99-generic/runtime-postinstall.tmpl"},
-	manifest.InstallerLoraxTemplate{Path: "99-generic/runtime-cleanup.tmpl", AfterDracut: true},
-}
-
-func loraxTemplates(si osinfo.OSRelease) []manifest.InstallerLoraxTemplate {
-	switch {
-	case si.ID == "rhel" || slices.Contains(si.IDLike, "rhel") || si.VersionID == "eln":
-		return loraxRhelTemplates
-	default:
-		return loraxFedoraTemplates
-	}
-}
-
-func loraxTemplatePackage(si osinfo.OSRelease) string {
-	switch {
-	case si.ID == "rhel" || slices.Contains(si.IDLike, "rhel") || si.VersionID == "eln":
-		return "lorax-templates-rhel"
-	default:
-		return "lorax-templates-generic"
-	}
-}
-
 func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, error) {
 	if c.Imgref == "" {
 		return nil, fmt.Errorf("pipeline: no base image defined")
 	}
 
-	imageDef, err := distrodef.LoadImageDef(c.DistroDefPaths, c.SourceInfo.OSRelease.ID, c.SourceInfo.OSRelease.VersionID, "anaconda-iso")
+	nameVer := fmt.Sprintf("%s-%s", c.SourceInfo.OSRelease.ID, c.SourceInfo.OSRelease.VersionID)
+	id, err := distro.ParseID(nameVer)
 	if err != nil {
 		return nil, err
+	}
+	// XXX: ensure all aliases we have for bib are available in
+	// images
+	distroYAML, err := defs.NewDistroYAML(nameVer)
+	if err != nil {
+		return nil, err
+	}
+	// XXX: or "bootc-legacy-installer"?
+	installerImgTypeName := "bootc-rpm-installer"
+	imgType, ok := distroYAML.ImageTypes()[installerImgTypeName]
+	if !ok {
+		return nil, fmt.Errorf("cannot find image definition for %v", installerImgTypeName)
+	}
+	installerPkgSet, ok := imgType.PackageSets(*id, c.Architecture.String())["installer"]
+	if !ok {
+		return nil, fmt.Errorf("cannot find installer package set for %v", installerImgTypeName)
+	}
+	installerConfig := imgType.InstallerConfig(*id, c.Architecture.String())
+	if installerConfig == nil {
+		return nil, fmt.Errorf("empty installer config for %s", installerImgTypeName)
 	}
 
 	containerSource := container.SourceSpec{
@@ -316,10 +296,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.InstallerCustomizations.Product = c.SourceInfo.OSRelease.Name
 	img.InstallerCustomizations.OSVersion = c.SourceInfo.OSRelease.VersionID
 	img.InstallerCustomizations.ISOLabel = labelForISO(&c.SourceInfo.OSRelease, &c.Architecture)
-
-	img.ExtraBasePackages = rpmmd.PackageSet{
-		Include: imageDef.Packages,
-	}
+	img.ExtraBasePackages = installerPkgSet
 
 	var customizations *blueprint.Customizations
 	if c.Config != nil {
@@ -358,8 +335,10 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.Kickstart.OSTree = &kickstart.OSTree{
 		OSName: "default",
 	}
-	img.InstallerCustomizations.LoraxTemplates = loraxTemplates(c.SourceInfo.OSRelease)
-	img.InstallerCustomizations.LoraxTemplatePackage = loraxTemplatePackage(c.SourceInfo.OSRelease)
+	img.InstallerCustomizations.LoraxTemplates = installerConfig.LoraxTemplates
+	if installerConfig.LoraxTemplatePackage != nil {
+		img.InstallerCustomizations.LoraxTemplatePackage = *installerConfig.LoraxTemplatePackage
+	}
 
 	// see https://github.com/osbuild/bootc-image-builder/issues/733
 	img.InstallerCustomizations.ISORootfsType = manifest.SquashfsRootfs
