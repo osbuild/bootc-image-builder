@@ -249,6 +249,8 @@ github.com/osbuild/images v0.197.0 h1:JSwivw9X2HLgGPq1NG407FrSbyNlfwdACwI0g6kUkj
 github.com/osbuild/images v0.197.0/go.mod h1:xkXfw5CIy0bVNTNdB6GXiewu/IzBgpofkItDJPAzGA4=
 github.com/osbuild/images v0.201.0 h1:AOUslfK+TR0q4WA63+r/GNJIpdg5Ve1vStR72x+4awk=
 github.com/osbuild/images v0.201.0/go.mod h1:xkXfw5CIy0bVNTNdB6GXiewu/IzBgpofkItDJPAzGA4=
+github.com/osbuild/images v0.202.0 h1:OPvfmr5RJHcOJgU8Win6kHyoCNQZEiILlgIDI64/YIM=
+github.com/osbuild/images v0.202.0/go.mod h1:xkXfw5CIy0bVNTNdB6GXiewu/IzBgpofkItDJPAzGA4=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
