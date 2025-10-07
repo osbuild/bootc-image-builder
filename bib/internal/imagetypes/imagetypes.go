@@ -23,6 +23,7 @@ var supportedImageTypes = map[string]imageType{
 	"vmdk":  imageType{Export: "vmdk"},
 	"vhd":   imageType{Export: "vpc"},
 	"gce":   imageType{Export: "gce"},
+	"ova":   imageType{Export: "archive"},
 	// the iso image types are RPM based and legacy/deprecated
 	"anaconda-iso": imageType{Export: "bootiso", ISO: true, Legacy: true},
 	"iso":          imageType{Export: "bootiso", ISO: true, Legacy: true},
