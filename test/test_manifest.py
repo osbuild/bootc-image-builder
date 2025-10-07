@@ -858,10 +858,9 @@ def test_manifest_customization_custom_file_smoke(tmp_path, build_container):
 def find_stage_options_from(manifest_str, stage_type):
     manifest = json.loads(manifest_str)
     for pipl in manifest["pipelines"]:
-        if pipl["name"] == "image":
-            for st in pipl["stages"]:
-                if st["type"] == stage_type:
-                    return st["options"]
+        for st in pipl["stages"]:
+            if st["type"] == stage_type:
+                return st["options"]
     raise ValueError(f"cannot find {stage_type} stage manifest:\n{manifest_str}")
 
 
@@ -1032,3 +1031,27 @@ def test_manifest_image_disk_yaml(tmp_path, build_container):
         ], encoding="utf8")
         write_device_options = find_stage_options_from(manifest_str, "org.osbuild.write-device")
         assert write_device_options["from"] == "input://tree/usr/lib/modules/5.0-x86_64/aboot.img"
+
+
+@pytest.mark.parametrize("tc", gen_testcases("anaconda-iso"))
+def test_ova_manifest_smoke(build_container, tc):
+    testutil.pull_container(tc.container_ref, tc.target_arch)
+
+    output = subprocess.check_output([
+        *testutil.podman_run_common,
+        build_container,
+        "manifest",
+        *tc.bib_rootfs_args(),
+        "--type=ova",
+        f"{tc.container_ref}",
+    ])
+    # just some basic validation that we generate a ova
+    assert find_stage_options_from(output, "org.osbuild.tar") == {
+        "filename": "image.ova",
+        "format": "ustar",
+        "paths": [
+            "image.ovf",
+            "image.mf",
+            "image.vmdk"
+        ]
+    }
