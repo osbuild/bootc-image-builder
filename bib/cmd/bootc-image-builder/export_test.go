@@ -1,10 +1,9 @@
 package main
 
 var (
-	CanChownInPath     = canChownInPath
-	GetDistroAndRunner = getDistroAndRunner
-	CreateRand         = createRand
-	BuildCobraCmdline  = buildCobraCmdline
+	CanChownInPath    = canChownInPath
+	CreateRand        = createRand
+	BuildCobraCmdline = buildCobraCmdline
 )
 
 func MockOsGetuid(new func() int) (restore func()) {
