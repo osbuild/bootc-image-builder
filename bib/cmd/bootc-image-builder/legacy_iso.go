@@ -233,19 +233,19 @@ func labelForISO(os *osinfo.OSRelease, arch *arch.Arch) string {
 	}
 }
 
-// from:https://github.com/osbuild/images/blob/v0.201.0/data/distrodefs/rhel-10/imagetypes.yaml#L169
-var loraxRhelTemplates = []string{
-	"80-rhel/runtime-postinstall.tmpl",
-	"80-rhel/runtime-cleanup.tmpl",
+// from:https://github.com/osbuild/images/blob/v0.207.0/data/distrodefs/rhel-10/imagetypes.yaml#L169
+var loraxRhelTemplates = []manifest.InstallerLoraxTemplate{
+	manifest.InstallerLoraxTemplate{Path: "80-rhel/runtime-postinstall.tmpl"},
+	manifest.InstallerLoraxTemplate{Path: "80-rhel/runtime-cleanup.tmpl", AfterDracut: true},
 }
 
-// from:https://github.com/osbuild/images/blob/v0.201.0/data/distrodefs/fedora/imagetypes.yaml#L408
-var loraxFedoraTemplates = []string{
-	"99-generic/runtime-postinstall.tmpl",
-	"99-generic/runtime-cleanup.tmpl",
+// from:https://github.com/osbuild/images/blob/v0.207.0/data/distrodefs/fedora/imagetypes.yaml#L408
+var loraxFedoraTemplates = []manifest.InstallerLoraxTemplate{
+	manifest.InstallerLoraxTemplate{Path: "99-generic/runtime-postinstall.tmpl"},
+	manifest.InstallerLoraxTemplate{Path: "99-generic/runtime-cleanup.tmpl", AfterDracut: true},
 }
 
-func loraxTemplates(si osinfo.OSRelease) []string {
+func loraxTemplates(si osinfo.OSRelease) []manifest.InstallerLoraxTemplate {
 	switch {
 	case si.ID == "rhel" || slices.Contains(si.IDLike, "rhel") || si.VersionID == "eln":
 		return loraxRhelTemplates
