@@ -317,10 +317,6 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.InstallerCustomizations.OSVersion = c.SourceInfo.OSRelease.VersionID
 	img.InstallerCustomizations.ISOLabel = labelForISO(&c.SourceInfo.OSRelease, &c.Architecture)
 
-	// XXX workaround for gpt-auto preventing ISO boot see [1]
-	// [1]: https://github.com/osbuild/images/issues/1947#issuecomment-3395867961
-	img.InstallerCustomizations.KernelOptionsAppend = append(img.InstallerCustomizations.KernelOptionsAppend, "systemd.gpt_auto=0")
-
 	img.ExtraBasePackages = rpmmd.PackageSet{
 		Include: imageDef.Packages,
 	}
