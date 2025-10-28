@@ -222,22 +222,37 @@ func labelForISO(os *osinfo.OSRelease, arch *arch.Arch) string {
 	}
 }
 
+// newDistroYAMLFrom() returns the distroYAML for the given sourceInfo,
+// if no direct match can be found it will it will use the ID_LIKE.
+// This should ensure we work on every bootc image that puts a correct
+// ID_LIKE= in /etc/os-release
+func newDistroYAMLFrom(sourceInfo *osinfo.Info) (*defs.DistroYAML, *distro.ID, error) {
+	for _, distroID := range append([]string{sourceInfo.OSRelease.ID}, sourceInfo.OSRelease.IDLike...) {
+		nameVer := fmt.Sprintf("%s-%s", distroID, sourceInfo.OSRelease.VersionID)
+		id, err := distro.ParseID(nameVer)
+		if err != nil {
+			return nil, nil, err
+		}
+		distroYAML, err := defs.NewDistroYAML(nameVer)
+		if err != nil {
+			return nil, nil, err
+		}
+		if distroYAML != nil {
+			return distroYAML, id, nil
+		}
+	}
+	return nil, nil, fmt.Errorf("cannot load distro definitions for %s-%s or any of %v", sourceInfo.OSRelease.ID, sourceInfo.OSRelease.VersionID, sourceInfo.OSRelease.IDLike)
+}
+
 func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, error) {
 	if c.Imgref == "" {
 		return nil, fmt.Errorf("pipeline: no base image defined")
 	}
+	distroYAML, id, err := newDistroYAMLFrom(c.SourceInfo)
+	if err != nil {
+		return nil, err
+	}
 
-	nameVer := fmt.Sprintf("%s-%s", c.SourceInfo.OSRelease.ID, c.SourceInfo.OSRelease.VersionID)
-	id, err := distro.ParseID(nameVer)
-	if err != nil {
-		return nil, err
-	}
-	// XXX: ensure all aliases we have for bib are available in
-	// images
-	distroYAML, err := defs.NewDistroYAML(nameVer)
-	if err != nil {
-		return nil, err
-	}
 	// XXX: or "bootc-legacy-installer"?
 	installerImgTypeName := "bootc-rpm-installer"
 	imgType, ok := distroYAML.ImageTypes()[installerImgTypeName]

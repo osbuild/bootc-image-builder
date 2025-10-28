@@ -11,6 +11,7 @@ var (
 	CreateRand         = createRand
 	BuildCobraCmdline  = buildCobraCmdline
 	HandleAWSFlags     = handleAWSFlags
+	NewDistroYAMLFrom  = newDistroYAMLFrom
 )
 
 func MockOsGetuid(new func() int) (restore func()) {
