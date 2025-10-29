@@ -57,21 +57,25 @@ func TestImageTypes(t *testing.T) {
 			imageTypes:  []string{"vmdk", "anaconda-iso"},
 			expectedErr: errors.New("cannot mix ISO/disk images in request [vmdk anaconda-iso]"),
 		},
-		"bad-mix-part-2": {
+		"bad-mix-2": {
+			imageTypes:  []string{"vmdk", "bootc-installer"},
+			expectedErr: errors.New("cannot mix ISO/disk images in request [vmdk bootc-installer]"),
+		},
+		"bad-mix-3": {
 			imageTypes:  []string{"ami", "iso"},
 			expectedErr: errors.New("cannot mix ISO/disk images in request [ami iso]"),
 		},
 		"bad-image-type": {
 			imageTypes:  []string{"bad"},
-			expectedErr: errors.New(`unsupported image type "bad", valid types are ami, anaconda-iso, gce, iso, ova, qcow2, raw, vhd, vmdk`),
+			expectedErr: errors.New(`unsupported image type "bad", valid types are ami, anaconda-iso, bootc-installer, gce, iso, ova, qcow2, raw, vhd, vmdk`),
 		},
 		"bad-in-good": {
 			imageTypes:  []string{"ami", "raw", "vmdk", "qcow2", "something-else-what-is-this"},
-			expectedErr: errors.New(`unsupported image type "something-else-what-is-this", valid types are ami, anaconda-iso, gce, iso, ova, qcow2, raw, vhd, vmdk`),
+			expectedErr: errors.New(`unsupported image type "something-else-what-is-this", valid types are ami, anaconda-iso, bootc-installer, gce, iso, ova, qcow2, raw, vhd, vmdk`),
 		},
 		"all-bad": {
 			imageTypes:  []string{"bad1", "bad2", "bad3", "bad4", "bad5", "bad42"},
-			expectedErr: errors.New(`unsupported image type "bad1", valid types are ami, anaconda-iso, gce, iso, ova, qcow2, raw, vhd, vmdk`),
+			expectedErr: errors.New(`unsupported image type "bad1", valid types are ami, anaconda-iso, bootc-installer, gce, iso, ova, qcow2, raw, vhd, vmdk`),
 		},
 	}
 
