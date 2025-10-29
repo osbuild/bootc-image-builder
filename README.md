@@ -133,7 +133,7 @@ Flags:
       --progress string       type of progress bar to use (e.g. verbose,term) (default "auto")
       --rootfs string         Root filesystem type. If not given, the default configured in the source container image is used.
       --target-arch string    build for the given target architecture (experimental)
-      --type stringArray      image types to build [ami, anaconda-iso, gce, iso, qcow2, raw, vhd, vmdk] (default [qcow2])
+      --type stringArray      image types to build [ami, anaconda-iso, bootc-installer, gce, iso, qcow2, raw, vhd, vmdk] (default [qcow2])
       --version               version for bootc-image-builder
 
 Global Flags:
@@ -172,7 +172,8 @@ The following image types are currently available via the `--type` argument:
 | `ami`                 | [Amazon Machine Image](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) |
 | `qcow2` **(default)** | [QEMU](https://www.qemu.org/)                                                         |
 | `vmdk`                | [VMDK](https://en.wikipedia.org/wiki/VMDK) usable in vSphere, among others            |
-| `anaconda-iso`        | An unattended Anaconda installer that installs to the first disk found.               |
+| `bootc-installer`     | An installer ISO image based on the specified bootc container image.                  |
+| `anaconda-iso`        | An unattended Anaconda installer that installs to the first disk found build from RPMs. |
 | `raw`                 | Unformatted [raw disk](https://en.wikipedia.org/wiki/Rawdisk).                        |
 | `vhd`                 | [vhd](https://en.wikipedia.org/wiki/VHD_(file_format)) usable in Virtual PC, among others |
 | `gce`                 | [GCE](https://cloud.google.com/compute/docs/images#custom_images) |
