@@ -53,7 +53,7 @@ def test_manifest_smoke(build_container, tc):
 
 
 @pytest.mark.parametrize("tc", gen_testcases("anaconda-iso"))
-def test_iso_manifest_smoke(build_container, tc):
+def test_rpm_iso_manifest_smoke(build_container, tc):
     testutil.pull_container(tc.container_ref, tc.target_arch)
 
     output = subprocess.check_output([
@@ -63,6 +63,31 @@ def test_iso_manifest_smoke(build_container, tc):
         *tc.bib_rootfs_args(),
         "--type=anaconda-iso",
         f"{tc.container_ref}",
+    ])
+    manifest = json.loads(output)
+    # just some basic validation
+    expected_pipeline_names = ["build", "anaconda-tree", "efiboot-tree", "bootiso-tree", "bootiso"]
+    assert manifest["version"] == "2"
+    assert [pipeline["name"] for pipeline in manifest["pipelines"]] == expected_pipeline_names
+
+
+def test_bootc_iso_manifest_smoke(build_container):
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    # Note that this is not a realistic ref, a generic bootc
+    # image does not contain anaconda so this won't produce a
+    # working installer. For the purpose of the test to validate
+    # that we get a manifest with the right refs its good enough.
+    installer_payload_ref = "quay.io/centos-bootc/centos-bootc:stream10"
+    testutil.pull_container(container_ref)
+    testutil.pull_container(installer_payload_ref)
+
+    output = subprocess.check_output([
+        *testutil.podman_run_common,
+        build_container,
+        "manifest",
+        "--type=bootc-installer",
+        f"{container_ref}",
+        f"--installer-payload-ref={installer_payload_ref}",
     ])
     manifest = json.loads(output)
     # just some basic validation

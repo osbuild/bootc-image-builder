@@ -17,13 +17,14 @@ var supportedImageTypes = map[string]imageType{
 	// XXX: ideally we would look how to consolidate all
 	// knownledge about disk based image types into the images
 	// library
-	"ami":   imageType{Export: "image"},
-	"qcow2": imageType{Export: "qcow2"},
-	"raw":   imageType{Export: "image"},
-	"vmdk":  imageType{Export: "vmdk"},
-	"vhd":   imageType{Export: "vpc"},
-	"gce":   imageType{Export: "gce"},
-	"ova":   imageType{Export: "archive"},
+	"ami":             imageType{Export: "image"},
+	"qcow2":           imageType{Export: "qcow2"},
+	"raw":             imageType{Export: "image"},
+	"vmdk":            imageType{Export: "vmdk"},
+	"vhd":             imageType{Export: "vpc"},
+	"gce":             imageType{Export: "gce"},
+	"ova":             imageType{Export: "archive"},
+	"bootc-installer": imageType{Export: "bootiso", ISO: true},
 	// the iso image types are RPM based and legacy/deprecated
 	"anaconda-iso": imageType{Export: "bootiso", ISO: true, Legacy: true},
 	"iso":          imageType{Export: "bootiso", ISO: true, Legacy: true},

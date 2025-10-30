@@ -25,6 +25,7 @@ import (
 	"github.com/osbuild/images/pkg/bib/blueprintload"
 	"github.com/osbuild/images/pkg/cloud"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
+	"github.com/osbuild/images/pkg/distro"
 	"github.com/osbuild/images/pkg/distro/bootc"
 	"github.com/osbuild/images/pkg/experimentalflags"
 	"github.com/osbuild/images/pkg/manifest"
@@ -93,6 +94,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	targetArch, _ := cmd.Flags().GetString("target-arch")
 	rootFs, _ := cmd.Flags().GetString("rootfs")
 	buildImgref, _ := cmd.Flags().GetString("build-container")
+	installerPayloadRef, _ := cmd.Flags().GetString("installer-payload-ref")
 	useLibrepo, _ := cmd.Flags().GetBool("use-librepo")
 
 	// If --local was given, warn in the case of --local or --local=true (true is the default), error in the case of --local=false
@@ -153,21 +155,21 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	if imageTypes.Legacy() {
 		return manifestFromCobraForLegacyISO(imgref, buildImgref, imgType, rootFs, rpmCacheRoot, config, useLibrepo, cntArch)
 	}
-	return manifestFromCobraForDisk(imgref, buildImgref, imgType, rootFs, rpmCacheRoot, config, useLibrepo, cntArch)
+	return manifestFromCobraForDisk(imgref, buildImgref, installerPayloadRef, imgType, rootFs, rpmCacheRoot, config, useLibrepo, cntArch)
 }
 
-func manifestFromCobraForDisk(imgref, buildImgref, imgTypeStr, rootFs, rpmCacheRoot string, config *blueprint.Blueprint, useLibrepo bool, cntArch arch.Arch) ([]byte, *mTLSConfig, error) {
-	distro, err := bootc.NewBootcDistro(imgref)
+func manifestFromCobraForDisk(imgref, buildImgref, installerPayloadRef, imgTypeStr, rootFs, rpmCacheRoot string, config *blueprint.Blueprint, useLibrepo bool, cntArch arch.Arch) ([]byte, *mTLSConfig, error) {
+	distri, err := bootc.NewBootcDistro(imgref)
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := distro.SetBuildContainer(buildImgref); err != nil {
+	if err := distri.SetBuildContainer(buildImgref); err != nil {
 		return nil, nil, err
 	}
-	if err := distro.SetDefaultFs(rootFs); err != nil {
+	if err := distri.SetDefaultFs(rootFs); err != nil {
 		return nil, nil, err
 	}
-	archi, err := distro.GetArch(cntArch.String())
+	archi, err := distri.GetArch(cntArch.String())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -193,7 +195,12 @@ func manifestFromCobraForDisk(imgref, buildImgref, imgTypeStr, rootFs, rpmCacheR
 	if err != nil {
 		return nil, nil, err
 	}
-	manifest, err := mg.Generate(config, imgType, nil)
+	imgOpts := &distro.ImageOptions{
+		Bootc: &distro.BootcImageOptions{
+			InstallerPayloadRef: installerPayloadRef,
+		},
+	}
+	manifest, err := mg.Generate(config, imgType, imgOpts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -506,6 +513,9 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	manifestCmd.Flags().String("rpmmd", "/rpmmd", "rpm metadata cache directory")
 	manifestCmd.Flags().String("target-arch", "", "build for the given target architecture (experimental)")
 	manifestCmd.Flags().String("build-container", "", "Use a custom container for the image build")
+	// XXX: add --bootc-installer-payload-ref as alias to make it
+	// cmdline compatible with ibcli(?)
+	manifestCmd.Flags().String("installer-payload-ref", "", "bootc installer payload ref")
 	manifestCmd.Flags().StringArray("type", []string{"qcow2"}, fmt.Sprintf("image types to build [%s]", imagetypes.Available()))
 	manifestCmd.Flags().Bool("local", true, "DEPRECATED: --local is now the default behavior, make sure to pull the container image before running bootc-image-builder")
 	if err := manifestCmd.Flags().MarkHidden("local"); err != nil {
