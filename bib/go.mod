@@ -14,8 +14,8 @@ require (
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546
 	go.yaml.in/yaml/v3 v3.0.4
+	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546
 )
 
 require (
@@ -89,7 +89,7 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.19 // indirect
-	github.com/mattn/go-sqlite3 v1.14.28 // indirect
+	github.com/mattn/go-sqlite3 v1.14.32 // indirect
 	github.com/miekg/pkcs11 v1.1.1 // indirect
 	github.com/mistifyio/go-zfs/v3 v3.0.1 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
