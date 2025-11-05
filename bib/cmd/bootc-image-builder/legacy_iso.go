@@ -251,33 +251,13 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 		Local:  true,
 	}
 
-	platform := &platform.Data{
-		Arch:        c.Architecture,
-		ImageFormat: platform.FORMAT_ISO,
-		UEFIVendor:  c.SourceInfo.UEFIVendor,
-	}
-	switch c.Architecture {
-	case arch.ARCH_X86_64:
-		platform.BIOSPlatform = "i386-pc"
-	case arch.ARCH_AARCH64:
-		// aarch64 always uses UEFI, so let's enforce the vendor
-		if c.SourceInfo.UEFIVendor == "" {
-			return nil, fmt.Errorf("UEFI vendor must be set for aarch64 ISO")
-		}
-	case arch.ARCH_S390X:
-		platform.ZiplSupport = true
-	case arch.ARCH_PPC64LE:
-		platform.BIOSPlatform = "powerpc-ieee1275"
-	case arch.ARCH_RISCV64:
-		// nothing special needed
-	default:
-		return nil, fmt.Errorf("unsupported architecture %v", c.Architecture)
-	}
+	platformi := bootc.PlatformFor(c.Architecture.String(), c.SourceInfo.UEFIVendor)
+	platformi.ImageFormat = platform.FORMAT_ISO
 	filename := "install.iso"
 
 	// The ref is not needed and will be removed from the ctor later
 	// in time
-	img := image.NewAnacondaContainerInstallerLegacy(platform, filename, containerSource, "")
+	img := image.NewAnacondaContainerInstallerLegacy(platformi, filename, containerSource, "")
 	img.ContainerRemoveSignatures = true
 	img.RootfsCompression = "zstd"
 
