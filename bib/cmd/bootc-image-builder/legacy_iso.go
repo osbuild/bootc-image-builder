@@ -48,12 +48,12 @@ type ManifestConfig struct {
 }
 
 func manifestFromCobraForLegacyISO(imgref, buildImgref, imgTypeStr, rootFs, rpmCacheRoot string, config *blueprint.Blueprint, useLibrepo bool, cntArch arch.Arch) ([]byte, *mTLSConfig, error) {
-	container, err := podman_container.New(imgref)
+	cnt, err := podman_container.New(imgref)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer func() {
-		if err := container.Stop(); err != nil {
+		if err := cnt.Stop(); err != nil {
 			logrus.Warnf("error stopping container: %v", err)
 		}
 	}()
@@ -62,7 +62,7 @@ func manifestFromCobraForLegacyISO(imgref, buildImgref, imgTypeStr, rootFs, rpmC
 	if rootFs != "" {
 		rootfsType = rootFs
 	} else {
-		rootfsType, err = container.DefaultRootfsType()
+		rootfsType, err = cnt.DefaultRootfsType()
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot get rootfs type for container: %w", err)
 		}
@@ -72,12 +72,12 @@ func manifestFromCobraForLegacyISO(imgref, buildImgref, imgTypeStr, rootFs, rpmC
 	}
 
 	// Gather some data from the containers distro
-	sourceinfo, err := osinfo.Load(container.Root())
+	sourceinfo, err := osinfo.Load(cnt.Root())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	buildContainer := container
+	buildContainer := cnt
 	buildSourceinfo := sourceinfo
 	startedBuildContainer := false
 	defer func() {
@@ -114,7 +114,7 @@ func manifestFromCobraForLegacyISO(imgref, buildImgref, imgTypeStr, rootFs, rpmC
 		return nil, nil, err
 	}
 
-	manifestConfig := &ManifestConfig{
+	c := &ManifestConfig{
 		Architecture:    cntArch,
 		Config:          config,
 		Imgref:          imgref,
@@ -125,20 +125,6 @@ func manifestFromCobraForLegacyISO(imgref, buildImgref, imgTypeStr, rootFs, rpmC
 		UseLibrepo:      useLibrepo,
 	}
 
-	manifest, repos, err := makeISOManifest(manifestConfig, solver, rpmCacheRoot)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	mTLS, err := extractTLSKeys(repos)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return manifest, mTLS, nil
-}
-
-func makeISOManifest(c *ManifestConfig, solver *depsolvednf.Solver, cacheRoot string) (manifest.OSBuildManifest, map[string][]rpmmd.RepoConfig, error) {
 	rng := createRand()
 	mani, err := manifestForISO(c, rng)
 	if err != nil {
@@ -196,7 +182,13 @@ func makeISOManifest(c *ManifestConfig, solver *depsolvednf.Solver, cacheRoot st
 	if err != nil {
 		return nil, nil, fmt.Errorf("[ERROR] manifest serialization failed: %s", err.Error())
 	}
-	return mf, depsolvedRepos, nil
+
+	mTLS, err := extractTLSKeys(depsolvedRepos)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return mf, mTLS, nil
 }
 
 // newDistroYAMLFrom() returns the distroYAML for the given sourceInfo,
