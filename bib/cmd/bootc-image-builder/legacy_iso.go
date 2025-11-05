@@ -36,9 +36,6 @@ type ManifestConfig struct {
 	// CPU architecture of the image
 	Architecture arch.Arch
 
-	// Paths to the directory with the distro definitions
-	DistroDefPaths []string
-
 	// Extracted information about the source container image
 	SourceInfo      *osinfo.Info
 	BuildSourceInfo *osinfo.Info
