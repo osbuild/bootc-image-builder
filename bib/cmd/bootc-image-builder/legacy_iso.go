@@ -25,26 +25,26 @@ import (
 	podman_container "github.com/osbuild/images/pkg/bib/container"
 )
 
-type ManifestConfig struct {
-	// OCI image path (without the transport, that is always docker://)
-	Imgref      string
-	BuildImgref string
-
-	// Build config
-	Config *blueprint.Blueprint
-
-	// CPU architecture of the image
-	Architecture arch.Arch
-
-	// Extracted information about the source container image
-	SourceInfo      *osinfo.Info
-	BuildSourceInfo *osinfo.Info
-
-	// RootFSType specifies the filesystem type for the root partition
-	RootFSType string
-
-	// use librepo ad the rpm downlaod backend
-	UseLibrepo bool
+// newDistroYAMLFrom() returns the distroYAML for the given sourceInfo,
+// if no direct match can be found it will it will use the ID_LIKE.
+// This should ensure we work on every bootc image that puts a correct
+// ID_LIKE= in /etc/os-release
+func newDistroYAMLFrom(sourceInfo *osinfo.Info) (*defs.DistroYAML, *distro.ID, error) {
+	for _, distroID := range append([]string{sourceInfo.OSRelease.ID}, sourceInfo.OSRelease.IDLike...) {
+		nameVer := fmt.Sprintf("%s-%s", distroID, sourceInfo.OSRelease.VersionID)
+		id, err := distro.ParseID(nameVer)
+		if err != nil {
+			return nil, nil, err
+		}
+		distroYAML, err := defs.NewDistroYAML(nameVer)
+		if err != nil {
+			return nil, nil, err
+		}
+		if distroYAML != nil {
+			return distroYAML, id, nil
+		}
+	}
+	return nil, nil, fmt.Errorf("cannot load distro definitions for %s-%s or any of %v", sourceInfo.OSRelease.ID, sourceInfo.OSRelease.VersionID, sourceInfo.OSRelease.IDLike)
 }
 
 func manifestFromCobraForLegacyISO(imgref, buildImgref, imgTypeStr, rootFs, rpmCacheRoot string, config *blueprint.Blueprint, useLibrepo bool, cntArch arch.Arch) ([]byte, *mTLSConfig, error) {
@@ -114,19 +114,8 @@ func manifestFromCobraForLegacyISO(imgref, buildImgref, imgTypeStr, rootFs, rpmC
 		return nil, nil, err
 	}
 
-	c := &ManifestConfig{
-		Architecture:    cntArch,
-		Config:          config,
-		Imgref:          imgref,
-		BuildImgref:     buildImgref,
-		SourceInfo:      sourceinfo,
-		BuildSourceInfo: buildSourceinfo,
-		RootFSType:      rootfsType,
-		UseLibrepo:      useLibrepo,
-	}
-
 	rng := createRand()
-	mani, err := manifestForISO(c, rng)
+	mani, err := imgTypeManifestForLegacyISO(imgref, rootFs, cntArch.String(), buildSourceinfo, config, rng)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot get manifest: %w", err)
 	}
@@ -155,7 +144,7 @@ func manifestFromCobraForLegacyISO(imgref, buildImgref, imgTypeStr, rootFs, rpmC
 	// run naively via syscall translation)
 
 	// XXX: should NewResolver() take "arch.Arch"?
-	resolver := container.NewResolver(c.Architecture.String())
+	resolver := container.NewResolver(cntArch.String())
 
 	containerSpecs := make(map[string][]container.Spec)
 	for plName, sourceSpecs := range mani.GetContainerSourceSpecs() {
@@ -167,15 +156,15 @@ func manifestFromCobraForLegacyISO(imgref, buildImgref, imgTypeStr, rootFs, rpmC
 			return nil, nil, fmt.Errorf("cannot resolve containers: %w", err)
 		}
 		for _, spec := range specs {
-			if spec.Arch != c.Architecture {
-				return nil, nil, fmt.Errorf("image found is for unexpected architecture %q (expected %q), if that is intentional, please make sure --target-arch matches", spec.Arch, c.Architecture)
+			if spec.Arch != cntArch {
+				return nil, nil, fmt.Errorf("image found is for unexpected architecture %q (expected %q), if that is intentional, please make sure --target-arch matches", spec.Arch, cntArch)
 			}
 		}
 		containerSpecs[plName] = specs
 	}
 
 	var opts manifest.SerializeOptions
-	if c.UseLibrepo {
+	if useLibrepo {
 		opts.RpmDownloader = osbuild.RpmDownloaderLibrepo
 	}
 	mf, err := mani.Serialize(depsolvedSets, containerSpecs, nil, &opts)
@@ -191,33 +180,13 @@ func manifestFromCobraForLegacyISO(imgref, buildImgref, imgTypeStr, rootFs, rpmC
 	return mf, mTLS, nil
 }
 
-// newDistroYAMLFrom() returns the distroYAML for the given sourceInfo,
-// if no direct match can be found it will it will use the ID_LIKE.
-// This should ensure we work on every bootc image that puts a correct
-// ID_LIKE= in /etc/os-release
-func newDistroYAMLFrom(sourceInfo *osinfo.Info) (*defs.DistroYAML, *distro.ID, error) {
-	for _, distroID := range append([]string{sourceInfo.OSRelease.ID}, sourceInfo.OSRelease.IDLike...) {
-		nameVer := fmt.Sprintf("%s-%s", distroID, sourceInfo.OSRelease.VersionID)
-		id, err := distro.ParseID(nameVer)
-		if err != nil {
-			return nil, nil, err
-		}
-		distroYAML, err := defs.NewDistroYAML(nameVer)
-		if err != nil {
-			return nil, nil, err
-		}
-		if distroYAML != nil {
-			return distroYAML, id, nil
-		}
-	}
-	return nil, nil, fmt.Errorf("cannot load distro definitions for %s-%s or any of %v", sourceInfo.OSRelease.ID, sourceInfo.OSRelease.VersionID, sourceInfo.OSRelease.IDLike)
-}
-
-func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, error) {
-	if c.Imgref == "" {
+// XXX: ideally this would be an imageType.Manifest() function but
+// we have no legacyISO image type (yet)
+func imgTypeManifestForLegacyISO(imgref, rootFSType, archStr string, sourceInfo *osinfo.Info, bp *blueprint.Blueprint, rng *rand.Rand) (*manifest.Manifest, error) {
+	if imgref == "" {
 		return nil, fmt.Errorf("pipeline: no base image defined")
 	}
-	distroYAML, id, err := newDistroYAMLFrom(c.SourceInfo)
+	distroYAML, id, err := newDistroYAMLFrom(sourceInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -228,22 +197,22 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	if !ok {
 		return nil, fmt.Errorf("cannot find image definition for %v", installerImgTypeName)
 	}
-	installerPkgSet, ok := imgType.PackageSets(*id, c.Architecture.String())["installer"]
+	installerPkgSet, ok := imgType.PackageSets(*id, archStr)["installer"]
 	if !ok {
 		return nil, fmt.Errorf("cannot find installer package set for %v", installerImgTypeName)
 	}
-	installerConfig := imgType.InstallerConfig(*id, c.Architecture.String())
+	installerConfig := imgType.InstallerConfig(*id, archStr)
 	if installerConfig == nil {
 		return nil, fmt.Errorf("empty installer config for %s", installerImgTypeName)
 	}
 
 	containerSource := container.SourceSpec{
-		Source: c.Imgref,
-		Name:   c.Imgref,
+		Source: imgref,
+		Name:   imgref,
 		Local:  true,
 	}
 
-	platformi := bootc.PlatformFor(c.Architecture.String(), c.SourceInfo.UEFIVendor)
+	platformi := bootc.PlatformFor(archStr, sourceInfo.UEFIVendor)
 	platformi.ImageFormat = platform.FORMAT_ISO
 
 	// The ref is not needed and will be removed from the ctor later
@@ -252,18 +221,18 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.ContainerRemoveSignatures = true
 	img.RootfsCompression = "zstd"
 
-	if c.Architecture == arch.ARCH_X86_64 {
+	if archStr == arch.ARCH_X86_64.String() {
 		img.InstallerCustomizations.ISOBoot = manifest.Grub2ISOBoot
 	}
 
-	img.InstallerCustomizations.Product = c.SourceInfo.OSRelease.Name
-	img.InstallerCustomizations.OSVersion = c.SourceInfo.OSRelease.VersionID
-	img.InstallerCustomizations.ISOLabel = bootc.LabelForISO(&c.SourceInfo.OSRelease, c.Architecture.String())
+	img.InstallerCustomizations.Product = sourceInfo.OSRelease.Name
+	img.InstallerCustomizations.OSVersion = sourceInfo.OSRelease.VersionID
+	img.InstallerCustomizations.ISOLabel = bootc.LabelForISO(&sourceInfo.OSRelease, archStr)
 	img.ExtraBasePackages = installerPkgSet
 
 	var customizations *blueprint.Customizations
-	if c.Config != nil {
-		customizations = c.Config.Customizations
+	if bp != nil {
+		customizations = bp.Customizations
 	}
 	img.InstallerCustomizations.FIPS = customizations.GetFIPS()
 	img.Kickstart, err = kickstart.New(customizations)
@@ -306,7 +275,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	// see https://github.com/osbuild/bootc-image-builder/issues/733
 	img.InstallerCustomizations.ISORootfsType = manifest.SquashfsRootfs
 
-	installRootfsType, err := disk.NewFSType(c.RootFSType)
+	installRootfsType, err := disk.NewFSType(rootFSType)
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +283,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 
 	mf := manifest.New()
 
-	foundDistro, foundRunner, err := bootc.GetDistroAndRunner(c.SourceInfo.OSRelease)
+	foundDistro, foundRunner, err := bootc.GetDistroAndRunner(sourceInfo.OSRelease)
 	if err != nil {
 		return nil, fmt.Errorf("failed to infer distro and runner: %w", err)
 	}
