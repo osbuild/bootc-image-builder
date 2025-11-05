@@ -2,14 +2,10 @@ import os
 import pathlib
 import platform
 import shutil
-import socket
 import subprocess
-import time
 
 import boto3
 from botocore.exceptions import ClientError
-
-AWS_REGION = "us-east-1"
 
 
 def run_journalctl(*args):
@@ -33,28 +29,6 @@ def journal_after_cursor(cursor):
 
 def has_executable(name):
     return shutil.which(name) is not None
-
-
-def get_free_port() -> int:
-    # this is racy but there is no race-free way to do better with the qemu CLI
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("localhost", 0))
-        return s.getsockname()[1]
-
-
-def wait_ssh_ready(address, port, sleep, max_wait_sec):
-    for _ in range(int(max_wait_sec / sleep)):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(sleep)
-            try:
-                s.connect((address, port))
-                data = s.recv(256)
-                if b"OpenSSH" in data:
-                    return
-            except (ConnectionRefusedError, ConnectionResetError, TimeoutError):
-                pass
-            time.sleep(sleep)
-    raise ConnectionRefusedError(f"cannot connect to port {port} after {max_wait_sec}s")
 
 
 def has_x86_64_v3_cpu():
@@ -95,8 +69,8 @@ def write_aws_creds(path):
     return True
 
 
-def deregister_ami(ami_id):
-    ec2 = boto3.resource("ec2", region_name=AWS_REGION)
+def deregister_ami(ami_id, aws_region):
+    ec2 = boto3.resource("ec2", region_name=aws_region)
     try:
         print(f"Deregistering image {ami_id}")
         ami = ec2.Image(ami_id)

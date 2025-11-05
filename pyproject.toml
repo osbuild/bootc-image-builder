@@ -1,0 +1,14 @@
+# Note that this is pyproject file is here only for the vmtest utils.
+# This should move out eventually to its own repo or a different place
+# like "images".
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vmtest"
+version = "0.1.0"
+
+[tool.setuptools.packages.find]
+include = ["vmtest"]
