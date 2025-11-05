@@ -18,7 +18,8 @@ import pytest
 import testutil
 from containerbuild import build_container_fixture    # pylint: disable=unused-import
 from testcases import CLOUD_BOOT_IMAGE_TYPES, DISK_IMAGE_TYPES, gen_testcases
-from vm import AWS, QEMU
+import vmtest.util
+from vmtest.vm import AWS_REGION, AWS, QEMU
 
 if not testutil.has_executable("podman"):
     pytest.skip("no podman, skipping integration tests that required podman", allow_module_level=True)
@@ -113,7 +114,7 @@ def registry_conf_fixture(shared_tmpdir, request):
       {local_registry}:
         lookaside: file:///{sigstore_dir}
     """
-    registry_port = testutil.get_free_port()
+    registry_port = vmtest.util.get_free_port()
     # We cannot use localhost as we need to access the registry from both
     # the host system and the bootc-image-builder container.
     default_ip = testutil.get_ip_from_default_route()
@@ -410,7 +411,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
 
                 upload_args = [
                     f"--aws-ami-name=bootc-image-builder-test-{str(uuid.uuid4())}",
-                    f"--aws-region={testutil.AWS_REGION}",
+                    f"--aws-region={AWS_REGION}",
                     "--aws-bucket=bootc-image-builder-ci",
                 ]
             elif force_aws_upload:
@@ -492,7 +493,7 @@ def build_images(shared_tmpdir, build_container, request, force_aws_upload, gpg_
         metadata["ami_id"] = parse_ami_id_from_log(journal_output)
 
         def del_ami():
-            testutil.deregister_ami(metadata["ami_id"])
+            testutil.deregister_ami(metadata["ami_id"], AWS_REGION)
         request.addfinalizer(del_ami)
 
     journal_log_path.write_text(journal_output, encoding="utf8")

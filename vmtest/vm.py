@@ -12,7 +12,9 @@ import boto3
 import paramiko
 from botocore.exceptions import ClientError
 from paramiko.client import AutoAddPolicy, SSHClient
-from testutil import AWS_REGION, get_free_port, wait_ssh_ready
+from vmtest.util import get_free_port, wait_ssh_ready
+
+AWS_REGION = "us-east-1"
 
 
 class VM(abc.ABC):

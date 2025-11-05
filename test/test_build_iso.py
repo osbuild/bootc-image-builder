@@ -10,11 +10,8 @@ from contextlib import ExitStack
 import pytest
 # local test utils
 import testutil
-from containerbuild import build_container_fixture    # pylint: disable=unused-import
-from containerbuild import make_container
+from containerbuild import build_container_fixture, make_container    # pylint: disable=unused-import
 from testcases import gen_testcases
-from vm import QEMU
-
 from test_build_disk import (
     assert_kernel_args,
     ImageBuildResult,
@@ -25,6 +22,7 @@ from test_build_disk import (  # pylint: disable=unused-import
     registry_conf_fixture,
     shared_tmpdir_fixture,
 )
+from vmtest.vm import QEMU
 
 
 @pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
