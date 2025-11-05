@@ -253,11 +253,10 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 
 	platformi := bootc.PlatformFor(c.Architecture.String(), c.SourceInfo.UEFIVendor)
 	platformi.ImageFormat = platform.FORMAT_ISO
-	filename := "install.iso"
 
 	// The ref is not needed and will be removed from the ctor later
 	// in time
-	img := image.NewAnacondaContainerInstallerLegacy(platformi, filename, containerSource, "")
+	img := image.NewAnacondaContainerInstallerLegacy(platformi, imgType.Filename, containerSource, "")
 	img.ContainerRemoveSignatures = true
 	img.RootfsCompression = "zstd"
 
