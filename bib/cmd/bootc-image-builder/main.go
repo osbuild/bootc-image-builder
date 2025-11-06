@@ -8,7 +8,6 @@ import (
 	"io/fs"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime/debug"
 	"strconv"
@@ -46,16 +45,6 @@ var (
 	osStdout = os.Stdout
 	osStderr = os.Stderr
 )
-
-func inContainerOrUnknown() bool {
-	// no systemd-detect-virt, err on the side of container
-	if _, err := exec.LookPath("systemd-detect-virt"); err != nil {
-		return true
-	}
-	// exit code "0" means the container is detected
-	err := exec.Command("systemd-detect-virt", "-c", "-q").Run()
-	return err == nil
-}
 
 func saveManifest(ms manifest.OSBuildManifest, fpath string) (err error) {
 	b, err := json.MarshalIndent(ms, "", "  ")
@@ -280,7 +269,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot validate the setup: %w", err)
 	}
 	logrus.Debug("Ensuring environment setup")
-	switch inContainerOrUnknown() {
+	switch setup.IsContainer() {
 	case false:
 		fmt.Fprintf(os.Stderr, "WARNING: running outside a container, this is an unsupported configuration\n")
 	case true:
