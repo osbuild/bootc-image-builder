@@ -9,6 +9,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "vmtest"
 version = "0.1.0"
+dependencies = [
+  "boto3==1.33.13",
+  "paramiko==2.12.0",
+  "qmp==1.1.0",
+]
 
 [tool.setuptools.packages.find]
 include = ["vmtest"]
