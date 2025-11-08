@@ -133,6 +133,7 @@ jobs:
       run: |
         # make sure test deps are available for root
         sudo -E pip install --user -r test/requirements.txt
+        sudo -E pip install --user .
     - name: Workarounds for GH runner diskspace
       run: |
         # use custom basetemp here because /var/tmp is on a smaller disk
