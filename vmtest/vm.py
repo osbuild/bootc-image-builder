@@ -2,6 +2,7 @@ import abc
 import os
 import pathlib
 import platform
+import logging
 import subprocess
 import sys
 import time
@@ -12,9 +13,15 @@ import boto3
 import paramiko
 from botocore.exceptions import ClientError
 from paramiko.client import AutoAddPolicy, SSHClient
+from scp import SCPClient
 from vmtest.util import get_free_port, wait_ssh_ready
 
 AWS_REGION = "us-east-1"
+
+# XXX: find better way to control this
+if os.environ.get("OSBUILD_TEST_QEMU_VERBOSE"):
+    logging.getLogger("paramiko").setLevel(logging.DEBUG)
+    logging.getLogger("paramiko").addHandler(logging.StreamHandler(sys.stderr))
 
 
 class VM(abc.ABC):
@@ -45,10 +52,7 @@ class VM(abc.ABC):
         Stop the VM and clean up any resources that were created when setting up and starting the machine.
         """
 
-    def run(self, cmd, user, password="", keyfile=None):
-        """
-        Run a command on the VM via SSH using the provided credentials.
-        """
+    def _get_ssh_transport(self, user, password="", keyfile=None):
         if not self.running():
             self.start()
         client = SSHClient()
@@ -61,7 +65,14 @@ class VM(abc.ABC):
             self._address, self._ssh_port,
             user, password, pkey=pkey,
             allow_agent=False, look_for_keys=False)
-        chan = client.get_transport().open_session()
+        return client.get_transport()
+
+    def run(self, cmd, user, password="", keyfile=None):
+        """
+        Run a command on the VM via SSH using the provided credentials.
+        """
+        tr = self._get_ssh_transport(user, password, keyfile)
+        chan = tr.open_session()
         chan.get_pty()
         chan.exec_command(cmd)
         stdout_f = chan.makefile()
@@ -74,6 +85,10 @@ class VM(abc.ABC):
             output.write(out)
         exit_status = stdout_f.channel.recv_exit_status()
         return exit_status, output.getvalue()
+
+    def scp(self, src, dst, user, password="", keyfile=None):
+        with SCPClient(self._get_ssh_transport(user, password, keyfile)) as scp:
+            scp.put(src, dst)
 
     @abc.abstractmethod
     def running(self):
