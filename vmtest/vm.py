@@ -3,8 +3,10 @@ import os
 import pathlib
 import platform
 import logging
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 from io import StringIO
@@ -120,7 +122,8 @@ class QEMU(VM):
     def __init__(self, img, arch="", snapshot=True, cdrom=None):
         super().__init__()
         self._img = pathlib.Path(img)
-        self._qmp_socket = self._img.with_suffix(".qemp-socket")
+        self._tmpdir = tempfile.mkdtemp(prefix="vmtest-", suffix=f"-{self._img.name}")
+        self._qmp_socket = os.path.join(self._tmpdir, "qmp.socket")
         self._qemu_p = None
         self._snapshot = snapshot
         self._cdrom = cdrom
@@ -131,6 +134,7 @@ class QEMU(VM):
 
     def __del__(self):
         self.force_stop()
+        shutil.rmtree(self._tmpdir)
 
     def _gen_qemu_cmdline(self, snapshot, use_ovmf):
         if self._arch in ("arm64", "aarch64"):
