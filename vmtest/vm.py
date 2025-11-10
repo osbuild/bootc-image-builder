@@ -144,7 +144,7 @@ class QEMU(VM):
             "-serial", "stdio",
             "-monitor", "none",
             "-netdev", f"user,id=net.0,hostfwd=tcp::{self._ssh_port}-:22",
-            "-device", "rtl8139,netdev=net.0",
+            "-device", "e1000,netdev=net.0",
             "-qmp", f"unix:{self._qmp_socket},server,nowait",
         ]
         if not os.environ.get("OSBUILD_TEST_QEMU_GUI"):
