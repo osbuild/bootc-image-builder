@@ -25,11 +25,13 @@ import (
 	"github.com/osbuild/images/pkg/bib/blueprintload"
 	"github.com/osbuild/images/pkg/cloud"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
+	"github.com/osbuild/images/pkg/depsolvednf"
 	"github.com/osbuild/images/pkg/distro"
 	"github.com/osbuild/images/pkg/distro/bootc"
 	"github.com/osbuild/images/pkg/experimentalflags"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/manifestgen"
+	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/reporegistry"
 	"github.com/osbuild/images/pkg/rpmmd"
 
@@ -151,14 +153,11 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	// Note that we only need to pass a single imgType here into the manifest generation because:
 	// 1. the bootc disk manifests contains exports for all supported image types
 	// 2. the bootc legacy types (iso, anaconda-iso) always do a single build
-	imgType := imgTypes[0]
-	if imageTypes.Legacy() {
-		return manifestFromCobraForLegacyISO(imgref, buildImgref, imgType, rootFs, rpmCacheRoot, config, useLibrepo, cntArch)
-	}
-	return manifestFromCobraForDisk(imgref, buildImgref, installerPayloadRef, imgType, rootFs, rpmCacheRoot, config, useLibrepo, cntArch)
+	imgType := imageTypes[0]
+	return manifestFromCobraFor(imgref, buildImgref, installerPayloadRef, imgType, rootFs, rpmCacheRoot, config, useLibrepo, cntArch)
 }
 
-func manifestFromCobraForDisk(imgref, buildImgref, installerPayloadRef, imgTypeStr, rootFs, rpmCacheRoot string, config *blueprint.Blueprint, useLibrepo bool, cntArch arch.Arch) ([]byte, *mTLSConfig, error) {
+func manifestFromCobraFor(imgref, buildImgref, installerPayloadRef, imgTypeStr, rootFs, rpmCacheRoot string, config *blueprint.Blueprint, useLibrepo bool, cntArch arch.Arch) ([]byte, *mTLSConfig, error) {
 	distri, err := bootc.NewBootcDistro(imgref)
 	if err != nil {
 		return nil, nil, err
@@ -182,6 +181,11 @@ func manifestFromCobraForDisk(imgref, buildImgref, installerPayloadRef, imgTypeS
 	if err != nil {
 		return nil, nil, err
 	}
+	var depsolveResult map[string]depsolvednf.DepsolveResult
+	var rpmDownloader osbuild.RpmDownloader
+	if useLibrepo {
+		rpmDownloader = osbuild.RpmDownloaderLibrepo
+	}
 	mg, err := manifestgen.New(repos, &manifestgen.Options{
 		// XXX: hack to skip repo loading for the bootc image.
 		// We need to add a SkipRepositories or similar to
@@ -190,6 +194,11 @@ func manifestFromCobraForDisk(imgref, buildImgref, installerPayloadRef, imgTypeS
 			{
 				BaseURLs: []string{"https://example.com/not-used"},
 			},
+		},
+		RpmDownloader: rpmDownloader,
+		Depsolver: func(cacheDir string, depsolveWarningsOutput io.Writer, packageSets map[string][]rpmmd.PackageSet, d distro.Distro, arch string, solver *depsolvednf.Solver) (map[string]depsolvednf.DepsolveResult, error) {
+			depsolveResult, err = manifestgen.DefaultDepsolver(cacheDir, depsolveWarningsOutput, packageSets, d, arch, solver)
+			return depsolveResult, err
 		},
 	})
 	if err != nil {
@@ -204,7 +213,17 @@ func manifestFromCobraForDisk(imgref, buildImgref, installerPayloadRef, imgTypeS
 	if err != nil {
 		return nil, nil, err
 	}
-	return manifest, nil, nil
+
+	depsolvedRepos := make(map[string][]rpmmd.RepoConfig)
+	for k, v := range depsolveResult {
+		depsolvedRepos[k] = v.Repos
+	}
+	mTLS, err := extractTLSKeys(depsolvedRepos)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return manifest, mTLS, nil
 }
 
 func cmdManifest(cmd *cobra.Command, args []string) error {
