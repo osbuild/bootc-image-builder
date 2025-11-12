@@ -203,3 +203,119 @@ def test_bootc_installer_iso_installs(tmp_path, build_container, container_ref):
             exit_status, output = vm.run("bootc status", user="root", keyfile=ssh_keyfile_private_path)
             assert exit_status == 0
             assert f"Booted image: {container_ref}" in output
+
+
+# pylint: disable=too-many-locals
+def test_bootc_installer_iso_with_flatpacks(tmp_path, build_container):
+    container_ref = "quay.io/fedora/fedora-bootc:42"
+    
+    # XXX: duplicated from test_build_disk.py
+    username = "test"
+    password = "".join(
+        random.choices(string.ascii_uppercase + string.digits, k=18))
+    cfg = {
+        "customizations": {
+            "kernel": {
+            "append": "systemd.debug-shell=1 rd.systemd.debug-shell=1 inst.debug console=ttyS0",
+            },
+            "installer": {
+                "kickstart": {
+                    # LOOK HERE: flatpak install in the %post, ideally
+                    # of course we would use "flatpak preinsall" once
+                    # part of a release
+                    "contents": f"rootpw {password}\nuser --name={username} --password={password}\ntext --non-interactive\nreboot --eject\nzerombr\nclearpart --all --initlabel --disklabel=gpt\nautopart --noswap --type=plain\nnetwork --bootproto=dhcp --device=link --activate --onboot=on\n%post --erroronfail\nflatpak install --system -y org.gnome.Calculator\n%end\n"
+                },
+            },
+        },
+    }
+    config_json_path = tmp_path / "config.json"
+    config_json_path.write_text(json.dumps(cfg), encoding="utf-8")
+
+    # create payload container with flatpak
+    cnt_payload_path = tmp_path / "payload" / "Containerfile"
+    cnt_payload_path.parent.mkdir()
+    cnt_payload_path.write_text(textwrap.dedent(rf"""
+    FROM {container_ref}
+    # LOOK HERE; payload container gets flatpak + default repos
+    # ideally we would also do the "flatpak preinstall" configs here
+    # but our flatpak is too old
+    # see also https://github.com/flatpak/flatpak/pull/6116/files
+    # and https://github.com/frostyard/snow/pull/24/files
+    RUN dnf install -y flatpak
+    RUN mkdir -p /usr/share/flatpak/remotes.d
+    RUN mkdir -p /usr/share/flatpak/system-install.d
+    RUN curl -o /usr/share/flatpak/remotes.d/flathub.gpg https://flathub.org/repo/flathub.gpg
+    RUN echo -e '[Flatpak Repo]\nTitle=Flathub\nUrl=https://flathub.org/repo/\nGPGKeyPath=/usr/share/flatpak/remotes.d/flathub.gpg' > /usr/share/flatpak/remotes.d/flathub.flatpakrepo
+    # XXX: we really should be using https://github.com/flatpak/flatpak/pull/6116
+    # but we have 1.16.1 and this preinstall stuff is not released yet
+    """), encoding="utf8")
+    
+    # create anaconda iso from base
+    cntf_path = tmp_path / "installer" / "Containerfile"
+    cntf_path.parent.mkdir()
+    cntf_path.write_text(textwrap.dedent(f"""\n
+    FROM {container_ref}
+    RUN dnf install -y \
+         anaconda-core \
+         anaconda-dracut \
+         anaconda-install-img-deps \
+         biosdevname \
+         grub2-efi-x64-cdboot \
+         net-tools \
+         prefixdevname \
+         python3-mako \
+         lorax-templates-* \
+         squashfs-tools \
+         && dnf clean all
+    # shim-x64 is marked installed but the files are not in the expected
+    # place for https://github.com/osbuild/osbuild/blob/v160/stages/org.osbuild.grub2.iso#L91, see
+    # workaround via reinstall, we could add a config to the grub2.iso
+    # stage to allow a different prefix that then would be used by
+    # anaconda.
+    # If https://github.com/osbuild/osbuild/pull/2204 would get merged we
+    # can update images/ to set the correct efi_src_dirs and this can
+    # be removed (but its rather ugly).
+    # See also https://bugzilla.redhat.com/show_bug.cgi?id=1750708
+    RUN dnf reinstall -y shim-x64
+    # lorax wants to create a symlink in /mnt which points to /var/mnt
+    # on bootc but /var/mnt does not exist on some images.
+    #
+    # If https://gitlab.com/fedora/bootc/base-images/-/merge_requests/294
+    # gets merged this will be no longer needed
+    RUN mkdir /var/mnt
+    """), encoding="utf8")
+    output_path = tmp_path / "output"
+    output_path.mkdir()
+    with (
+        make_container(cntf_path.parent) as install_container_tag,
+        make_container(cnt_payload_path.parent) as payload_container_tag,
+    ):
+        cmd = [
+            *testutil.podman_run_common,
+            "-v", f"{config_json_path}:/config.json:ro",
+            "-v", f"{output_path}:/output",
+            "-v", "/var/tmp/osbuild-test-store:/store",  # share the cache between builds
+            "-v", "/var/lib/containers/storage:/var/lib/containers/storage",
+            build_container,
+            "--type", "bootc-installer",
+            "--rootfs", "ext4",
+            "--installer-payload-ref", f"localhost/{payload_container_tag}",
+            f"localhost/{install_container_tag}",
+        ]
+        subprocess.check_call(cmd)
+        installer_iso_path = output_path / "bootiso" / "install.iso"
+        test_disk_path = installer_iso_path.with_name("test-disk.img")
+        with open(test_disk_path, "w", encoding="utf8") as fp:
+            fp.truncate(10_1000_1000_1000)
+            # install to test disk
+        with QEMU(test_disk_path, cdrom=installer_iso_path) as vm:
+            vm.start(wait_event="qmp:RESET", snapshot=False, use_ovmf=True)
+            vm.force_stop()
+            # boot test disk and do extremly simple check
+        with QEMU(test_disk_path) as vm:
+            vm.start(use_ovmf=True)
+            exit_status, _ = vm.run("true", user=username, password=password)
+            assert exit_status == 0
+            exit_status, output = vm.run("flatpak list", user=username, password=password)
+            assert exit_status == 0
+            assert "org.gnome.Calculator" in output
