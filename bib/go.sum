@@ -245,10 +245,10 @@ github.com/opencontainers/selinux v1.12.0 h1:6n5JV4Cf+4y0KNXW48TLj5DwfXpvWlxXplU
 github.com/opencontainers/selinux v1.12.0/go.mod h1:BTPX+bjVbWGXw7ZZWUbdENt8w0htPSrlgOOysQaU62U=
 github.com/osbuild/blueprint v1.16.0 h1:f/kHih+xpeJ1v7wtIfzdHPZTsiXsqKeDQ1+rrue6298=
 github.com/osbuild/blueprint v1.16.0/go.mod h1:HPlJzkEl7q5g8hzaGksUk7ifFAy9QFw9LmzhuFOAVm4=
-github.com/osbuild/image-builder-cli v0.0.0-20250924085931-15de5139f521 h1:Mo1htXYyEoKrBQD+/RC/kluAWu4+E0oEjPorujVn/K8=
-github.com/osbuild/image-builder-cli v0.0.0-20250924085931-15de5139f521/go.mod h1:oTn9T+bV9g/760hM/jX7AV0c4vuVIn6FjAnaVM9RzRo=
-github.com/osbuild/images v0.211.0 h1:3BU7mMM7Iu81qZnq7y8luuIIOt707J9tF9DwCyOk9yM=
-github.com/osbuild/images v0.211.0/go.mod h1:Cs7zFV8rmbVHn+19ArNdjd1AtFk+LC9dOOHuxiSLghw=
+github.com/osbuild/image-builder-cli v0.0.0-20251112082406-0e0961cbb42b h1:ZV9GmNTZ1xoWsX+3eKssCNEH0Dz6kqkxDTirnxeVyuY=
+github.com/osbuild/image-builder-cli v0.0.0-20251112082406-0e0961cbb42b/go.mod h1:X+AjSdHuFtLjO7dhFHECF8nCGYvuVdGxMGCl61sRv5I=
+github.com/osbuild/images v0.216.0 h1:1955WInfLc9pk6qGJk9+v6YIEe+1LFc0zRtsx1CmNXk=
+github.com/osbuild/images v0.216.0/go.mod h1:Cs7zFV8rmbVHn+19ArNdjd1AtFk+LC9dOOHuxiSLghw=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
