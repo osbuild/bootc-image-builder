@@ -158,14 +158,13 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 }
 
 func manifestFromCobraFor(imgref, buildImgref, installerPayloadRef, imgTypeStr, rootFs, rpmCacheRoot string, config *blueprint.Blueprint, useLibrepo bool, cntArch arch.Arch) ([]byte, *mTLSConfig, error) {
-	distri, err := bootc.NewBootcDistro(imgref)
+	distri, err := bootc.NewBootcDistro(imgref, &bootc.DistroOptions{
+		DefaultFs: rootFs,
+	})
 	if err != nil {
 		return nil, nil, err
 	}
 	if err := distri.SetBuildContainer(buildImgref); err != nil {
-		return nil, nil, err
-	}
-	if err := distri.SetDefaultFs(rootFs); err != nil {
 		return nil, nil, err
 	}
 	archi, err := distri.GetArch(cntArch.String())
