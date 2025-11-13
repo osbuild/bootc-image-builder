@@ -11,7 +11,7 @@ name = "vmtest"
 version = "0.1.0"
 dependencies = [
   "boto3==1.33.13",
-  "paramiko==2.12.0",
+  "paramiko==4.0.0",
   "qmp==1.1.0",
   "scp==0.15.0",
 ]
