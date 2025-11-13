@@ -62,7 +62,14 @@ class VM(abc.ABC):
         # workaround, see https://github.com/paramiko/paramiko/issues/2048
         pkey = None
         if keyfile:
-            pkey = paramiko.RSAKey.from_private_key_file(keyfile)
+            for klass in paramiko.key_classes:
+                try:
+                    pkey = klass.from_private_key_file(keyfile)
+                    break
+                except paramiko.ssh_exception.SSHException:
+                    continue
+            if pkey is None:
+                raise RuntimeError(f"cannot load {keyfile}, tried {paramiko.key_classes}")
         client.connect(
             self._address, self._ssh_port,
             user, password, pkey=pkey,
