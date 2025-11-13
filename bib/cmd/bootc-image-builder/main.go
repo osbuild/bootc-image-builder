@@ -190,6 +190,9 @@ func manifestFromCobraForDisk(imgref, buildImgref, installerPayloadRef, imgTypeS
 				BaseURLs: []string{"https://example.com/not-used"},
 			},
 		},
+		// this turns (blueprint validation) warnings into
+		// warnings as they are visible to the user
+		WarningsOutput: os.Stderr,
 	})
 	if err != nil {
 		return nil, nil, err
