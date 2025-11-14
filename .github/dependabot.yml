@@ -11,16 +11,3 @@ updates:
       time: "04:00"
     open-pull-requests-limit: 5
     rebase-strategy: "disabled"
-
-  # Maintain dependencies for Go
-  - package-ecosystem: "gomod"
-    directory: "/bib"
-    schedule:
-      interval: "daily"
-      time: "04:00"
-    groups:
-      go-deps:
-        patterns:
-          - "*"  # group all dependency updates into one PR
-    open-pull-requests-limit: 1
-    rebase-strategy: "auto"
