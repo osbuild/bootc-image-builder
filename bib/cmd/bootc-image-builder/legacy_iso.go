@@ -3,9 +3,6 @@ package main
 import (
 	"fmt"
 	"math/rand"
-	"slices"
-	"strconv"
-	"strings"
 
 	"github.com/osbuild/blueprint/pkg/blueprint"
 	"github.com/osbuild/images/pkg/arch"
@@ -15,27 +12,18 @@ import (
 	"github.com/osbuild/images/pkg/customizations/kickstart"
 	"github.com/osbuild/images/pkg/depsolvednf"
 	"github.com/osbuild/images/pkg/disk"
+	"github.com/osbuild/images/pkg/distro"
+	"github.com/osbuild/images/pkg/distro/bootc"
+	"github.com/osbuild/images/pkg/distro/defs"
 	"github.com/osbuild/images/pkg/image"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/osbuild"
 	"github.com/osbuild/images/pkg/platform"
 	"github.com/osbuild/images/pkg/rpmmd"
-	"github.com/osbuild/images/pkg/runner"
 	"github.com/sirupsen/logrus"
 
 	podman_container "github.com/osbuild/images/pkg/bib/container"
-
-	"github.com/osbuild/bootc-image-builder/bib/internal/distrodef"
 )
-
-// all possible locations for the bib's distro definitions
-// ./data/defs and ./bib/data/defs are for development
-// /usr/share/bootc-image-builder/defs is for the production, containerized version
-var distroDefPaths = []string{
-	"./data/defs",
-	"./bib/data/defs",
-	"/usr/share/bootc-image-builder/defs",
-}
 
 type ManifestConfig struct {
 	// OCI image path (without the transport, that is always docker://)
@@ -47,9 +35,6 @@ type ManifestConfig struct {
 
 	// CPU architecture of the image
 	Architecture arch.Arch
-
-	// Paths to the directory with the distro definitions
-	DistroDefPaths []string
 
 	// Extracted information about the source container image
 	SourceInfo      *osinfo.Info
@@ -134,7 +119,6 @@ func manifestFromCobraForLegacyISO(imgref, buildImgref, imgTypeStr, rootFs, rpmC
 		Config:          config,
 		Imgref:          imgref,
 		BuildImgref:     buildImgref,
-		DistroDefPaths:  distroDefPaths,
 		SourceInfo:      sourceinfo,
 		BuildSourceInfo: buildSourceinfo,
 		RootFSType:      rootfsType,
@@ -215,62 +199,50 @@ func makeISOManifest(c *ManifestConfig, solver *depsolvednf.Solver, cacheRoot st
 	return mf, depsolvedRepos, nil
 }
 
-func labelForISO(os *osinfo.OSRelease, arch *arch.Arch) string {
-	switch os.ID {
-	case "fedora":
-		return fmt.Sprintf("Fedora-S-dvd-%s-%s", arch, os.VersionID)
-	case "centos":
-		labelTemplate := "CentOS-Stream-%s-BaseOS-%s"
-		if os.VersionID == "8" {
-			labelTemplate = "CentOS-Stream-%s-%s-dvd"
+// newDistroYAMLFrom() returns the distroYAML for the given sourceInfo,
+// if no direct match can be found it will it will use the ID_LIKE.
+// This should ensure we work on every bootc image that puts a correct
+// ID_LIKE= in /etc/os-release
+func newDistroYAMLFrom(sourceInfo *osinfo.Info) (*defs.DistroYAML, *distro.ID, error) {
+	for _, distroID := range append([]string{sourceInfo.OSRelease.ID}, sourceInfo.OSRelease.IDLike...) {
+		nameVer := fmt.Sprintf("%s-%s", distroID, sourceInfo.OSRelease.VersionID)
+		id, err := distro.ParseID(nameVer)
+		if err != nil {
+			return nil, nil, err
 		}
-		return fmt.Sprintf(labelTemplate, os.VersionID, arch)
-	case "rhel":
-		version := strings.ReplaceAll(os.VersionID, ".", "-")
-		return fmt.Sprintf("RHEL-%s-BaseOS-%s", version, arch)
-	default:
-		return fmt.Sprintf("Container-Installer-%s", arch)
+		distroYAML, err := defs.NewDistroYAML(nameVer)
+		if err != nil {
+			return nil, nil, err
+		}
+		if distroYAML != nil {
+			return distroYAML, id, nil
+		}
 	}
-}
-
-// from:https://github.com/osbuild/images/blob/v0.207.0/data/distrodefs/rhel-10/imagetypes.yaml#L169
-var loraxRhelTemplates = []manifest.InstallerLoraxTemplate{
-	manifest.InstallerLoraxTemplate{Path: "80-rhel/runtime-postinstall.tmpl"},
-	manifest.InstallerLoraxTemplate{Path: "80-rhel/runtime-cleanup.tmpl", AfterDracut: true},
-}
-
-// from:https://github.com/osbuild/images/blob/v0.207.0/data/distrodefs/fedora/imagetypes.yaml#L408
-var loraxFedoraTemplates = []manifest.InstallerLoraxTemplate{
-	manifest.InstallerLoraxTemplate{Path: "99-generic/runtime-postinstall.tmpl"},
-	manifest.InstallerLoraxTemplate{Path: "99-generic/runtime-cleanup.tmpl", AfterDracut: true},
-}
-
-func loraxTemplates(si osinfo.OSRelease) []manifest.InstallerLoraxTemplate {
-	switch {
-	case si.ID == "rhel" || slices.Contains(si.IDLike, "rhel") || si.VersionID == "eln":
-		return loraxRhelTemplates
-	default:
-		return loraxFedoraTemplates
-	}
-}
-
-func loraxTemplatePackage(si osinfo.OSRelease) string {
-	switch {
-	case si.ID == "rhel" || slices.Contains(si.IDLike, "rhel") || si.VersionID == "eln":
-		return "lorax-templates-rhel"
-	default:
-		return "lorax-templates-generic"
-	}
+	return nil, nil, fmt.Errorf("cannot load distro definitions for %s-%s or any of %v", sourceInfo.OSRelease.ID, sourceInfo.OSRelease.VersionID, sourceInfo.OSRelease.IDLike)
 }
 
 func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, error) {
 	if c.Imgref == "" {
 		return nil, fmt.Errorf("pipeline: no base image defined")
 	}
-
-	imageDef, err := distrodef.LoadImageDef(c.DistroDefPaths, c.SourceInfo.OSRelease.ID, c.SourceInfo.OSRelease.VersionID, "anaconda-iso")
+	distroYAML, id, err := newDistroYAMLFrom(c.SourceInfo)
 	if err != nil {
 		return nil, err
+	}
+
+	// XXX: or "bootc-legacy-installer"?
+	installerImgTypeName := "bootc-rpm-installer"
+	imgType, ok := distroYAML.ImageTypes()[installerImgTypeName]
+	if !ok {
+		return nil, fmt.Errorf("cannot find image definition for %v", installerImgTypeName)
+	}
+	installerPkgSet, ok := imgType.PackageSets(*id, c.Architecture.String())["installer"]
+	if !ok {
+		return nil, fmt.Errorf("cannot find installer package set for %v", installerImgTypeName)
+	}
+	installerConfig := imgType.InstallerConfig(*id, c.Architecture.String())
+	if installerConfig == nil {
+		return nil, fmt.Errorf("empty installer config for %s", installerImgTypeName)
 	}
 
 	containerSource := container.SourceSpec{
@@ -315,11 +287,8 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 
 	img.InstallerCustomizations.Product = c.SourceInfo.OSRelease.Name
 	img.InstallerCustomizations.OSVersion = c.SourceInfo.OSRelease.VersionID
-	img.InstallerCustomizations.ISOLabel = labelForISO(&c.SourceInfo.OSRelease, &c.Architecture)
-
-	img.ExtraBasePackages = rpmmd.PackageSet{
-		Include: imageDef.Packages,
-	}
+	img.InstallerCustomizations.ISOLabel = bootc.LabelForISO(&c.SourceInfo.OSRelease, c.Architecture.String())
+	img.ExtraBasePackages = installerPkgSet
 
 	var customizations *blueprint.Customizations
 	if c.Config != nil {
@@ -358,8 +327,10 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.Kickstart.OSTree = &kickstart.OSTree{
 		OSName: "default",
 	}
-	img.InstallerCustomizations.LoraxTemplates = loraxTemplates(c.SourceInfo.OSRelease)
-	img.InstallerCustomizations.LoraxTemplatePackage = loraxTemplatePackage(c.SourceInfo.OSRelease)
+	img.InstallerCustomizations.LoraxTemplates = installerConfig.LoraxTemplates
+	if installerConfig.LoraxTemplatePackage != nil {
+		img.InstallerCustomizations.LoraxTemplatePackage = *installerConfig.LoraxTemplatePackage
+	}
 
 	// see https://github.com/osbuild/bootc-image-builder/issues/733
 	img.InstallerCustomizations.ISORootfsType = manifest.SquashfsRootfs
@@ -372,7 +343,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 
 	mf := manifest.New()
 
-	foundDistro, foundRunner, err := getDistroAndRunner(c.SourceInfo.OSRelease)
+	foundDistro, foundRunner, err := bootc.GetDistroAndRunner(c.SourceInfo.OSRelease)
 	if err != nil {
 		return nil, fmt.Errorf("failed to infer distro and runner: %w", err)
 	}
@@ -380,65 +351,4 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 
 	_, err = img.InstantiateManifest(&mf, nil, foundRunner, rng)
 	return &mf, err
-}
-
-func getDistroAndRunner(osRelease osinfo.OSRelease) (manifest.Distro, runner.Runner, error) {
-	switch osRelease.ID {
-	case "fedora":
-		version, err := strconv.ParseUint(osRelease.VersionID, 10, 64)
-		if err != nil {
-			return manifest.DISTRO_NULL, nil, fmt.Errorf("cannot parse Fedora version (%s): %w", osRelease.VersionID, err)
-		}
-
-		return manifest.DISTRO_FEDORA, &runner.Fedora{
-			Version: version,
-		}, nil
-	case "centos":
-		version, err := strconv.ParseUint(osRelease.VersionID, 10, 64)
-		if err != nil {
-			return manifest.DISTRO_NULL, nil, fmt.Errorf("cannot parse CentOS version (%s): %w", osRelease.VersionID, err)
-		}
-		r := &runner.CentOS{
-			Version: version,
-		}
-		switch version {
-		case 9:
-			return manifest.DISTRO_EL9, r, nil
-		case 10:
-			return manifest.DISTRO_EL10, r, nil
-		default:
-			logrus.Warnf("Unknown CentOS version %d, using default distro for manifest generation", version)
-			return manifest.DISTRO_NULL, r, nil
-		}
-
-	case "rhel":
-		versionParts := strings.Split(osRelease.VersionID, ".")
-		if len(versionParts) != 2 {
-			return manifest.DISTRO_NULL, nil, fmt.Errorf("invalid RHEL version format: %s", osRelease.VersionID)
-		}
-		major, err := strconv.ParseUint(versionParts[0], 10, 64)
-		if err != nil {
-			return manifest.DISTRO_NULL, nil, fmt.Errorf("cannot parse RHEL major version (%s): %w", versionParts[0], err)
-		}
-		minor, err := strconv.ParseUint(versionParts[1], 10, 64)
-		if err != nil {
-			return manifest.DISTRO_NULL, nil, fmt.Errorf("cannot parse RHEL minor version (%s): %w", versionParts[1], err)
-		}
-		r := &runner.RHEL{
-			Major: major,
-			Minor: minor,
-		}
-		switch major {
-		case 9:
-			return manifest.DISTRO_EL9, r, nil
-		case 10:
-			return manifest.DISTRO_EL10, r, nil
-		default:
-			logrus.Warnf("Unknown RHEL version %d, using default distro for manifest generation", major)
-			return manifest.DISTRO_NULL, r, nil
-		}
-	}
-
-	logrus.Warnf("Unknown distro %s, using default runner", osRelease.ID)
-	return manifest.DISTRO_NULL, &runner.Linux{}, nil
 }
