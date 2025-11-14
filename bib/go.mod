@@ -7,7 +7,7 @@ require (
 	github.com/hashicorp/go-version v1.7.0
 	github.com/osbuild/blueprint v1.16.0
 	github.com/osbuild/image-builder-cli v0.0.0-20250924085931-15de5139f521
-	github.com/osbuild/images v0.211.0
+	github.com/osbuild/images v0.216.1-0.20251111070102-913beef1efed
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/pflag v1.0.10
@@ -135,3 +135,5 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/osbuild/images => github.com/mvo5/images v0.0.0-20251113165820-8a75b8f51af8

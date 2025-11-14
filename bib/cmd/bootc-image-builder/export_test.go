@@ -6,11 +6,10 @@ import (
 )
 
 var (
-	CanChownInPath     = canChownInPath
-	GetDistroAndRunner = getDistroAndRunner
-	CreateRand         = createRand
-	BuildCobraCmdline  = buildCobraCmdline
-	HandleAWSFlags     = handleAWSFlags
+	CanChownInPath    = canChownInPath
+	CreateRand        = createRand
+	BuildCobraCmdline = buildCobraCmdline
+	HandleAWSFlags    = handleAWSFlags
 )
 
 func MockOsGetuid(new func() int) (restore func()) {
