@@ -1080,3 +1080,23 @@ def test_ova_manifest_smoke(build_container, tc):
             "image.vmdk"
         ]
     }
+
+
+def test_manifest_warns_on_unsupported(tmp_path, build_container):
+    # no need to parameterize this test, toml is the same for all containers
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
+
+    config_toml_path = tmp_path / "config.toml"
+    config_toml_path.write_text(textwrap.dedent("""\
+    [[customizations.repositories]]
+    id = "foo"
+    """))
+    res = subprocess.run([
+        *testutil.podman_run_common,
+        "-v", f"{config_toml_path}:/config.toml:ro",
+        build_container,
+        "manifest", f"{container_ref}",
+    ], check=True, capture_output=True, text=True)
+    assert ('blueprint validation failed for image type "qcow2": '
+            'customizations.repositories: not supported' in res.stderr)
