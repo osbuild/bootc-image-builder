@@ -10,7 +10,7 @@ build-backend = "setuptools.build_meta"
 name = "vmtest"
 version = "0.1.0"
 dependencies = [
-  "boto3==1.33.13",
+  "boto3==1.40.74",
   "paramiko==4.0.0",
   "qmp==1.1.0",
   "scp==0.15.0",
