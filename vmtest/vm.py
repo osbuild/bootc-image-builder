@@ -70,6 +70,14 @@ class VM(abc.ABC):
                     continue
             if pkey is None:
                 raise RuntimeError(f"cannot load {keyfile}, tried {paramiko.key_classes}")
+        try:
+            self._connect(client, user, password, pkey)
+        except:
+            # do one retry on connect failure
+            time.sleep(0.5)
+            self._connect(client, user, password, pkey)
+
+    def _connect(self, client, user, password, pkey):
         client.connect(
             self._address, self._ssh_port,
             user, password, pkey=pkey,
@@ -96,7 +104,8 @@ class VM(abc.ABC):
         return exit_status, output.getvalue()
 
     def scp(self, src, dst, user, password="", keyfile=None):
-        with SCPClient(self._get_ssh_transport(user, password, keyfile)) as scp:
+        trans = self._get_ssh_transport(user, password, keyfile)
+        with SCPClient(trans) as scp:
             scp.put(src, dst)
 
     @abc.abstractmethod
