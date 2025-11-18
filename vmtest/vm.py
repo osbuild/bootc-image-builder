@@ -2,7 +2,6 @@ import abc
 import os
 import pathlib
 import platform
-import logging
 import shutil
 import subprocess
 import sys
@@ -12,18 +11,17 @@ import uuid
 from io import StringIO
 
 import boto3
-import paramiko
 from botocore.exceptions import ClientError
-from paramiko.client import AutoAddPolicy, SSHClient
-from scp import SCPClient
 from vmtest.util import get_free_port, wait_ssh_ready
 
 AWS_REGION = "us-east-1"
 
-# XXX: find better way to control this
-if os.environ.get("OSBUILD_TEST_QEMU_VERBOSE"):
-    logging.getLogger("paramiko").setLevel(logging.DEBUG)
-    logging.getLogger("paramiko").addHandler(logging.StreamHandler(sys.stderr))
+
+_non_interactive_ssh = [
+    "-o", "UserKnownHostsFile=/dev/null",
+    "-o" "StrictHostKeyChecking=no",
+    "-o" "LogLevel=ERROR",
+]
 
 
 class VM(abc.ABC):
@@ -54,50 +52,46 @@ class VM(abc.ABC):
         Stop the VM and clean up any resources that were created when setting up and starting the machine.
         """
 
-    def _get_ssh_transport(self, user, password="", keyfile=None):
-        if not self.running():
-            self.start()
-        client = SSHClient()
-        client.set_missing_host_key_policy(AutoAddPolicy)
-        # workaround, see https://github.com/paramiko/paramiko/issues/2048
-        pkey = None
-        if keyfile:
-            for klass in paramiko.key_classes:
-                try:
-                    pkey = klass.from_private_key_file(keyfile)
-                    break
-                except paramiko.ssh_exception.SSHException:
-                    continue
-            if pkey is None:
-                raise RuntimeError(f"cannot load {keyfile}, tried {paramiko.key_classes}")
-        client.connect(
-            self._address, self._ssh_port,
-            user, password, pkey=pkey,
-            allow_agent=False, look_for_keys=False)
-        return client.get_transport()
+    def _sshpass(self, password):
+        if not password:
+            return []
+        return ["sshpass", "-p", password]
 
     def run(self, cmd, user, password="", keyfile=None):
         """
         Run a command on the VM via SSH using the provided credentials.
         """
-        tr = self._get_ssh_transport(user, password, keyfile)
-        chan = tr.open_session()
-        chan.get_pty()
-        chan.exec_command(cmd)
-        stdout_f = chan.makefile()
+        if not self.running():
+            self.start()
+        ssh_cmd = self._sshpass(password) + [
+            "ssh", "-p", str(self._ssh_port),
+        ] + _non_interactive_ssh
+        if keyfile:
+            ssh_cmd.extend(["-i", keyfile])
+        ssh_cmd.append(f"{user}@{self._address}")
+        ssh_cmd.append(cmd)
         output = StringIO()
-        while True:
-            out = stdout_f.readline()
-            if not out:
-                break
-            self._log(out)
-            output.write(out)
-        exit_status = stdout_f.channel.recv_exit_status()
-        return exit_status, output.getvalue()
+        with subprocess.Popen(
+                ssh_cmd,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, bufsize=1,
+        ) as p:
+            for out in p.stdout:
+                self._log(out)
+                output.write(out)
+        return p.returncode, output.getvalue()
 
     def scp(self, src, dst, user, password="", keyfile=None):
-        with SCPClient(self._get_ssh_transport(user, password, keyfile)) as scp:
-            scp.put(src, dst)
+        if not self.running():
+            self.start()
+        scp_cmd = self._sshpass(password) + [
+            "scp", "-P", str(self._ssh_port),
+        ] + _non_interactive_ssh
+        if keyfile:
+            scp_cmd.extend(["-i", keyfile])
+        scp_cmd.append(src)
+        scp_cmd.append(f"{user}@{self._address}:{dst}")
+        subprocess.check_call(scp_cmd)
 
     @abc.abstractmethod
     def running(self):

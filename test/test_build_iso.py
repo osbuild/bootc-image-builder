@@ -202,4 +202,4 @@ def test_bootc_installer_iso_installs(tmp_path, build_container, container_ref):
             assert exit_status == 0
             exit_status, output = vm.run("bootc status", user="root", keyfile=ssh_keyfile_private_path)
             assert exit_status == 0
-            assert f"Booted image: {container_ref}" in output
+            assert f"image: {container_ref}" in output
