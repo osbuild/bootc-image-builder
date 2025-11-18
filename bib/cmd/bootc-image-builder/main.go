@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -63,15 +62,7 @@ func saveManifest(ms manifest.OSBuildManifest, fpath string) (err error) {
 		return fmt.Errorf("failed to marshal data for %q: %s", fpath, err.Error())
 	}
 	b = append(b, '\n') // add new line at end of file
-	fp, err := os.Create(fpath)
-	if err != nil {
-		return fmt.Errorf("failed to create output file %q: %s", fpath, err.Error())
-	}
-	defer func() { err = errors.Join(err, fp.Close()) }()
-	if _, err := fp.Write(b); err != nil {
-		return fmt.Errorf("failed to write output file %q: %s", fpath, err.Error())
-	}
-	return nil
+	return os.WriteFile(fpath, b, 0644)
 }
 
 // manifestFromCobra generate an osbuild manifest from a cobra commandline.
