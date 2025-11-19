@@ -1,5 +1,5 @@
 FROM registry.fedoraproject.org/fedora:42 AS builder
-RUN dnf install -y git-core golang gpgme-devel libassuan-devel && mkdir -p /build/bib
+RUN dnf install -y git-core golang gpgme-devel libassuan-devel libvirt-devel && mkdir -p /build/bib
 COPY bib/go.mod bib/go.sum /build/bib/
 ARG GOPROXY=https://proxy.golang.org,direct
 RUN go env -w GOPROXY=$GOPROXY
@@ -16,7 +16,6 @@ COPY ./group_osbuild-osbuild-fedora.repo /etc/yum.repos.d/
 COPY ./package-requires.txt .
 RUN grep -vE '^#' package-requires.txt | xargs dnf install -y && rm -f package-requires.txt && dnf clean all
 COPY --from=builder /build/bin/* /usr/bin/
-COPY bib/data /usr/share/bootc-image-builder
 
 ENTRYPOINT ["/usr/bin/bootc-image-builder"]
 VOLUME /output

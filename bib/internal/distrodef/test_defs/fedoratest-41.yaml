@@ -1,4 +1,0 @@
-anaconda-iso:
-  packages:
-    - anaconda
-    - curl

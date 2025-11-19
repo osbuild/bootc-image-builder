@@ -10,6 +10,9 @@ podman
 # Image building dependencies
 qemu-img
 
+# ibcli supports uploading via libvirt
+libvirt-libs
+
 # rpm-ostree wants these for packages
 selinux-policy-targeted distribution-gpg-keys
 
