@@ -19,8 +19,8 @@ AWS_REGION = "us-east-1"
 
 _non_interactive_ssh = [
     "-o", "UserKnownHostsFile=/dev/null",
-    "-o" "StrictHostKeyChecking=no",
-    "-o" "LogLevel=ERROR",
+    "-o", "StrictHostKeyChecking=no",
+    "-o", "LogLevel=ERROR",
 ]
 
 
@@ -57,12 +57,29 @@ class VM(abc.ABC):
             return []
         return ["sshpass", "-p", password]
 
+    def _ensure_ssh(self, user, password="", keyfile=None):
+        if not self.running():
+            self.start()
+        n_retries = 3
+        wait_sec = 10
+        for _ in range(n_retries):
+            try:
+                ret, _ = self._run("true", user, password, keyfile)
+                if ret == 0:
+                    return
+            except Exception as e:
+                print(f"ssh not ready {e}")
+                time.sleep(wait_sec)
+        raise RuntimeError(f"no ssh after {n_retries} retries of {wait_sec}")
+
     def run(self, cmd, user, password="", keyfile=None):
+        self._ensure_ssh(user, password, keyfile)
+        return self._run(cmd, user, password, keyfile)
+
+    def _run(self, cmd, user, password="", keyfile=None):
         """
         Run a command on the VM via SSH using the provided credentials.
         """
-        if not self.running():
-            self.start()
         ssh_cmd = self._sshpass(password) + [
             "ssh", "-p", str(self._ssh_port),
         ] + _non_interactive_ssh
@@ -82,8 +99,7 @@ class VM(abc.ABC):
         return p.returncode, output.getvalue()
 
     def scp(self, src, dst, user, password="", keyfile=None):
-        if not self.running():
-            self.start()
+        self._ensure_ssh(user, password, keyfile)
         scp_cmd = self._sshpass(password) + [
             "scp", "-P", str(self._ssh_port),
         ] + _non_interactive_ssh
