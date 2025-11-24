@@ -544,8 +544,8 @@ def test_build_container_works(image_type):
 
 
 def assert_kernel_args(test_vm, image_type):
-    exit_status, kcmdline = test_vm.run("cat /proc/cmdline", user=image_type.username, password=image_type.password)
-    assert exit_status == 0
+    ret = test_vm.run(["cat", "/proc/cmdline"], user=image_type.username, password=image_type.password)
+    kcmdline = ret.stdout
     # the kernel arg string must have a space as the prefix and either a space
     # as suffix or be the last element of the kernel commandline
     assert re.search(f" {re.escape(image_type.kargs)}( |$)", kcmdline)
@@ -560,18 +560,16 @@ def test_image_boots(image_type):
 def assert_disk_image_boots(image_type):
     with QEMU(image_type.img_path, arch=image_type.img_arch) as test_vm:
         # user/password login works
-        exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
-        assert exit_status == 0
+        test_vm.run("true", user=image_type.username, password=image_type.password)
         # root/ssh login also works
-        exit_status, output = test_vm.run("id", user="root", keyfile=image_type.ssh_keyfile_private_path)
-        assert exit_status == 0
-        assert "uid=0" in output
+        ret = test_vm.run("id", user="root", keyfile=image_type.ssh_keyfile_private_path)
+        assert "uid=0" in ret.stdout
         # check generic image options
         assert_kernel_args(test_vm, image_type)
         # ensure bootc points to the right image
-        _, output = test_vm.run("bootc status", user="root", keyfile=image_type.ssh_keyfile_private_path)
+        ret = test_vm.run(["bootc", "status"], user="root", keyfile=image_type.ssh_keyfile_private_path)
         # XXX: read the fully yaml instead?
-        assert f"image: {image_type.container_ref}" in output
+        assert f"image: {image_type.container_ref}" in ret.stdout
 
         if image_type.disk_config:
             assert_disk_customizations(image_type, test_vm)
@@ -579,12 +577,10 @@ def assert_disk_image_boots(image_type):
             assert_fs_customizations(image_type, test_vm)
 
         # check file/dir customizations
-        exit_status, output = test_vm.run("stat /etc/some-file", user=image_type.username, password=image_type.password)
-        assert exit_status == 0
-        assert "File: /etc/some-file" in output
-        _, output = test_vm.run("stat /etc/some-dir", user=image_type.username, password=image_type.password)
-        assert exit_status == 0
-        assert "File: /etc/some-dir" in output
+        ret = test_vm.run(["stat", "/etc/some-file"], user=image_type.username, password=image_type.password)
+        assert "File: /etc/some-file" in ret.stdout
+        ret = test_vm.run(["stat", "/etc/some-dir"], user=image_type.username, password=image_type.password)
+        assert "File: /etc/some-dir" in ret.stdout
 
 
 @pytest.mark.parametrize("image_type", gen_testcases("ami-boot"), indirect=["image_type"])
@@ -599,11 +595,9 @@ def test_ami_boots_in_aws(image_type, force_aws_upload):
     # 4.30 GiB / 10.00 GiB [------------>____________] 43.02% 58.04 MiB p/s
     assert "] 100.00%" in image_type.bib_output
     with AWS(image_type.metadata["ami_id"]) as test_vm:
-        exit_status, _ = test_vm.run("true", user=image_type.username, password=image_type.password)
-        assert exit_status == 0
-        exit_status, output = test_vm.run("echo hello", user=image_type.username, password=image_type.password)
-        assert exit_status == 0
-        assert "hello" in output
+        test_vm.run("true", user=image_type.username, password=image_type.password)
+        ret = test_vm.run(["echo", "hello"], user=image_type.username, password=image_type.password)
+        assert "hello" in ret.stdout
 
 
 def log_has_osbuild_selinux_denials(log):
@@ -686,12 +680,11 @@ def assert_fs_customizations(image_type, test_vm):
     """
     # check the minsize specified in the build configuration for each mountpoint against the sizes in the image
     # TODO: replace 'df' call with 'parted --json' and find the partition size for each mountpoint
-    exit_status, output = test_vm.run("df --all --output=target,size", user="root",
-                                      keyfile=image_type.ssh_keyfile_private_path)
-    assert exit_status == 0
+    ret = test_vm.run(["df", "--all", "--output=target,size"], user="root",
+                      keyfile=image_type.ssh_keyfile_private_path)
     # parse the output of 'df' to a mountpoint -> size dict for convenience
     mountpoint_sizes = {}
-    for line in output.splitlines()[1:]:
+    for line in ret.stdout.splitlines()[1:]:
         fields = line.split()
         # some filesystems to not report a size with --all
         if fields[1] == "-":
@@ -712,13 +705,12 @@ def assert_fs_customizations(image_type, test_vm):
 
 
 def assert_disk_customizations(image_type, test_vm):
-    exit_status, output = test_vm.run("findmnt --json", user="root",
-                                      keyfile=image_type.ssh_keyfile_private_path)
-    assert exit_status == 0
-    findmnt = json.loads(output)
-    exit_status, swapon_output = test_vm.run("swapon --show", user="root",
-                                             keyfile=image_type.ssh_keyfile_private_path)
-    assert exit_status == 0
+    ret = test_vm.run(["findmnt", "--json"], user="root",
+                      keyfile=image_type.ssh_keyfile_private_path)
+    findmnt = json.loads(ret.stdout)
+    swapon_ret = test_vm.run(["swapon", "--show"], user="root",
+                             keyfile=image_type.ssh_keyfile_private_path)
+    swapon_output = swapon_ret.stdout
     if dc := image_type.disk_config:
         if dc == "lvm":
             mnts = [mnt for mnt in findmnt["filesystems"][0]["children"]

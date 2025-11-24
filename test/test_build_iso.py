@@ -39,8 +39,7 @@ def test_iso_installs(image_type):
     # boot test disk and do extremly simple check
     with QEMU(test_disk_path) as vm:
         vm.start(use_ovmf=True)
-        exit_status, _ = vm.run("true", user=image_type.username, password=image_type.password)
-        assert exit_status == 0
+        vm.run("true", user=image_type.username, password=image_type.password)
         assert_kernel_args(vm, image_type)
 
 
@@ -198,8 +197,6 @@ def test_bootc_installer_iso_installs(tmp_path, build_container, container_ref):
         # boot test disk and do extremly simple check
         with QEMU(test_disk_path) as vm:
             vm.start(use_ovmf=True)
-            exit_status, _ = vm.run("true", user=username, password=password)
-            assert exit_status == 0
-            exit_status, output = vm.run("bootc status", user="root", keyfile=ssh_keyfile_private_path)
-            assert exit_status == 0
-            assert f"image: {container_ref}" in output
+            vm.run("true", user=username, password=password)
+            ret = vm.run(["bootc", "status"], user="root", keyfile=ssh_keyfile_private_path)
+            assert f"image: {container_ref}" in ret.stdout
