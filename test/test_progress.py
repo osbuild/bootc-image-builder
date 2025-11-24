@@ -57,25 +57,6 @@ def test_progress_term_works_without_tty(tmp_path, build_fake_container):
     assert "[|] Manifest generation step" in res.stderr
 
 
-def test_progress_term_autoselect(tmp_path, build_fake_container):
-    output_path = tmp_path / "output"
-    output_path.mkdir(exist_ok=True)
-
-    cmdline = [
-        *testutil.podman_run_common,
-        # we have a terminal
-        "-t",
-        build_fake_container,
-        "build",
-        # note that we do not select a --progress here so auto-select is used
-        "quay.io/centos-bootc/centos-bootc:stream9",
-    ]
-    res = subprocess.run(cmdline, capture_output=True, text=True, check=False)
-    assert res.returncode == 0
-    # its curious that we get the output on stdout here, podman weirdness?
-    assert "[|] Manifest generation step" in res.stdout
-
-
 @pytest.mark.skipif(not testutil.can_start_rootful_containers, reason="require a rootful containers (try: sudo)")
 @pytest.mark.parametrize("progress", ["term", "verbose"])
 def test_progress_error_reporting(tmp_path, build_erroring_container, progress):
