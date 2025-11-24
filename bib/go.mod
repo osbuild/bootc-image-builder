@@ -36,3 +36,5 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/sys v0.37.0 // indirect
 )
+
+replace github.com/osbuild/image-builder-cli => github.com/mvo5/image-builder-cli v0.0.0-20251125085815-fa5925b9542e
