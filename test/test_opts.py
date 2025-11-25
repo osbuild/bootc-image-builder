@@ -1,4 +1,5 @@
 import os
+import re
 import platform
 import subprocess
 
@@ -148,14 +149,9 @@ def test_bib_version(tmp_path, container_storage, build_fake_container, version_
         build_fake_container,
         version_argument,
     ], check=True, capture_output=True, text=True)
-
-    expected_rev = "unknown"
-    git_res = subprocess.run(
-        ["git", "describe", "--always"],
-        capture_output=True, text=True, check=False)
-    if git_res.returncode == 0:
-        expected_rev = git_res.stdout.strip()
-    assert f"build_revision: {expected_rev}" in res.stdout
+    # we get the build revision from "image-builer-cli" git tree now, so we just check that
+    # it looks plausible
+    assert re.search(r"(?m)^build_revision: [0-9a-f]+$", res.stdout)
     assert "build_time: " in res.stdout
     assert "build_tainted: " in res.stdout
     # we have a final newline
