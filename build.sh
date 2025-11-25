@@ -9,19 +9,20 @@ CONTAINERS_STORAGE_THIN_TAGS="containers_image_openpgp exclude_graphdriver_btrfs
 BINDIR="$(pwd)/bin"
 cd bib
 set -x
-# XXX: replace with
-# GOBIN=../bin go install -tags "${CONTAINERS_STORAGE_THIN_TAGS}" github.com/osbuild/image-builder-cli/cmd/image-builder@<rev>
-# once its merge
-# silly workaround
+# XXX2: remove bootc-image-buidler build here entirely and take it from the upstream
+# image-builer-cli container in the containerfile instead?
+#
+# XXX: replace with git clone --depth 1 github.com/osbuild/image-builder-cli@rev
+# we need the git checkout so that "bootc-image-builder version" prints something useful
 TMPDIR=$(mktemp -d)
-  cd "$TMPDIR"
-  go mod init dummy/installer
-  go mod edit -replace github.com/osbuild/image-builder-cli=github.com/mvo5/image-builder-cli@merge-bib-multicall
-  go mod tidy
-  go get github.com/osbuild/image-builder-cli/cmd/image-builder
-  GOBIN="$BINDIR" go install -tags "${CONTAINERS_STORAGE_THIN_TAGS}"  github.com/osbuild/image-builder-cli/cmd/image-builder
-  mv "$BINDIR"/image-builder "$BINDIR"/bootc-image-builder
-  cd -
+trap 'rm -rf -- "$TMPDIR"' EXIT
+ cd "$TMPDIR"
+ git clone https://github.com/mvo5/image-builder-cli .
+ git checkout merge-bib-multicall
+ git describe --long --always
+ GOBIN="$BINDIR" go install -tags "${CONTAINERS_STORAGE_THIN_TAGS}" ./cmd/image-builder
+ mv "$BINDIR"/image-builder "$BINDIR"/bootc-image-builder
+cd -
 # end silly workaround
 
 # expand the list as we support more architectures
