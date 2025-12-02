@@ -6,8 +6,7 @@ metadata:
     build.appstudio.redhat.com/commit_sha: "{{revision}}"
     build.appstudio.redhat.com/target_branch: "{{target_branch}}"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression:
-      event == "push" && target_branch == "main" && files.all.exists(x,!x.startsWith(".tekton/"))
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main" && files.all.exists(x,!x.startsWith(".tekton/"))
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: bootc-image-builder
@@ -601,12 +600,12 @@ spec:
               - "false"
       - name: sast-snyk-check
         params:
-        - name: image-digest
-          value: $(tasks.build-container.results.IMAGE_DIGEST)
-        - name: image-url
-          value: $(tasks.build-container.results.IMAGE_URL)
+          - name: image-digest
+            value: $(tasks.build-container.results.IMAGE_DIGEST)
+          - name: image-url
+            value: $(tasks.build-container.results.IMAGE_URL)
         runAfter:
-        - build-container
+          - build-container
         taskRef:
           params:
             - name: name
@@ -672,6 +671,8 @@ spec:
       - name: workspace-amd64
       - name: git-auth
         optional: true
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-bootc-image-builder
   workspaces:
     - name: workspace-amd64
       volumeClaimTemplate:
