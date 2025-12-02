@@ -513,12 +513,12 @@ spec:
               - "false"
       - name: sast-snyk-check
         params:
-        - name: image-digest
-          value: $(tasks.build-container.results.IMAGE_DIGEST)
-        - name: image-url
-          value: $(tasks.build-container.results.IMAGE_URL)
+          - name: image-digest
+            value: $(tasks.build-container.results.IMAGE_DIGEST)
+          - name: image-url
+            value: $(tasks.build-container.results.IMAGE_URL)
         runAfter:
-        - build-container
+          - build-container
         taskRef:
           params:
             - name: name
@@ -584,6 +584,8 @@ spec:
       - name: workspace-amd64
       - name: git-auth
         optional: true
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-bootc-image-builder
   workspaces:
     - name: workspace-amd64
       volumeClaimTemplate:
