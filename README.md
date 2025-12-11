@@ -320,7 +320,7 @@ The following volumes can be mounted inside the container:
 
 ## 📝 Build config
 
-A build config is a Toml (or JSON) file with customizations for the resulting image. The config file is mapped into the container directory to `/config.toml`. The customizations are specified under a `customizations` object.
+A build config is a TOML (or JSON) file with customizations for the resulting image. The config file is mapped into the container directory to `/config.toml`. The customizations are specified under a `customizations` object.
 
 As an example, let's show how you can add a user to the image:
 
