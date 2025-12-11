@@ -322,6 +322,8 @@ The following volumes can be mounted inside the container:
 
 A build config is a TOML (or JSON) file with customizations for the resulting image. The config file is mapped into the container directory to `/config.toml`. The customizations are specified under a `customizations` object.
 
+The build config is a [Blueprint file](https://github.com/osbuild/blueprint), documented in the [osbuild.org User Guide](https://osbuild.org/docs/user-guide/blueprint-reference/). Note that not all Blueprint options are supported in bootc-image-builder. Refer to the **bootc** tab for information on whether a specific customization is supported.
+
 As an example, let's show how you can add a user to the image:
 
 Firstly create a file `./config.toml` and put the following content into it:
