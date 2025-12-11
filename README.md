@@ -173,7 +173,7 @@ The following image types are currently available via the `--type` argument:
 | `qcow2` **(default)** | [QEMU](https://www.qemu.org/)                                                         |
 | `vmdk`                | [VMDK](https://en.wikipedia.org/wiki/VMDK) usable in vSphere, among others            |
 | `bootc-installer`     | An installer ISO image based on the specified bootc container image.                  |
-| `anaconda-iso`        | An unattended Anaconda installer that installs to the first disk found build from RPMs. |
+| `anaconda-iso`        | An unattended Anaconda installer that installs to the first disk found. Built from RPMs. |
 | `raw`                 | Unformatted [raw disk](https://en.wikipedia.org/wiki/Rawdisk).                        |
 | `vhd`                 | [vhd](https://en.wikipedia.org/wiki/VHD_(file_format)) usable in Virtual PC, among others |
 | `gce`                 | [GCE](https://cloud.google.com/compute/docs/images#custom_images) |
