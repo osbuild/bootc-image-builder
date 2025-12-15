@@ -6,9 +6,19 @@ set -euo pipefail
 # on things like btrfs that we don't need.
 CONTAINERS_STORAGE_THIN_TAGS="containers_image_openpgp exclude_graphdriver_btrfs exclude_graphdriver_devicemapper"
 
+BINDIR="$(pwd)/bin"
 cd bib
 set -x
-go build -tags "${CONTAINERS_STORAGE_THIN_TAGS}" -o ../bin/bootc-image-builder ./cmd/bootc-image-builder
+# we need the git checkout so that "bootc-image-builder version" prints something useful
+TMPDIR=$(mktemp -d)
+trap 'rm -rf -- "$TMPDIR"' EXIT
+ cd "$TMPDIR"
+ git clone https://github.com/osbuild/image-builder-cli .
+ git describe --long --always
+ GOBIN="$BINDIR" go install -tags "${CONTAINERS_STORAGE_THIN_TAGS}" ./cmd/image-builder
+ mv "$BINDIR"/image-builder "$BINDIR"/bootc-image-builder
+cd -
+# end silly workaround
 
 # expand the list as we support more architectures
 for arch in amd64 arm64; do

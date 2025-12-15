@@ -89,7 +89,10 @@ def test_iso_install_img_is_squashfs(tmp_path, image_type):
 
 @pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
 @pytest.mark.parametrize("container_ref", [
-    "quay.io/centos-bootc/centos-bootc:stream10",
+    # mvo-20251215: disabled centos10 because anaconda integration failing, see
+    #  https://github.com/osbuild/image-builder-cli/pull/398#issuecomment-3647186310
+    #  most likely an anaconda issue
+    # "quay.io/centos-bootc/centos-bootc:stream10",
     "quay.io/fedora/fedora-bootc:42",
     "quay.io/centos-bootc/centos-bootc:stream9",
 ])
