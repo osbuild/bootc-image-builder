@@ -90,3 +90,17 @@ func TestJSONProgressEvent_Marshal(t *testing.T) {
 	assert.Equal(t, event.Message, decoded.Message)
 	assert.True(t, event.Timestamp.Equal(decoded.Timestamp))
 }
+
+func TestSilentProgressBar(t *testing.T) {
+	// Create silent progress bar
+	pbar := &silentProgressBar{}
+
+	// All methods should be no-ops and not panic
+	pbar.Start()
+	pbar.SetMessagef("Test message with %s", "args")
+	pbar.SetPulseMsgf("Pulse message")
+	pbar.Stop()
+
+	// If we get here without panicking, the test passes
+	assert.True(t, true, "Silent progress bar methods executed without panic")
+}

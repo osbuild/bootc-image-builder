@@ -84,6 +84,16 @@ func (j *JSONProgressReporter) emitEvent(stage, status, message string) {
 	_, _ = fmt.Fprintf(osStderr, "%s\n", data)
 }
 
+// silentProgressBar is a no-op implementation of progress.ProgressBar
+// that produces no output, used for JSON progress mode
+type silentProgressBar struct{}
+
+func (s *silentProgressBar) Start()                                  {}
+func (s *silentProgressBar) Stop()                                   {}
+func (s *silentProgressBar) SetMessagef(string, ...interface{})      {}
+func (s *silentProgressBar) SetPulseMsgf(string, ...interface{})     {}
+func (s *silentProgressBar) SetProgress(int, string, int, int) error { return nil }
+
 func inContainerOrUnknown() bool {
 	// no systemd-detect-virt, err on the side of container
 	if _, err := exec.LookPath("systemd-detect-virt"); err != nil {
@@ -345,15 +355,14 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("chowning is not allowed in output directory")
 	}
 
-	// Use debug progress type if JSON is requested to minimize interference
-	// with JSON output. Debug progress is less intrusive than term/verbose
-	actualProgressType := progressType
+	var pbar progress.ProgressBar
 	if progressType == "json" {
-		actualProgressType = "debug"
-	}
-	pbar, err := progress.New(actualProgressType)
-	if err != nil {
-		return fmt.Errorf("cannto create progress bar: %w", err)
+		pbar = &silentProgressBar{}
+	} else {
+		pbar, err = progress.New(progressType)
+		if err != nil {
+			return fmt.Errorf("cannto create progress bar: %w", err)
+		}
 	}
 	defer pbar.Stop()
 
