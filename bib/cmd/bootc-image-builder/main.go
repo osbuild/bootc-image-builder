@@ -12,6 +12,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -45,6 +46,43 @@ var (
 	osStdout = os.Stdout
 	osStderr = os.Stderr
 )
+
+// JSONProgressEvent represents a progress event in JSON format
+type JSONProgressEvent struct {
+	Stage     string    `json:"stage"`
+	Status    string    `json:"status"`
+	Message   string    `json:"message,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// JSONProgressReporter wraps a progress bar and emits JSON events
+type JSONProgressReporter struct {
+	enabled bool
+}
+
+func newJSONProgressReporter(enabled bool) *JSONProgressReporter {
+	return &JSONProgressReporter{enabled: enabled}
+}
+
+func (j *JSONProgressReporter) emitEvent(stage, status, message string) {
+	if !j.enabled {
+		return
+	}
+	event := JSONProgressEvent{
+		Stage:     stage,
+		Status:    status,
+		Message:   message,
+		Timestamp: time.Now(),
+	}
+	data, err := json.Marshal(event)
+	if err != nil {
+		// If we can't marshal, just skip this event
+		return
+	}
+	// We intentionally ignore the error here as there's no good way to
+	// report progress reporting errors without recursion
+	_, _ = fmt.Fprintf(osStderr, "%s\n", data)
+}
 
 func inContainerOrUnknown() bool {
 	// no systemd-detect-virt, err on the side of container
@@ -266,19 +304,29 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	targetArch, _ := cmd.Flags().GetString("target-arch")
 	progressType, _ := cmd.Flags().GetString("progress")
 
+	// Initialize JSON progress reporter if needed
+	jsonProgress := newJSONProgressReporter(progressType == "json")
+
 	logrus.Debug("Validating environment")
+	jsonProgress.emitEvent("validation", "started", "Validating environment")
 	if err := setup.Validate(targetArch); err != nil {
+		jsonProgress.emitEvent("validation", "failed", err.Error())
 		return fmt.Errorf("cannot validate the setup: %w", err)
 	}
+	jsonProgress.emitEvent("validation", "completed", "Environment validation complete")
+
 	logrus.Debug("Ensuring environment setup")
+	jsonProgress.emitEvent("setup", "started", "Ensuring environment setup")
 	switch inContainerOrUnknown() {
 	case false:
 		fmt.Fprintf(os.Stderr, "WARNING: running outside a container, this is an unsupported configuration\n")
 	case true:
 		if err := setup.EnsureEnvironment(osbuildStore); err != nil {
+			jsonProgress.emitEvent("setup", "failed", err.Error())
 			return fmt.Errorf("cannot ensure the environment: %w", err)
 		}
 	}
+	jsonProgress.emitEvent("setup", "completed", "Environment setup complete")
 
 	if err := os.MkdirAll(outputDir, 0o777); err != nil {
 		return fmt.Errorf("cannot setup build dir: %w", err)
@@ -297,18 +345,27 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("chowning is not allowed in output directory")
 	}
 
-	pbar, err := progress.New(progressType)
+	// Use debug progress type if JSON is requested to minimize interference
+	// with JSON output. Debug progress is less intrusive than term/verbose
+	actualProgressType := progressType
+	if progressType == "json" {
+		actualProgressType = "debug"
+	}
+	pbar, err := progress.New(actualProgressType)
 	if err != nil {
 		return fmt.Errorf("cannto create progress bar: %w", err)
 	}
 	defer pbar.Stop()
 
 	manifest_fname := fmt.Sprintf("manifest-%s.json", strings.Join(imgTypes, "-"))
+	jsonProgress.emitEvent("manifest_generation", "started", fmt.Sprintf("Generating manifest %s", manifest_fname))
 	pbar.SetMessagef("Generating manifest %s", manifest_fname)
 	mf, mTLS, err := manifestFromCobra(cmd, args, pbar)
 	if err != nil {
+		jsonProgress.emitEvent("manifest_generation", "failed", err.Error())
 		return fmt.Errorf("cannot build manifest: %w", err)
 	}
+	jsonProgress.emitEvent("manifest_generation", "completed", "Manifest generation complete")
 	pbar.SetMessagef("Done generating manifest")
 
 	// collect pipeline exports for each image type
@@ -323,6 +380,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	}
 
 	pbar.SetPulseMsgf("Disk image building step")
+	jsonProgress.emitEvent("build", "started", fmt.Sprintf("Building %s", manifest_fname))
 	pbar.SetMessagef("Building %s", manifest_fname)
 
 	var osbuildEnv []string
@@ -351,8 +409,10 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		ExtraEnv:  osbuildEnv,
 	}
 	if err = progress.RunOSBuild(pbar, mf, exports, &osbuildOpts); err != nil {
+		jsonProgress.emitEvent("build", "failed", err.Error())
 		return fmt.Errorf("cannot run osbuild: %w", err)
 	}
+	jsonProgress.emitEvent("build", "completed", "Image build complete")
 
 	pbar.SetMessagef("Build complete!")
 	if uploader != nil {
@@ -361,17 +421,20 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		// progress take over - but we really need to fix this in a
 		// followup
 		pbar.Stop()
+		jsonProgress.emitEvent("upload", "started", "Uploading images")
 		for idx, imgType := range imgTypes {
 			switch imgType {
 			case "ami":
 				diskpath := filepath.Join(outputDir, exports[idx], "disk.raw")
 				if err := upload(uploader, diskpath, cmd.Flags()); err != nil {
+					jsonProgress.emitEvent("upload", "failed", err.Error())
 					return fmt.Errorf("cannot upload AMI: %w", err)
 				}
 			default:
 				continue
 			}
 		}
+		jsonProgress.emitEvent("upload", "completed", "Upload complete")
 	} else {
 		pbar.SetMessagef("Results saved in %s", outputDir)
 	}
@@ -380,6 +443,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot setup owner for %q: %w", outputDir, err)
 	}
 
+	jsonProgress.emitEvent("complete", "completed", fmt.Sprintf("Results saved in %s", outputDir))
 	return nil
 }
 
@@ -531,8 +595,7 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	buildCmd.Flags().String("chown", "", "chown the ouput directory to match the specified UID:GID")
 	buildCmd.Flags().String("output", ".", "artifact output directory")
 	buildCmd.Flags().String("store", "/store", "osbuild store for intermediate pipeline trees")
-	//TODO: add json progress for higher level tools like "podman bootc"
-	buildCmd.Flags().String("progress", "auto", "type of progress bar to use (e.g. verbose,term)")
+	buildCmd.Flags().String("progress", "auto", "type of progress bar to use (e.g., verbose,term,json)")
 	// flag rules
 	for _, dname := range []string{"output", "store", "rpmmd"} {
 		if err := buildCmd.MarkFlagDirname(dname); err != nil {
