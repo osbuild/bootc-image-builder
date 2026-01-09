@@ -270,14 +270,11 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 
 	imageDef, err := distrodef.LoadImageDef(c.DistroDefPaths, c.SourceInfo.OSRelease.ID, c.SourceInfo.OSRelease.VersionID, "anaconda-iso")
 	if err != nil {
-		// Log error before moving onto using id_like
-		logrus.Warnf("Could not load image def for %s, trying id_like(s): %v", c.SourceInfo.OSRelease.ID, err)
-
 		// Try using id_like to pick an image def
 		for _, idLike := range c.SourceInfo.OSRelease.IDLike {
+			logrus.Warnf("Could not load image def for %s, trying %s: %v", c.SourceInfo.OSRelease.ID, idLike, err)
 			imageDef, err = distrodef.LoadImageDef(c.DistroDefPaths, idLike, c.SourceInfo.OSRelease.VersionID, "anaconda-iso")
 			if err == nil {
-				logrus.Warnf("Using image def for %s instead of %s", idLike, c.SourceInfo.OSRelease.ID)
 				break
 			}
 		}
