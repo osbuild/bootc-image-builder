@@ -495,10 +495,10 @@ The Anaconda installer can be configured by enabling or disabling its dbus modul
 ```toml
 [customizations.installer.modules]
 enable = [
-    "org.fedoraproject.Anaconda.Modules.Localization"
+  "org.fedoraproject.Anaconda.Modules.Localization"
 ]
 disable = [
-    "org.fedoraproject.Anaconda.Modules.Users"
+  "org.fedoraproject.Anaconda.Modules.Users"
 ]
 ```
 
@@ -549,11 +549,9 @@ Users can customize the volume_id (which will be the ISO's label, used also in b
 ```toml
 [customizations.iso]
 volume_id = "TheISOLabel"
-# application_id = "MyFancyAPP"
-# publisher = "ThePublisher"
+application_id = "MyFancyAPP"
+publisher = "ThePublisher"
 ```
-
-*Note:* The section `customizations.iso` supports also the fields `application id` and `publisher` BUT the image builder omit these fields. 
 
 ##### Enable vs Disable priority
 
