@@ -315,7 +315,6 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 
 	img.InstallerCustomizations.Product = c.SourceInfo.OSRelease.Name
 	img.InstallerCustomizations.OSVersion = c.SourceInfo.OSRelease.VersionID
-	img.InstallerCustomizations.ISOLabel = labelForISO(&c.SourceInfo.OSRelease, &c.Architecture)
 
 	img.ExtraBasePackages = rpmmd.PackageSet{
 		Include: imageDef.Packages,
@@ -324,6 +323,11 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	var customizations *blueprint.Customizations
 	if c.Config != nil {
 		customizations = c.Config.Customizations
+	}
+	if customizations.GetISO() != nil && customizations.GetISO().VolumeID != "" {
+		img.InstallerCustomizations.ISOLabel = customizations.GetISO().VolumeID
+	} else {
+		img.InstallerCustomizations.ISOLabel = labelForISO(&c.SourceInfo.OSRelease, &c.Architecture)
 	}
 	img.InstallerCustomizations.FIPS = customizations.GetFIPS()
 	img.Kickstart, err = kickstart.New(customizations)
