@@ -5,7 +5,7 @@ go 1.24.6
 require (
 	github.com/cheggaaa/pb/v3 v3.1.7
 	github.com/hashicorp/go-version v1.7.0
-	github.com/osbuild/blueprint v1.20.0
+	github.com/osbuild/blueprint v1.22.0
 	github.com/osbuild/image-builder-cli v0.0.0-20250924085931-15de5139f521
 	github.com/osbuild/images v0.231.0
 	github.com/sirupsen/logrus v1.9.3
