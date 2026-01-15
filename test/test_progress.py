@@ -1,5 +1,6 @@
 import subprocess
 
+import json
 import pytest
 
 import testutil
@@ -98,3 +99,49 @@ def test_progress_error_reporting(tmp_path, build_erroring_container, progress):
     assert "output-from-osbuild-stdout" in res.stdout
     assert "output-from-osbuild-stderr" in res.stdout
     assert res.returncode == 1
+
+
+def test_progress_json(tmp_path, build_fake_container):
+    container_ref = "quay.io/centos-bootc/centos-bootc:stream9"
+    testutil.pull_container(container_ref)
+
+    output_path = tmp_path / "output"
+    output_path.mkdir(exist_ok=True)
+
+    cmdline = [
+        *testutil.podman_run_common,
+        build_fake_container,
+        "build",
+        "--progress=json",
+        container_ref,
+    ]
+    res = subprocess.run(cmdline, capture_output=True, check=True, text=True)
+
+    # Parse each line as JSON
+    json_lines = [line for line in res.stderr.strip().split('\n') if line.strip()]
+    assert len(json_lines) > 0, "Expected JSON output in stderr"
+
+    # Verify all lines are valid JSON
+    stages = []
+    for line in json_lines:
+        try:
+            stage = json.loads(line)
+            stages.append(stage)
+            # Verify expected fields exist
+            assert "stage" in stage
+            assert "status" in stage
+        except json.JSONDecodeError as e:
+            pytest.fail(f"Invalid JSON line: {line}\nError: {e}")
+
+    # Verify expected stages are present
+    stage_names = [s["stage"] for s in stages]
+    assert "manifest_generation" in stage_names
+    assert "build" in stage_names
+    assert "complete" in stage_names
+
+    # Verify status values are valid
+    for stage in stages:
+        assert stage["status"] in ["started", "running", "completed", "failed"]
+
+    # Verify stdout is empty
+    assert res.stdout.strip() == ""
