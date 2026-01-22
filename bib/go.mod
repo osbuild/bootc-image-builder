@@ -1,6 +1,6 @@
 module github.com/osbuild/bootc-image-builder/bib
 
-go 1.24.6
+go 1.24.11
 
 require (
 	github.com/cheggaaa/pb/v3 v3.1.7
