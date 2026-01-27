@@ -265,6 +265,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	outputDir, _ := cmd.Flags().GetString("output")
 	targetArch, _ := cmd.Flags().GetString("target-arch")
 	progressType, _ := cmd.Flags().GetString("progress")
+	runInVM, _ := cmd.Flags().GetBool("in-vm")
 
 	logrus.Debug("Validating environment")
 	if err := setup.Validate(targetArch); err != nil {
@@ -349,6 +350,9 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 		StoreDir:  osbuildStore,
 		OutputDir: outputDir,
 		ExtraEnv:  osbuildEnv,
+	}
+	if runInVM {
+		osbuildOpts.InVm = []string{"image"}
 	}
 	if err = progress.RunOSBuild(pbar, mf, exports, &osbuildOpts); err != nil {
 		return fmt.Errorf("cannot run osbuild: %w", err)
@@ -515,6 +519,7 @@ func buildCobraCmdline() (*cobra.Command, error) {
 		return nil, fmt.Errorf("cannot hide 'local' :%w", err)
 	}
 	manifestCmd.Flags().String("rootfs", "", "Root filesystem type. If not given, the default configured in the source container image is used.")
+	manifestCmd.Flags().Bool("in-vm", false, "Run osbuild in a virtual machine")
 	manifestCmd.Flags().Bool("use-librepo", true, "switch to librepo for pkg download, needs new enough osbuild")
 	// --config is only useful for developers who run bib outside
 	// of a container to generate a manifest. so hide it by
