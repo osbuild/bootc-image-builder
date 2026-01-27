@@ -579,6 +579,6 @@ func run() error {
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatalf("error: %s", err)
+		log.Fatalf("TESTerror: %s", err)
 	}
 }
