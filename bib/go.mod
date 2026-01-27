@@ -5,11 +5,11 @@ go 1.24.6
 require (
 	github.com/cheggaaa/pb/v3 v3.1.7
 	github.com/hashicorp/go-version v1.7.0
-	github.com/osbuild/blueprint v1.20.0
-	github.com/osbuild/image-builder-cli v0.0.0-20250924085931-15de5139f521
-	github.com/osbuild/images v0.231.0
+	github.com/osbuild/blueprint v1.22.0
+	github.com/osbuild/image-builder-cli v0.0.0-20260126184006-13a177bf6bf7
+	github.com/osbuild/images v0.234.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
 	go.yaml.in/yaml/v3 v3.0.4
@@ -18,7 +18,7 @@ require (
 
 require (
 	dario.cat/mergo v1.0.2 // indirect
-	github.com/BurntSushi/toml v1.5.1-0.20250606162815-011fa2bc64ce // indirect
+	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/Microsoft/hcsshim v0.13.0 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect

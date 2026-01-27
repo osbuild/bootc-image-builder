@@ -320,12 +320,11 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.RootfsCompression = "zstd"
 
 	if c.Architecture == arch.ARCH_X86_64 {
-		img.InstallerCustomizations.ISOBoot = manifest.Grub2ISOBoot
+		img.ISOCustomizations.BootType = manifest.Grub2ISOBoot
 	}
 
 	img.InstallerCustomizations.Product = c.SourceInfo.OSRelease.Name
 	img.InstallerCustomizations.OSVersion = c.SourceInfo.OSRelease.VersionID
-	img.InstallerCustomizations.ISOLabel = labelForISO(&c.SourceInfo.OSRelease, &c.Architecture)
 
 	img.ExtraBasePackages = rpmmd.PackageSet{
 		Include: imageDef.Packages,
@@ -334,6 +333,11 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	var customizations *blueprint.Customizations
 	if c.Config != nil {
 		customizations = c.Config.Customizations
+	}
+	if customizations.GetISO() != nil && customizations.GetISO().VolumeID != "" {
+		img.ISOCustomizations.Label = customizations.GetISO().VolumeID
+	} else {
+		img.ISOCustomizations.Label = labelForISO(&c.SourceInfo.OSRelease, &c.Architecture)
 	}
 	img.InstallerCustomizations.FIPS = customizations.GetFIPS()
 	img.Kickstart, err = kickstart.New(customizations)
@@ -372,7 +376,7 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	img.InstallerCustomizations.LoraxTemplatePackage = loraxTemplatePackage(c.SourceInfo.OSRelease)
 
 	// see https://github.com/osbuild/bootc-image-builder/issues/733
-	img.InstallerCustomizations.ISORootfsType = manifest.SquashfsRootfs
+	img.ISOCustomizations.RootfsType = manifest.SquashfsRootfs
 
 	installRootfsType, err := disk.NewFSType(c.RootFSType)
 	if err != nil {
