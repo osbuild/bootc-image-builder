@@ -8,7 +8,7 @@ osbuild osbuild-ostree osbuild-depsolve-dnf osbuild-lvm2
 podman
 
 # Image building dependencies
-qemu-img
+qemu-kvm-core virtiofsd qemu-img
 
 # rpm-ostree wants these for packages
 selinux-policy-targeted distribution-gpg-keys
