@@ -197,6 +197,7 @@ The following progress types are supported:
 * verbose: No spinners or progress bar, just information and full osbuild output
 * term: Terminal based output, spinner, progressbar and most details of osbuild are hidden
 * debug: Details how the progress is called, mostly useful for bugreports
+* json: Machine-readable JSON output with structured stage information for easy parsing by clients
 
 Note that when no value is given the progress is auto-detected baed on the environment. When `stdin` is a terminal the "term" progress is used, otherwise "verbose". The output of `verbose` is exactaly the same as it was before progress reporting was implemented.
 
