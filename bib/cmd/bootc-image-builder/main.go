@@ -268,7 +268,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	runInVM, _ := cmd.Flags().GetBool("in-vm")
 
 	logrus.Debug("Validating environment")
-	if err := setup.Validate(targetArch); err != nil {
+	if err := setup.Validate(targetArch, runInVM); err != nil {
 		return fmt.Errorf("cannot validate the setup: %w", err)
 	}
 	logrus.Debug("Ensuring environment setup")
@@ -276,7 +276,7 @@ func cmdBuild(cmd *cobra.Command, args []string) error {
 	case false:
 		fmt.Fprintf(os.Stderr, "WARNING: running outside a container, this is an unsupported configuration\n")
 	case true:
-		if err := setup.EnsureEnvironment(osbuildStore); err != nil {
+		if err := setup.EnsureEnvironment(osbuildStore, runInVM); err != nil {
 			return fmt.Errorf("cannot ensure the environment: %w", err)
 		}
 	}
