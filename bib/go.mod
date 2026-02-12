@@ -1,14 +1,14 @@
 module github.com/osbuild/bootc-image-builder/bib
 
-go 1.24.6
+go 1.24.12
 
 require (
 	github.com/cheggaaa/pb/v3 v3.1.7
 	github.com/hashicorp/go-version v1.7.0
-	github.com/osbuild/blueprint v1.22.0
-	github.com/osbuild/image-builder-cli v0.0.0-20260129132320-81814bf8e883
-	github.com/osbuild/images v0.234.0
-	github.com/sirupsen/logrus v1.9.3
+	github.com/osbuild/blueprint v1.23.0
+	github.com/osbuild/image-builder-cli v0.0.0-20260212111125-e1480776d00e
+	github.com/osbuild/images v0.239.1-0.20260212111935-feab839e30a1
+	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
