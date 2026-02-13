@@ -1,42 +1,57 @@
----
-name: "Updates Go dependencies via gobump"
+name: "Updates Go dependencies"
 
-on:  # yamllint disable-line rule:truthy
+on: # yamllint disable-line rule:truthy
   workflow_dispatch:
   schedule:
-    # Every Sunday at 15:00
-    - cron: "0 15 * * 0"
+    - cron: "0 15 * * 2"
 
 jobs:
   update-and-push:
     runs-on: ubuntu-latest
-    container: registry.fedoraproject.org/fedora:42
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract Go version from go.mod
+        id: go-version
+        run: |
+          VERSION=$(grep '^go ' bib/go.mod | awk '{print $2}')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ steps.go-version.outputs.version }}
+          cache-dependency-path: bib/go.sum
+
       - name: Update go.mod and open a PR
         env:
           GH_TOKEN: ${{ secrets.SCHUTZBOT_GITHUB_ACCESS_TOKEN }}
         run: |
-          # Install deps
-          set -x
-          sudo dnf -y install git gh golang gpgme-devel btrfs-progs-devel krb5-devel
-          # Checkout the project
-          git clone --depth 1 https://github.com/osbuild/images
-          cd images/
-          # Install and run gobump
-          go run github.com/lzap/gobump@latest -exec "go build ./..." -exec "go test ./..." 2>&1 | tee github_pr_body.txt
-          ./tools/prepare-source.sh
-          # Make a PR when needed
-          if git diff --exit-code; then echo "No changes"; exit 0; fi
+          pushd bib/
+          echo '```' > /tmp/go.log
+          go get -u ./... 2>&1 | tee -a /tmp/go.log
+          go mod tidy 2>&1 | tee -a /tmp/go.log
+          echo '```' >> /tmp/go.log
+          popd
+
+          if git diff --exit-code; then
+            echo "No changes"
+            exit 0
+          fi
+
           git config user.name "schutzbot"
           git config user.email "schutzbot@gmail.com"
-          branch="schutz-gobump-$(date -I)"
+
+          branch="schutz-gobump-$(date +%Y-%m-%d)"
           git checkout -b "${branch}"
           git add -A
-          git commit -m "build(deps): Update dependencies via gobump"
-          git push -f "https://$GH_TOKEN@github.com/schutzbot/images.git"
+          git commit -m "build(deps): Update dependencies"
+          git push -f https://x-access-token:${GH_TOKEN}@github.com/osbuild/bootc-image-builder.git HEAD:"${branch}"
+
           gh pr create \
-            -t "Update dependencies $(date -I)" \
-            -F "github_pr_body.txt" \
-            --repo "osbuild/images" \
+            --title "Update dependencies $(date +%Y-%m-%d)" \
+            --body-file /tmp/go.log \
+            --repo "osbuild/bootc-image-builder" \
             --base "main" \
-            --head "schutzbot:${branch}"
+            --head "${branch}"
