@@ -41,6 +41,8 @@ def test_iso_installs(image_type):
         vm.start(use_ovmf=True)
         vm.run("true", user=image_type.username, password=image_type.password)
         assert_kernel_args(vm, image_type)
+        ret = vm.run(["bootc", "status"], user="root", keyfile=image_type.ssh_keyfile_private_path)
+        assert f"image: {image_type.container_ref}" in ret.stdout
 
 
 def osinfo_for(it: ImageBuildResult, arch: str) -> str:
