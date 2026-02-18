@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/osbuild/images/pkg/bootc"
+	"github.com/osbuild/images/pkg/distro/generic"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -25,7 +27,6 @@ import (
 	"github.com/osbuild/images/pkg/cloud"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 	"github.com/osbuild/images/pkg/distro"
-	"github.com/osbuild/images/pkg/distro/bootc"
 	"github.com/osbuild/images/pkg/experimentalflags"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/manifestgen"
@@ -150,13 +151,18 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 }
 
 func manifestFromCobraForDisk(imgref, buildImgref, installerPayloadRef, imgTypeStr, rootFs, rpmCacheRoot string, config *blueprint.Blueprint, useLibrepo bool, cntArch arch.Arch) ([]byte, *mTLSConfig, error) {
-	distri, err := bootc.NewBootcDistro(imgref, &bootc.DistroOptions{
-		DefaultFs: rootFs,
+	distri, err := generic.NewBootc(imgref, &bootc.Info{
+		Imgref:        imgref,
+		DefaultRootFs: rootFs,
+		Arch:          cntArch.String(),
 	})
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := distri.SetBuildContainer(buildImgref); err != nil {
+	if err := distri.SetBuildContainer(&bootc.Info{
+		Imgref: buildImgref,
+		Arch:   cntArch.String(),
+	}); err != nil {
 		return nil, nil, err
 	}
 	archi, err := distri.GetArch(cntArch.String())
@@ -536,7 +542,7 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	buildCmd.Flags().String("chown", "", "chown the ouput directory to match the specified UID:GID")
 	buildCmd.Flags().String("output", ".", "artifact output directory")
 	buildCmd.Flags().String("store", "/store", "osbuild store for intermediate pipeline trees")
-	//TODO: add json progress for higher level tools like "podman bootc"
+	// TODO: add json progress for higher level tools like "podman bootc"
 	buildCmd.Flags().String("progress", "auto", "type of progress bar to use (e.g. verbose,term)")
 	// flag rules
 	for _, dname := range []string{"output", "store", "rpmmd"} {

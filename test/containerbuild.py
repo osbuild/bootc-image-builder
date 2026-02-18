@@ -30,7 +30,7 @@ def make_container(container_path, arch=None):
         "--arch", arch,
         container_path], encoding="utf8")
     yield container_tag
-    subprocess.check_call(["podman", "rmi", container_tag])
+    subprocess.check_call(["podman", "rmi", "--force", container_tag])
 
 
 @pytest.fixture(name="build_container", scope="session")
