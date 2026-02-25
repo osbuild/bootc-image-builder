@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"golang.org/x/exp/maps"
 	"go.yaml.in/yaml/v3"
+	"golang.org/x/exp/maps"
 
 	"github.com/hashicorp/go-version"
 )
