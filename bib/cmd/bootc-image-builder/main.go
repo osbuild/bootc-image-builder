@@ -22,10 +22,11 @@ import (
 	repos "github.com/osbuild/images/data/repositories"
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/bib/blueprintload"
+	"github.com/osbuild/images/pkg/bootc"
 	"github.com/osbuild/images/pkg/cloud"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 	"github.com/osbuild/images/pkg/distro"
-	"github.com/osbuild/images/pkg/distro/bootc"
+	"github.com/osbuild/images/pkg/distro/generic"
 	"github.com/osbuild/images/pkg/experimentalflags"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/manifestgen"
@@ -150,15 +151,34 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 }
 
 func manifestFromCobraForDisk(imgref, buildImgref, installerPayloadRef, imgTypeStr, rootFs, rpmCacheRoot string, config *blueprint.Blueprint, useLibrepo bool, cntArch arch.Arch) ([]byte, *mTLSConfig, error) {
-	distri, err := bootc.NewBootcDistro(imgref, &bootc.DistroOptions{
-		DefaultFs: rootFs,
-	})
+	containerInfo, err := bootc.ResolveBootcInfo(imgref)
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := distri.SetBuildContainer(buildImgref); err != nil {
+
+	if rootFs != "" {
+		containerInfo.DefaultRootFs = rootFs
+	}
+
+	if buildImgref == "" {
+		buildImgref = imgref
+	}
+
+	distri, err := generic.NewBootc("bootc", containerInfo)
+	if err != nil {
 		return nil, nil, err
 	}
+
+	if buildImgref != "" {
+		buildContainerInfo, err := bootc.ResolveBootcInfo(buildImgref)
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := distri.SetBuildContainer(buildContainerInfo); err != nil {
+			return nil, nil, err
+		}
+	}
+
 	archi, err := distri.GetArch(cntArch.String())
 	if err != nil {
 		return nil, nil, err
