@@ -86,7 +86,7 @@ def test_testcase_nameing():
     assert f"{tc}" == expected, f"{tc} != {expected}"
 
 
-def gen_testcases(what):  # pylint: disable=too-many-return-statements
+def gen_testcases(what):  # pylint: disable=too-many-return-statements disable=too-many-branches
     if what == "manifest":
         return [TestCaseC9S(), TestCaseFedora(), TestCaseC10S()]
     if what == "default-rootfs":
@@ -99,6 +99,10 @@ def gen_testcases(what):  # pylint: disable=too-many-return-statements
             TestCaseFedora(image="anaconda-iso", sign=True),
             TestCaseC9S(image="anaconda-iso"),
             TestCaseC10S(image="anaconda-iso"),
+        ]
+    if what == "pxe-tar-xz":
+        return [
+            TestCaseC9S(image="pxe-tar-xz"),
         ]
     if what == "qemu-cross":
         test_cases = []

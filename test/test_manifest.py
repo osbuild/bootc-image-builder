@@ -11,7 +11,8 @@ import textwrap
 import pytest
 
 import testutil
-from containerbuild import build_container_fixture as _
+from containerbuild import build_container_fixture  # pylint: disable=unused-import
+from containerbuild import pxe_container_fixture  # pylint: disable=unused-import
 from containerbuild import make_container
 from testcases import gen_testcases
 
@@ -94,6 +95,21 @@ def test_bootc_iso_manifest_smoke(build_container):
     expected_pipeline_names = ["build", "anaconda-tree", "efiboot-tree", "bootiso-tree", "bootiso"]
     assert manifest["version"] == "2"
     assert [pipeline["name"] for pipeline in manifest["pipelines"]] == expected_pipeline_names
+
+
+def test_pxe_tar_xz_manifest_smoke(pxe_container, build_container):
+    output = subprocess.check_output([
+        *testutil.podman_run_common,
+        build_container,
+        "manifest",
+        "--type=pxe-tar-xz",
+        pxe_container,
+    ])
+    manifest = json.loads(output)
+    pipeline_names = [pipeline["name"] for pipeline in manifest["pipelines"]]
+    assert manifest["version"] == "2"
+    assert "build" in pipeline_names
+    assert "bootc-pxe-tree" in pipeline_names
 
 
 @pytest.mark.parametrize("tc", gen_testcases("manifest"))
