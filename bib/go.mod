@@ -7,7 +7,7 @@ require (
 	github.com/hashicorp/go-version v1.7.0
 	github.com/osbuild/blueprint v1.23.0
 	github.com/osbuild/image-builder-cli v0.0.0-20260212111125-e1480776d00e
-	github.com/osbuild/images v0.239.1-0.20260212111935-feab839e30a1
+	github.com/osbuild/images v0.246.0
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
