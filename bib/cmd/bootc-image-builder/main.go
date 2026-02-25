@@ -88,6 +88,7 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	buildImgref, _ := cmd.Flags().GetString("build-container")
 	installerPayloadRef, _ := cmd.Flags().GetString("installer-payload-ref")
 	useLibrepo, _ := cmd.Flags().GetBool("use-librepo")
+	omitDefaultKernelArgs, _ := cmd.Flags().GetBool("no-default-kernel-args")
 
 	// If --local was given, warn in the case of --local or --local=true (true is the default), error in the case of --local=false
 	if cmd.Flags().Changed("local") {
@@ -147,10 +148,10 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 	if imageTypes.Legacy() {
 		return manifestFromCobraForLegacyISO(imgref, buildImgref, imgType, rootFs, rpmCacheRoot, config, useLibrepo, cntArch)
 	}
-	return manifestFromCobraForDisk(imgref, buildImgref, installerPayloadRef, imgType, rootFs, rpmCacheRoot, config, useLibrepo, cntArch)
+	return manifestFromCobraForDisk(imgref, buildImgref, installerPayloadRef, imgType, rootFs, rpmCacheRoot, config, useLibrepo, cntArch, omitDefaultKernelArgs)
 }
 
-func manifestFromCobraForDisk(imgref, buildImgref, installerPayloadRef, imgTypeStr, rootFs, rpmCacheRoot string, config *blueprint.Blueprint, useLibrepo bool, cntArch arch.Arch) ([]byte, *mTLSConfig, error) {
+func manifestFromCobraForDisk(imgref, buildImgref, installerPayloadRef, imgTypeStr, rootFs, rpmCacheRoot string, config *blueprint.Blueprint, useLibrepo bool, cntArch arch.Arch, omitDefaultKernelArgs bool) ([]byte, *mTLSConfig, error) {
 	containerInfo, err := bootc.ResolveBootcInfo(imgref)
 	if err != nil {
 		return nil, nil, err
@@ -210,7 +211,8 @@ func manifestFromCobraForDisk(imgref, buildImgref, installerPayloadRef, imgTypeS
 	}
 	imgOpts := &distro.ImageOptions{
 		Bootc: &distro.BootcImageOptions{
-			InstallerPayloadRef: installerPayloadRef,
+			InstallerPayloadRef:   installerPayloadRef,
+			OmitDefaultKernelArgs: omitDefaultKernelArgs,
 		},
 	}
 	manifest, err := mg.Generate(config, imgType, imgOpts)
@@ -541,6 +543,7 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	manifestCmd.Flags().String("rootfs", "", "Root filesystem type. If not given, the default configured in the source container image is used.")
 	manifestCmd.Flags().Bool("in-vm", false, "Run osbuild in a virtual machine")
 	manifestCmd.Flags().Bool("use-librepo", true, "switch to librepo for pkg download, needs new enough osbuild")
+	manifestCmd.Flags().Bool("no-default-kernel-args", false, "don't use the default kernel arguments")
 	// --config is only useful for developers who run bib outside
 	// of a container to generate a manifest. so hide it by
 	// default from users.
