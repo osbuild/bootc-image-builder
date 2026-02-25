@@ -170,7 +170,7 @@ func manifestFromCobraForDisk(imgref, buildImgref, installerPayloadRef, imgTypeS
 	}
 
 	if buildImgref != "" {
-		buildContainerInfo, err := bootc.ResolveBootcInfo(buildImgref)
+		buildContainerInfo, err := bootc.ResolveBootcBuildInfo(buildImgref)
 		if err != nil {
 			return nil, nil, err
 		}
