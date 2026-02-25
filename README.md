@@ -167,16 +167,24 @@ outputs will be produced. Note that comma or space separating the
 
 The following image types are currently available via the `--type` argument:
 
-| Image type            | Target environment                                                                    |
-|-----------------------|---------------------------------------------------------------------------------------|
-| `ami`                 | [Amazon Machine Image](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html) |
-| `qcow2` **(default)** | [QEMU](https://www.qemu.org/)                                                         |
-| `vmdk`                | [VMDK](https://en.wikipedia.org/wiki/VMDK) usable in vSphere, among others            |
-| `bootc-installer`     | An installer ISO image based on the specified bootc container image.                  |
-| `anaconda-iso`        | An unattended Anaconda installer that installs to the first disk found. Built from RPMs. |
-| `raw`                 | Unformatted [raw disk](https://en.wikipedia.org/wiki/Rawdisk).                        |
+| Image type            | Target environment                                                                        |
+|-----------------------|-------------------------------------------------------------------------------------------|
+| `ami`                 | [Amazon Machine Image](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html)     |
+| `qcow2` **(default)** | [QEMU](https://www.qemu.org/)                                                             |
+| `vmdk`                | [VMDK](https://en.wikipedia.org/wiki/VMDK) usable in vSphere, among others                |
+| `bootc-installer`     | An installer ISO image based on the specified bootc container image.                      |
+| `anaconda-iso`        | An unattended Anaconda installer that installs to the first disk found. Built from RPMs.  |
+| `raw`                 | Unformatted [raw disk](https://en.wikipedia.org/wiki/Rawdisk).                            |
 | `vhd`                 | [vhd](https://en.wikipedia.org/wiki/VHD_(file_format)) usable in Virtual PC, among others |
-| `gce`                 | [GCE](https://cloud.google.com/compute/docs/images#custom_images) |
+| `gce`                 | [GCE](https://cloud.google.com/compute/docs/images#custom_images)                         |
+| `pxe-tar-xz`          | A stateless image useful in PXE network boot environments                                 |
+
+
+## 💾 Image Type Requirements
+
+### pxe-tar-xz
+
+The container image being built must have the `dracut-live` and  `squashfs-tools` packages installed as well as a rebuilding the initramfs with the 'dmsquash-live' module.  See [osbuild documentation](https://github.com/osbuild/images/blob/main/data/files/pxetree/README) for more information and a sample Containerfile.
 
 ## 💾 Target architecture
 

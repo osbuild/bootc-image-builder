@@ -23,7 +23,7 @@ import (
 	"github.com/osbuild/images/pkg/runner"
 	"github.com/sirupsen/logrus"
 
-	podman_container "github.com/osbuild/images/pkg/bib/container"
+	podman_container "github.com/osbuild/images/pkg/bootc"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/distrodef"
 )
@@ -63,7 +63,7 @@ type ManifestConfig struct {
 }
 
 func manifestFromCobraForLegacyISO(imgref, buildImgref, imgTypeStr, rootFs, rpmCacheRoot string, config *blueprint.Blueprint, useLibrepo bool, cntArch arch.Arch) ([]byte, *mTLSConfig, error) {
-	container, err := podman_container.New(imgref)
+	container, err := podman_container.NewContainer(imgref)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -104,7 +104,7 @@ func manifestFromCobraForLegacyISO(imgref, buildImgref, imgTypeStr, rootFs, rpmC
 	}()
 
 	if buildImgref != "" {
-		buildContainer, err = podman_container.New(buildImgref)
+		buildContainer, err = podman_container.NewContainer(buildImgref)
 		if err != nil {
 			return nil, nil, err
 		}

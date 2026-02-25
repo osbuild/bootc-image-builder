@@ -13,27 +13,27 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/osbuild/images/pkg/bootc"
+	"github.com/osbuild/images/pkg/distro/generic"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
 
 	"github.com/osbuild/blueprint/pkg/blueprint"
+	"github.com/osbuild/image-builder-cli/pkg/progress"
+	"github.com/osbuild/image-builder-cli/pkg/setup"
 	repos "github.com/osbuild/images/data/repositories"
 	"github.com/osbuild/images/pkg/arch"
 	"github.com/osbuild/images/pkg/bib/blueprintload"
 	"github.com/osbuild/images/pkg/cloud"
 	"github.com/osbuild/images/pkg/cloud/awscloud"
 	"github.com/osbuild/images/pkg/distro"
-	"github.com/osbuild/images/pkg/distro/bootc"
 	"github.com/osbuild/images/pkg/experimentalflags"
 	"github.com/osbuild/images/pkg/manifest"
 	"github.com/osbuild/images/pkg/manifestgen"
 	"github.com/osbuild/images/pkg/reporegistry"
 	"github.com/osbuild/images/pkg/rpmmd"
-
-	"github.com/osbuild/image-builder-cli/pkg/progress"
-	"github.com/osbuild/image-builder-cli/pkg/setup"
 
 	"github.com/osbuild/bootc-image-builder/bib/internal/imagetypes"
 )
@@ -150,14 +150,32 @@ func manifestFromCobra(cmd *cobra.Command, args []string, pbar progress.Progress
 }
 
 func manifestFromCobraForDisk(imgref, buildImgref, installerPayloadRef, imgTypeStr, rootFs, rpmCacheRoot string, config *blueprint.Blueprint, useLibrepo bool, cntArch arch.Arch) ([]byte, *mTLSConfig, error) {
-	distri, err := bootc.NewBootcDistro(imgref, &bootc.DistroOptions{
-		DefaultFs: rootFs,
-	})
+	baseContainerInfo, err := bootc.ResolveBootcInfo(imgref)
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := distri.SetBuildContainer(buildImgref); err != nil {
+
+	if rootFs != "" {
+		baseContainerInfo.DefaultRootFs = rootFs
+	}
+
+	// When no custom build container is given, use the same image as the build container (same as legacy ISO path).
+	if buildImgref == "" {
+		buildImgref = imgref
+	}
+
+	distri, err := generic.NewBootc("bootc", baseContainerInfo)
+	if err != nil {
 		return nil, nil, err
+	}
+	if buildImgref != "" {
+		buildBootcInfo, err := bootc.ResolveBootcInfo(buildImgref)
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := distri.SetBuildContainer(buildBootcInfo); err != nil {
+			return nil, nil, err
+		}
 	}
 	archi, err := distri.GetArch(cntArch.String())
 	if err != nil {
@@ -536,7 +554,7 @@ func buildCobraCmdline() (*cobra.Command, error) {
 	buildCmd.Flags().String("chown", "", "chown the ouput directory to match the specified UID:GID")
 	buildCmd.Flags().String("output", ".", "artifact output directory")
 	buildCmd.Flags().String("store", "/store", "osbuild store for intermediate pipeline trees")
-	//TODO: add json progress for higher level tools like "podman bootc"
+	// TODO: add json progress for higher level tools like "podman bootc"
 	buildCmd.Flags().String("progress", "auto", "type of progress bar to use (e.g. verbose,term)")
 	// flag rules
 	for _, dname := range []string{"output", "store", "rpmmd"} {

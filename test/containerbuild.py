@@ -1,4 +1,5 @@
 import os
+import pathlib
 import platform
 import random
 import string
@@ -30,7 +31,7 @@ def make_container(container_path, arch=None):
         "--arch", arch,
         container_path], encoding="utf8")
     yield container_tag
-    subprocess.check_call(["podman", "rmi", container_tag])
+    subprocess.check_call(["podman", "rmi", "--force", container_tag])
 
 
 @pytest.fixture(name="build_container", scope="session")
@@ -47,6 +48,50 @@ def build_container_fixture():
         "-t", container_tag,
     ])
     return container_tag
+
+
+@pytest.fixture(name="pxe_container", scope="session")
+def pxe_container_fixture(tmpdir_factory):
+    """
+    Build a PXE-capable bootc image (dracut-live, squashfs-tools,
+    dmsquash-live initramfs) with a dedicated tag for PXE tests.
+    Uses the same base as other tests (centos-bootc:stream9).
+    """
+    if tag_from_env := os.getenv("BIB_TEST_PXE_CONTAINER_TAG"):
+        return tag_from_env
+
+    tmp_path = pathlib.Path(tmpdir_factory.mktemp("build-pxe-container"))
+    containerfile = tmp_path / "Containerfile"
+    # Use echo/printf instead of heredoc so we avoid delimiter-at-line-start
+    # issues when the content is written via textwrap.dedent.
+    containerfile.write_text(textwrap.dedent("""\
+    FROM quay.io/centos-bootc/centos-bootc:stream9
+    RUN dnf -y install dracut-live squashfs-tools && dnf clean all
+    # Override using composefs for ostree (incompatible with squashfs rootfs)
+    RUN echo '[composefs]' > /usr/lib/ostree/prepare-root.conf && \\
+        echo 'enabled = no' >> /usr/lib/ostree/prepare-root.conf && \\
+        echo '[sysroot]' >> /usr/lib/ostree/prepare-root.conf && \\
+        echo 'readonly = true' >> /usr/lib/ostree/prepare-root.conf
+
+    # Include the dmsquash-live module in the initramfs
+    RUN echo 'compress="xz"' > /usr/lib/dracut/dracut.conf.d/40-pxe.conf && \\
+        echo 'add_dracutmodules+=" qemu qemu-net livenet dmsquash-live "' >> \\
+        /usr/lib/dracut/dracut.conf.d/40-pxe.conf && \\
+        echo 'early_microcode="no"' >> /usr/lib/dracut/dracut.conf.d/40-pxe.conf
+
+    # Rebuild the initrd
+    RUN set -xe; kver=$(ls /usr/lib/modules); \\
+        env DRACUT_NO_XATTR=1 dracut -vf /usr/lib/modules/$kver/initramfs.img "$kver"
+    """), encoding="utf8")
+    pxe_container_tag = "localhost/bootc-image-builder-test-pxe"
+    subprocess.check_call([
+        "podman", "build",
+        "--cache-ttl=1h",
+        "-f", str(containerfile),
+        "-t", pxe_container_tag,
+        str(tmp_path),
+    ])
+    return pxe_container_tag
 
 
 @pytest.fixture(name="build_fake_container", scope="session")

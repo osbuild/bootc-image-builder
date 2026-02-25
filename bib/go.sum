@@ -194,6 +194,8 @@ github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/klauspost/compress v1.18.1 h1:bcSGx7UbpBqMChDtsF28Lw6v/G94LPrrbMbdC3JH2co=
 github.com/klauspost/compress v1.18.1/go.mod h1:ZQFFVG+MdnR0P+l6wpXgIL4NTtwiKIdBnrBd8Nrxr+0=
+github.com/klauspost/compress v1.18.4 h1:RPhnKRAQ4Fh8zU2FY/6ZFDwTVTxgJ/EMydqSTzE9a2c=
+github.com/klauspost/compress v1.18.4/go.mod h1:R0h/fSBs8DE4ENlcrlib3PsXS61voFxhIs2DeRhCvJ4=
 github.com/klauspost/pgzip v1.2.6 h1:8RXeL5crjEUFnR2/Sn6GJNWtSQ3Dk8pq4CL3jvdDyjU=
 github.com/klauspost/pgzip v1.2.6/go.mod h1:Ch1tH69qFZu15pkjo5kYi6mth2Zzwzt50oCQKQE9RUs=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
@@ -251,6 +253,10 @@ github.com/osbuild/image-builder-cli v0.0.0-20260212111125-e1480776d00e h1:y8AKA
 github.com/osbuild/image-builder-cli v0.0.0-20260212111125-e1480776d00e/go.mod h1:d3rG7oIFj/SeqYVX6AWJeEbyJL6maGiIOjSfxakRhiA=
 github.com/osbuild/images v0.239.1-0.20260212111935-feab839e30a1 h1:dOPfLnQEcO2dEoLJWJwmoiOtHUEjEeFl+c/n4sST1r8=
 github.com/osbuild/images v0.239.1-0.20260212111935-feab839e30a1/go.mod h1:lr0fqJjjOCurTMbgMSDxTwnEalx6CkOVqyB0QmvNqO4=
+github.com/osbuild/images v0.242.0 h1:aJDzJT5G/FcmkpMk1E2h6PPSUb+MyJ+mpkVd/z0EN1s=
+github.com/osbuild/images v0.242.0/go.mod h1:lr0fqJjjOCurTMbgMSDxTwnEalx6CkOVqyB0QmvNqO4=
+github.com/osbuild/images v0.243.0 h1:meT59/wFWNiD2I58gApzkhvk54Uhy2NewyX9wwu2dAY=
+github.com/osbuild/images v0.243.0/go.mod h1:lr0fqJjjOCurTMbgMSDxTwnEalx6CkOVqyB0QmvNqO4=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
