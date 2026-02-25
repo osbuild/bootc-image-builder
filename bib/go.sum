@@ -251,6 +251,8 @@ github.com/osbuild/image-builder-cli v0.0.0-20260212111125-e1480776d00e h1:y8AKA
 github.com/osbuild/image-builder-cli v0.0.0-20260212111125-e1480776d00e/go.mod h1:d3rG7oIFj/SeqYVX6AWJeEbyJL6maGiIOjSfxakRhiA=
 github.com/osbuild/images v0.239.1-0.20260212111935-feab839e30a1 h1:dOPfLnQEcO2dEoLJWJwmoiOtHUEjEeFl+c/n4sST1r8=
 github.com/osbuild/images v0.239.1-0.20260212111935-feab839e30a1/go.mod h1:lr0fqJjjOCurTMbgMSDxTwnEalx6CkOVqyB0QmvNqO4=
+github.com/osbuild/images v0.246.0 h1:wR1ViXOp4m/UWwecDTfR+yOfLiW0k8J/jEL7gVcGOsg=
+github.com/osbuild/images v0.246.0/go.mod h1:lr0fqJjjOCurTMbgMSDxTwnEalx6CkOVqyB0QmvNqO4=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
