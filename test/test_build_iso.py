@@ -25,6 +25,9 @@ from test_build_disk import (  # pylint: disable=unused-import
 from vmtest.vm import QEMU
 
 
+ISO_BOOT_TIMEOUT = 1800
+
+
 @pytest.mark.skipif(platform.system() != "Linux", reason="boot test only runs on linux right now")
 @pytest.mark.parametrize("image_type", gen_testcases("anaconda-iso"), indirect=["image_type"])
 def test_iso_installs(image_type):
@@ -34,7 +37,7 @@ def test_iso_installs(image_type):
         fp.truncate(10_1000_1000_1000)
     # install to test disk
     with QEMU(test_disk_path, cdrom=installer_iso_path) as vm:
-        vm.start(wait_event="qmp:RESET", snapshot=False, use_ovmf=True)
+        vm.start(wait_event="qmp:RESET", snapshot=False, use_ovmf=True, timeout_sec=ISO_BOOT_TIMEOUT)
         vm.force_stop()
     # boot test disk and do extremly simple check
     with QEMU(test_disk_path) as vm:
@@ -192,7 +195,7 @@ def test_bootc_installer_iso_installs(tmp_path, build_container, container_ref):
             fp.truncate(10_1000_1000_1000)
         # install to test disk
         with QEMU(test_disk_path, cdrom=installer_iso_path) as vm:
-            vm.start(wait_event="qmp:RESET", snapshot=False, use_ovmf=True)
+            vm.start(wait_event="qmp:RESET", snapshot=False, use_ovmf=True, timeout_sec=ISO_BOOT_TIMEOUT)
             vm.force_stop()
         # boot test disk and do extremly simple check
         with QEMU(test_disk_path) as vm:
