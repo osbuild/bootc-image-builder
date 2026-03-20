@@ -65,6 +65,33 @@ Note that some images (like fedora) do not have a default root
 filesystem type. In this case adds the switch `--rootfs <type>`,
 e.g. `--rootfs btrfs`.
 
+### Rootless
+
+There is *experimental* support for rootless builds in `bootc-image-builder`. To perform a rootless build KVM is used. The above example can be tried like so:
+
+```bash
+# Ensure the image is fetched
+podman pull quay.io/fedora/fedora-bootc:latest
+mkdir output
+podman run \
+    --rm \
+    -it \
+    --privileged \
+    --pull=newer \
+    --security-opt label=type:unconfined_t \
+    -v ./config.toml:/config.toml:ro \
+    -v ./output:/output \
+    -v ~/.local/share/containers/storage:/var/lib/containers/storage \
+    quay.io/centos-bootc/bootc-image-builder:latest \
+    --in-vm \
+    --type qcow2 \
+    --use-librepo=True \
+    --rootfs ext4 \
+    quay.io/fedora/fedora-bootc:latest
+```
+
+Note the mounting of the users container storage, addition of the `--in-vm` argument and the removal of `sudo` in the commands.
+
 ### Running the resulting QCOW2 file on Linux (x86_64)
 
 A virtual machine can be launched using `qemu-system-x86_64` or with `virt-install` as shown below;
