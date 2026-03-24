@@ -324,8 +324,14 @@ func manifestForISO(c *ManifestConfig, rng *rand.Rand) (*manifest.Manifest, erro
 	if c.Config != nil {
 		customizations = c.Config.Customizations
 	}
-	if customizations.GetISO() != nil && customizations.GetISO().VolumeID != "" {
-		img.ISOCustomizations.Label = customizations.GetISO().VolumeID
+
+	isoCust, err := customizations.GetISO()
+	if err != nil {
+		return nil, err
+	}
+
+	if isoCust != nil && isoCust.VolumeID != "" {
+		img.ISOCustomizations.Label = isoCust.VolumeID
 	} else {
 		img.ISOCustomizations.Label = labelForISO(&c.SourceInfo.OSRelease, &c.Architecture)
 	}

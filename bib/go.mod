@@ -5,9 +5,9 @@ go 1.24.12
 require (
 	github.com/cheggaaa/pb/v3 v3.1.7
 	github.com/hashicorp/go-version v1.7.0
-	github.com/osbuild/blueprint v1.23.0
+	github.com/osbuild/blueprint v1.26.0
 	github.com/osbuild/image-builder-cli v0.0.0-20260212111125-e1480776d00e
-	github.com/osbuild/images v0.246.0
+	github.com/osbuild/images v0.251.0
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
