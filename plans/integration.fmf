@@ -12,6 +12,7 @@ prepare:
   how: install
   package:
     - edk2-aarch64
+    - git
     - osbuild-depsolve-dnf
     - osbuild-lvm2
     - osbuild-ostree
