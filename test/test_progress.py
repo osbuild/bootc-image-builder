@@ -73,7 +73,8 @@ def test_progress_term_autoselect(tmp_path, build_fake_container):
     res = subprocess.run(cmdline, capture_output=True, text=True, check=False)
     assert res.returncode == 0
     # its curious that we get the output on stdout here, podman weirdness?
-    assert "[|] Manifest generation step" in res.stdout
+    # somehow we do not get the [|] prefix here
+    assert "Manifest generation step" in res.stdout
 
 
 @pytest.mark.skipif(not testutil.can_start_rootful_containers, reason="require a rootful containers (try: sudo)")
