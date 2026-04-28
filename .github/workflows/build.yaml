@@ -2,7 +2,9 @@ name: Build containers
 
 on:
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - rhel-*
   workflow_dispatch:
   # for merge queue
   merge_group:
