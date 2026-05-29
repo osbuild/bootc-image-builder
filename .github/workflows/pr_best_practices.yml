@@ -1,6 +1,6 @@
 name: "Verify PR best practices"
 
-on:
+on:  # yamllint disable-line rule:truthy
   pull_request_target:
     branches: [main]
     types: [opened, synchronize, reopened, edited]
@@ -15,4 +15,5 @@ jobs:
         uses: osbuild/pr-best-practices@main
         with:
           token: ${{ secrets.SCHUTZBOT_GITHUB_ACCESS_TOKEN }}
-          jira_token: ${{ secrets.IMAGEBUILDER_BOT_JIRA_TOKEN }}
+          jira_token: ${{ secrets.IMAGE_BUILDER_BOT_JIRA_API_TOKEN }}
+          jira_email: ${{ secrets.IMAGE_BUILDER_BOT_JIRA_EMAIL }}
