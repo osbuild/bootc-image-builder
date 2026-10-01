@@ -1,6 +1,7 @@
+---
 name: Build containers
 
-on:
+"on":
   pull_request:
     branches:
       - main
@@ -32,19 +33,3 @@ jobs:
           image: ${{ env.IMAGE_NAME }}
           tags: "latest"
           containerfiles: Containerfile
-
-      - name: Log in to the Container registry
-        if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && github.ref == 'refs/heads/main' }}
-        uses: redhat-actions/podman-login@v1
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Push to GitHub Container Repository
-        if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && github.ref == 'refs/heads/main' }}
-        uses: redhat-actions/push-to-registry@v2
-        with:
-          image: ${{ env.IMAGE_NAME }}
-          tags: "latest"
-          registry: ${{ env.REGISTRY }}
