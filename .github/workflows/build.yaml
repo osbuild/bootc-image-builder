@@ -43,7 +43,7 @@ jobs:
 
       - name: Push to GitHub Container Repository
         if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && github.ref == 'refs/heads/main' }}
-        uses: redhat-actions/push-to-registry@v2
+        uses: redhat-actions/push-to-registry@v3
         with:
           image: ${{ env.IMAGE_NAME }}
           tags: "latest"
