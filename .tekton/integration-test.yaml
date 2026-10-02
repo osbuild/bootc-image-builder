@@ -1,0 +1,123 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: bootc-image-builder-smoke-test
+spec:
+  description: >-
+    Smoke test for bootc-image-builder: verifies the built container image
+    has correct metadata, then runs it to generate a qcow2 manifest.
+  params:
+  - name: SNAPSHOT
+    description: A list of container images that should undergo testing
+    type: string
+  - name: GIT_URL
+    default: https://github.com/osbuild/bootc-image-builder
+    description: URL of the git repository containing the test scripts
+    type: string
+  - name: GIT_REF
+    default: main
+    description: Git revision to fetch test scripts from
+    type: string
+  results:
+  - name: TEST_OUTPUT
+    value: $(tasks.manifest-test.results.TEST_OUTPUT)
+  tasks:
+  - name: smoke-test
+    timeout: 15m
+    params:
+    - name: SNAPSHOT
+      value: $(params.SNAPSHOT)
+    - name: GIT_URL
+      value: $(params.GIT_URL)
+    - name: GIT_REF
+      value: $(params.GIT_REF)
+    taskSpec:
+      params:
+      - name: SNAPSHOT
+        type: string
+      - name: GIT_URL
+        type: string
+      - name: GIT_REF
+        type: string
+      results:
+      - name: TEST_OUTPUT
+        description: Test result in Konflux JSON format
+      - name: IMAGE_URL
+        description: Container image URL extracted from SNAPSHOT
+      volumes:
+      - name: podinfo
+        downwardAPI:
+          items:
+          - path: labels
+            fieldRef:
+              fieldPath: metadata.labels
+      steps:
+      - name: run-smoke-test
+        image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+        computeResources:
+          limits:
+            memory: 512Mi
+          requests:
+            memory: 256Mi
+        env:
+        - name: SNAPSHOT
+          value: $(params.SNAPSHOT)
+        - name: GIT_URL
+          value: $(params.GIT_URL)
+        - name: GIT_REF
+          value: $(params.GIT_REF)
+        volumeMounts:
+        - name: podinfo
+          mountPath: /etc/podinfo
+        script: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          export RESULT_FILE="$(results.TEST_OUTPUT.path)"
+          export IMAGE_URL_FILE="$(results.IMAGE_URL.path)"
+          microdnf install -y jq skopeo
+          SCRIPT_URL="$(echo "$GIT_URL" | sed 's|github.com|raw.githubusercontent.com|')/${GIT_REF}/.tekton/scripts/smoke-test.sh"
+          curl -sfL "$SCRIPT_URL" -o /tmp/smoke-test.sh
+          bash /tmp/smoke-test.sh
+  - name: manifest-test
+    runAfter:
+    - smoke-test
+    timeout: 30m
+    params:
+    - name: IMAGE
+      value: $(tasks.smoke-test.results.IMAGE_URL)
+    - name: GIT_URL
+      value: $(params.GIT_URL)
+    - name: GIT_REF
+      value: $(params.GIT_REF)
+    taskSpec:
+      params:
+      - name: IMAGE
+        type: string
+      - name: GIT_URL
+        type: string
+      - name: GIT_REF
+        type: string
+      results:
+      - name: TEST_OUTPUT
+        description: Test result in Konflux JSON format
+      steps:
+      - name: run-manifest-test
+        image: $(params.IMAGE)
+        computeResources:
+          limits:
+            memory: 2Gi
+          requests:
+            memory: 1Gi
+        env:
+        - name: GIT_URL
+          value: $(params.GIT_URL)
+        - name: GIT_REF
+          value: $(params.GIT_REF)
+        script: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          export RESULT_FILE="$(results.TEST_OUTPUT.path)"
+          SCRIPT_URL="$(echo "$GIT_URL" | sed 's|github.com|raw.githubusercontent.com|')/${GIT_REF}/.tekton/scripts/manifest-test.sh"
+          curl -sfL "$SCRIPT_URL" -o /tmp/manifest-test.sh
+          bash /tmp/manifest-test.sh
