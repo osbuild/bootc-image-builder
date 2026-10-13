@@ -8,7 +8,7 @@ set -euo pipefail
 #   PODINFO_LABELS (optional) — path to downward-API labels file
 
 fail() {
-    printf '{"result":"FAILURE","successes":0,"failures":1,"warnings":0,"note":"%s"}' "$1" > "$RESULT_FILE"
+    printf '{"result":"FAILURE","successes":0,"failures":1,"warnings":0,"timestamp":"%s","note":"%s"}' "$(date +%s)" "$1" > "$RESULT_FILE"
     exit 1
 }
 
@@ -53,4 +53,4 @@ fi
 
 echo "PASS: image metadata verified"
 printf '%s' "$IMAGE" > "$IMAGE_URL_FILE"
-printf '{"result":"SUCCESS","successes":1,"failures":0,"warnings":0,"note":"image metadata verified"}' > "$RESULT_FILE"
+printf '{"result":"SUCCESS","successes":1,"failures":0,"warnings":0,"timestamp":"%s","note":"image metadata verified"}' "$(date +%s)" > "$RESULT_FILE"
