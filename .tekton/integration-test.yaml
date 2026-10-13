@@ -6,18 +6,10 @@ metadata:
 spec:
   description: >-
     Smoke test for bootc-image-builder: verifies the built container image
-    has correct metadata (labels, entrypoint).
+    has correct metadata (labels, entrypoint) and runs the binary.
   params:
   - name: SNAPSHOT
     description: A list of container images that should undergo testing
-    type: string
-  - name: GIT_URL
-    default: https://github.com/osbuild/bootc-image-builder
-    description: URL of the git repository containing the test scripts
-    type: string
-  - name: GIT_REF
-    default: main
-    description: Git revision to fetch test scripts from
     type: string
   results:
   - name: TEST_OUTPUT
@@ -28,17 +20,9 @@ spec:
     params:
     - name: SNAPSHOT
       value: $(params.SNAPSHOT)
-    - name: GIT_URL
-      value: $(params.GIT_URL)
-    - name: GIT_REF
-      value: $(params.GIT_REF)
     taskSpec:
       params:
       - name: SNAPSHOT
-        type: string
-      - name: GIT_URL
-        type: string
-      - name: GIT_REF
         type: string
       results:
       - name: TEST_OUTPUT
@@ -63,22 +47,63 @@ spec:
         env:
         - name: SNAPSHOT
           value: $(params.SNAPSHOT)
-        - name: GIT_URL
-          value: $(params.GIT_URL)
-        - name: GIT_REF
-          value: $(params.GIT_REF)
         volumeMounts:
         - name: podinfo
           mountPath: /etc/podinfo
         script: |
           #!/usr/bin/env bash
           set -euo pipefail
-          export RESULT_FILE="$(results.TEST_OUTPUT.path)"
-          export IMAGE_URL_FILE="$(results.IMAGE_URL.path)"
+
+          RESULT_FILE="$(results.TEST_OUTPUT.path)"
+          IMAGE_URL_FILE="$(results.IMAGE_URL.path)"
+
+          fail() {
+              printf '{"result":"FAILURE","successes":0,"failures":1,"warnings":0,"timestamp":"%s","note":"%s"}' "$(date +%s)" "$1" > "$RESULT_FILE"
+              exit 1
+          }
+
           microdnf install -y jq skopeo
-          SCRIPT_URL="$(echo "$GIT_URL" | sed 's|github.com|raw.githubusercontent.com|')/${GIT_REF}/.tekton/scripts/smoke-test.sh"
-          curl -sfL "$SCRIPT_URL" -o /tmp/smoke-test.sh
-          bash /tmp/smoke-test.sh
+
+          COMPONENT=""
+          if [[ -f /etc/podinfo/labels ]]; then
+              COMPONENT=$(grep -oP '(?<=component=")[^"]+' /etc/podinfo/labels || echo "")
+          fi
+
+          if [[ -n "$COMPONENT" ]]; then
+              IMAGE=$(echo "${SNAPSHOT}" | jq -r ".components[]|select(.name==\"$COMPONENT\")|.containerImage")
+          else
+              IMAGE=$(echo "${SNAPSHOT}" | jq -r '.components[0].containerImage')
+          fi
+
+          if [[ -z "$IMAGE" || "$IMAGE" == "null" ]]; then
+              fail "Could not extract image URL from SNAPSHOT"
+          fi
+
+          echo "Testing image: $IMAGE"
+
+          echo "=== Inspecting image metadata ==="
+          if ! skopeo inspect --no-tags "docker://$IMAGE" > /tmp/inspect.json; then
+              fail "skopeo inspect failed — image is not pullable"
+          fi
+
+          echo "=== Image labels ==="
+          jq '.Labels' /tmp/inspect.json
+
+          echo "=== Inspecting image config ==="
+          if ! skopeo inspect --no-tags --config "docker://$IMAGE" > /tmp/config.json; then
+              fail "skopeo inspect --config failed"
+          fi
+
+          echo "=== Entrypoint ==="
+          jq '.config.Entrypoint' /tmp/config.json
+
+          if ! jq -r '(.config.Entrypoint // [])[]' /tmp/config.json | grep -q bootc-image-builder; then
+              fail "Entrypoint does not contain bootc-image-builder"
+          fi
+
+          echo "PASS: image metadata verified"
+          printf '%s' "$IMAGE" > "$IMAGE_URL_FILE"
+          printf '{"result":"SUCCESS","successes":1,"failures":0,"warnings":0,"timestamp":"%s","note":"image metadata verified"}' "$(date +%s)" > "$RESULT_FILE"
   - name: version-test
     runAfter:
     - smoke-test
