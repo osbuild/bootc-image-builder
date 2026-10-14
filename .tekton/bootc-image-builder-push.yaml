@@ -531,14 +531,80 @@ spec:
             operator: in
             values:
               - "false"
-      - name: clair-scan
+      - name: clair-scan-amd64
         params:
           - name: image-digest
-            value: $(tasks.build-image-index.results.IMAGE_DIGEST)
+            value: $(tasks.build-container-amd64.results.IMAGE_DIGEST)
           - name: image-url
-            value: $(tasks.build-image-index.results.IMAGE_URL)
+            value: $(tasks.build-container-amd64.results.IMAGE_URL)
         runAfter:
-          - build-image-index
+          - build-container-amd64
+        taskRef:
+          params:
+            - name: name
+              value: clair-scan
+            - name: bundle
+              value: quay.io/konflux-ci/tekton-catalog/task-clair-scan:0.3@sha256:8ec7d7b9438ace5ef3fb03a533d9440d0fd81e51c73b0dc1eb51602fb7cd044e
+            - name: kind
+              value: task
+          resolver: bundles
+        when:
+          - input: $(params.skip-checks)
+            operator: in
+            values:
+              - "false"
+      - name: clair-scan-arm64
+        params:
+          - name: image-digest
+            value: $(tasks.build-container-arm64.results.IMAGE_DIGEST)
+          - name: image-url
+            value: $(tasks.build-container-arm64.results.IMAGE_URL)
+        runAfter:
+          - build-container-arm64
+        taskRef:
+          params:
+            - name: name
+              value: clair-scan
+            - name: bundle
+              value: quay.io/konflux-ci/tekton-catalog/task-clair-scan:0.3@sha256:8ec7d7b9438ace5ef3fb03a533d9440d0fd81e51c73b0dc1eb51602fb7cd044e
+            - name: kind
+              value: task
+          resolver: bundles
+        when:
+          - input: $(params.skip-checks)
+            operator: in
+            values:
+              - "false"
+      - name: clair-scan-s390x
+        params:
+          - name: image-digest
+            value: $(tasks.build-container-s390x.results.IMAGE_DIGEST)
+          - name: image-url
+            value: $(tasks.build-container-s390x.results.IMAGE_URL)
+        runAfter:
+          - build-container-s390x
+        taskRef:
+          params:
+            - name: name
+              value: clair-scan
+            - name: bundle
+              value: quay.io/konflux-ci/tekton-catalog/task-clair-scan:0.3@sha256:8ec7d7b9438ace5ef3fb03a533d9440d0fd81e51c73b0dc1eb51602fb7cd044e
+            - name: kind
+              value: task
+          resolver: bundles
+        when:
+          - input: $(params.skip-checks)
+            operator: in
+            values:
+              - "false"
+      - name: clair-scan-ppc64le
+        params:
+          - name: image-digest
+            value: $(tasks.build-container-ppc64le.results.IMAGE_DIGEST)
+          - name: image-url
+            value: $(tasks.build-container-ppc64le.results.IMAGE_URL)
+        runAfter:
+          - build-container-ppc64le
         taskRef:
           params:
             - name: name
