@@ -531,7 +531,7 @@ spec:
             operator: in
             values:
               - "false"
-      - name: roxctl-scan
+      - name: clair-scan
         params:
           - name: image-digest
             value: $(tasks.build-image-index.results.IMAGE_DIGEST)
@@ -542,9 +542,9 @@ spec:
         taskRef:
           params:
             - name: name
-              value: roxctl-scan
+              value: clair-scan
             - name: bundle
-              value: quay.io/konflux-ci/tekton-catalog/task-roxctl-scan:0.1@sha256:e398b9ddfc422639c2e245285577b01b8c25cc141a2563e1d85449d96b619752
+              value: quay.io/konflux-ci/tekton-catalog/task-clair-scan:0.3@sha256:8ec7d7b9438ace5ef3fb03a533d9440d0fd81e51c73b0dc1eb51602fb7cd044e
             - name: kind
               value: task
           resolver: bundles
