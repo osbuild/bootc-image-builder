@@ -1,7 +1,11 @@
 FROM quay.io/centos/centos:stream10
 
+# Konflux mounts in /etc/pki/entitlement instead of /run/secrets.
+# This is not how we intended bib to work, but it works if subscription-manager is in bib.
+# Include it temporarily, before we find a better long-term solution.
+# See https://github.com/konflux-ci/build-definitions/blob/f3ac40bbc0230eccb8d98a4d54dabd55a4943c5d/task/build-vm-image/0.1/build-vm-image.yaml#L198
 RUN dnf install -y \
-    image-builder && \
+    image-builder subscription-manager && \
     dnf clean all && \
     ln /usr/bin/image-builder /usr/bin/bootc-image-builder
 
